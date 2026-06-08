@@ -15,7 +15,7 @@ dentro de las distintas áreas de trabajo de la planta de
 mantenimiento ADO. Permite registrar unidades, controlar su
 movimiento entre áreas, visualizar disponibilidad en tiempo
 real y mantener sincronización bidireccional con el archivo
-Excel existente en OneDrive.
+Excel existente.
 
 ---
 ## Equipo
