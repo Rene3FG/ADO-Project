@@ -19,9 +19,9 @@ Excel existente en OneDrive.
 
 ---
 ## Equipo
- Rosaura Quintana Fenochio 
- Jimena Morales Villagómez
- René Fuentes Guzmán
- Sebastián Morales Villagómez
- Luis Daniel Acevedo Herrera
- Alejandro Cinco Prieto
+ Rosaura Quintana Fenochio —
+ Jimena Morales Villagómez—
+ René Fuentes Guzmán—
+ Sebastián Morales Villagómez—
+ Luis Daniel Acevedo Herrera—
+ Alejandro Cinco Prieto—
