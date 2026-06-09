@@ -1,0 +1,3 @@
+notebook<7
+pandas
+openpyxl
