@@ -1,0 +1,94 @@
+#root {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+}
+
+/* --- BARRA DE NAVEGACIÓN --- */
+.navbar {
+  display: flex;
+  align-items: center;
+  background-color: #ce0037; /* Colocar el color asociado al ADO por fi */
+  padding: 15px 20px;
+  color: white;
+}
+
+.boton-hamburguesa {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0;
+  margin-right: 15px;
+}
+
+.titulo-nav {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+/* --- MENÚ LATERAL --- */
+.menu-lateral {
+  position: fixed;
+  top: 0;
+  left: -250px;
+  width: 250px;
+  height: 100vh;
+  background-color: #f67b83;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+  transition: left 0.3s ease-in-out; /* Animación de deslizamiento, se puede cambiar */
+  z-index: 1000;
+  text-align: left;
+}
+
+/* Cuando el estado es true, esta clase empuja el menú hacia adentro de la pantalla */
+.menu-lateral.abierto {
+  left: 0; 
+}
+
+.boton-cerrar {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 15px;
+  display: block;
+  margin-left: auto;
+}
+
+.menu-lateral ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.menu-lateral li {
+  border-bottom: 1px solid #3c546b;
+}
+
+.menu-lateral li a {
+  display: block;
+  padding: 20px;
+  color: white;
+  text-decoration: none;
+  font-size: 1.2rem;
+}
+
+.menu-lateral li a:hover {
+  background-color: #3c546b;
+}
+
+/* --- CONTENIDO PRINCIPAL --- */
+.contenido-principal {
+  padding: 40px 20px;
+  /* Usar la topografia desiganda al ADO :) */
+}
+
+.header-patio h1 {
+  color: #dae1e8;
+  margin-bottom: 10px;
+}
