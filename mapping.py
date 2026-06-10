@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta, time
-
-# ID del Google 
-SPREADSHEET_ID = "1bHoYKL5U14JfmhwwoLMHwzOtGbFbA_1sRF75P5G18sY"
+from config import SPREADSHEET_ID
 
 # Nombre hojas
 SHEET_NAMES = {
