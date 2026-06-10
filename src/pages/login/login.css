@@ -145,6 +145,9 @@ body {
   border-radius: 12px;
 
   font-size: 16px;
+
+  background-color: white;
+  color: var(--text-primary);
 }
 
 .input-group input:focus {
