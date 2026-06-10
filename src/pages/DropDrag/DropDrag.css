@@ -1,0 +1,134 @@
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--background);
+  color: var(--text-primary);
+}
+
+:root{
+  --primary: #5B177F;
+  --primary-dark: #652378;
+  --background: #f5f6fa;
+  --card: #ffffff;
+  --border: #e4e4e7;
+  --text-primary: #2d2d2d;
+  --text-secondary: #737373;
+}
+
+.contenedor-patio {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  background-color: #f4f6f8;
+  min-height: 100vh;
+}
+
+.header-patio h1 {
+  color:var(--primary);
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+/* El Tablero Flexbox */
+.tablero {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+  color:var(--primary-dark);
+}
+
+/* Columnas de Áreas */
+.columna-area {
+  background-color: #ebecf0;
+  border-color: var(--primary-dark);
+  border-width: 3px;
+  border-style: solid;
+  border-radius: 8px;
+  width: 300px;
+  min-height: 400px;
+  padding: 15px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.columna-area h3 {
+  margin-top: 0;
+  color:var(--primary);
+  border-bottom: 2px solid var(--primary-dark);
+  padding-bottom: 8px;
+  text-align: center;
+}
+
+.lista-camiones {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+  height: calc(100% - 40px);
+}
+
+/* Tarjetas de los Autobuses */
+.tarjeta-camion {
+  background-color: rgb(237, 141, 141);
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: 0 2px 4px rgba(195, 26, 26, 0.1);
+  cursor: grab; /* Cursor de una mano */
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.tarjeta-camion:active {
+  cursor: grabbing;
+  transform: scale(0.98);
+}
+
+.tarjeta-camion h4 {
+  margin: 0 0 5px 0;
+  color: var(--text-primary)
+}
+
+.tarjeta-camion p {
+  margin: 0;
+  font-size: 0.9rem;
+  color:#ffffff
+}
+
+.tipo-camion {
+  margin: 0 0 8px 0;
+  font-size: 0.9rem;
+  color: #000000;
+}
+
+/* Contenedor de la etiqueta de tiempo */
+.badge-tiempo {
+  display: inline-block;
+  background-color: #f0f4f8;
+  border-left: 3px solid #ce0037; /* Línea roja de ADO para resaltar */
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin-top: 5px;
+  text-align: left;
+}
+
+.badge-tiempo span {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color:var(--primary)
+}
+
+.badge-tiempo {
+  display: inline-block;
+  background-color: #ffffff;
+  border-left: 3px solid var(--primary-dark); 
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-top: 5px;
+  width: 90%;
+  text-align: center;
+}
+
+.badge-tiempo span {
+  font-size: 0.85rem;
+  font-family: serif;
+  font-weight: bold;
+  color: var(--primary);
+}

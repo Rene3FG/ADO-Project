@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "codigo": "ADO-001",
+    "tipo": "Privado",
+    "areaInicio": "Desfogue"
+  },
+  {
+    "id": 2,
+    "codigo": "ADO-002",
+    "tipo": "Primera Clase",
+    "areaInicio": "Desfogue"
+  },
+  {
+    "id": 3,
+    "codigo": "ADO-003",
+    "tipo": "GL",
+    "areaInicio": "Diesel"
+  }
+]
