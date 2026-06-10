@@ -100,12 +100,3 @@ python main.py
 El servicio ejecuta un ciclo inmediatamente al arrancar y luego repite cada `SYNC_INTERVAL_SECONDS` segundos. Los logs se guardan en `logs/sca_YYYY-MM-DD.log` con rotación diaria y retención de 7 días.
 
 ---
-
-## Equipo
-
-- Rosaura Quintana Fenochio
-- Jimena Morales Villagómez
-- René Fuentes Guzmán
-- Sebastián Morales Villagómez
-- Luis Daniel Acevedo Herrera
-- Alejandro Cinco Prieto
