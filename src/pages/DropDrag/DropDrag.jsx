@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import TarjetaInfo from './tarjetaInfo.jsx';
-import mockDB from './CamionArea.json'; // Tu JSON externo
+import TarjetaInfo from './TarjetaInfo.jsx';
+import mockDB from './CamionArea.json';
 import './DropDrag.css';
 
-// Todos tus iconos importados
+// Iconos del Menú Lateral (Sidebar)
 import { MdDashboard, MdAssignmentTurnedIn, MdSwapHoriz, MdHistory, MdBarChart, MdSettings, MdExitToApp } from "react-icons/md";
+
+// Iconos de las Áreas del Patio
 import { TbWash, TbWashDryDip } from "react-icons/tb";
 import { BsFillFuelPumpDieselFill } from "react-icons/bs";
 import { CiDroplet } from "react-icons/ci";
@@ -12,7 +14,7 @@ import { MdLocalCarWash } from "react-icons/md";
 import { HiMiniWrenchScrewdriver } from "react-icons/hi2";
 import { SiBlockbench } from "react-icons/si";
 
-// Diccionario de iconos para tus columnas
+// Diccionario para enlazar iconos con el ID del JSON
 const areaIcons = {
   "Desfogue": <TbWash />,
   "Diesel": <BsFillFuelPumpDieselFill />,
@@ -23,11 +25,9 @@ const areaIcons = {
   "Descanso": <SiBlockbench />
 };
 
-export default function ContenedorPrincipal() {
+export default function DropDrag() {
   const [pestanaActiva, setPestanaActiva] = useState('patio');
-  
-  // Estado dinámico para los camiones y configuración de áreas
-  const [camiones, setCamiones] = useState(mockDB.camiones);
+  const [camiones, setCamiones] = useState(mockDB.camiones); 
   const areasConfig = mockDB.areas;
 
   const alIniciarArrastre = (e, idCamion) => {
@@ -38,72 +38,73 @@ export default function ContenedorPrincipal() {
     e.preventDefault();
   };
 
-  const alSoltar = (e, nuevaArea) => {
+  const alSoltar = (e, nuevaAreaId) => {
     e.preventDefault();
     const idCamion = e.dataTransfer.getData('text/plain');
 
-    const infoAreaDestino = areasConfig.find(a => a.id === nuevaArea);
+    const infoAreaDestino = areasConfig.find(a => a.id === nuevaAreaId);
     const limiteMaximoArea = infoAreaDestino ? infoAreaDestino.capacidad : 4;
 
-    const camionesEnAreaDestino = camiones.filter(
-      camion => camion.area === nuevaArea
-    ).length;
+    const camionesEnAreaDestino = camiones.filter(c => c.area === nuevaAreaId).length;
 
     if (camionesEnAreaDestino >= limiteMaximoArea) {
-      alert(`⚠️ El área de ${nuevaArea} ya alcanzó su límite máximo de ${limiteMaximoArea} lugares.`);
+      alert(`El área de ${nuevaAreaId} ya alcanzó su límite máximo de ${limiteMaximoArea} lugares.`);
       return;
     }
 
     const camionesActualizados = camiones.map((camion) => {
       if (camion.id === idCamion) {
-        return { ...camion, area: nuevaArea };
+        return { ...camion, area: nuevaAreaId };
       }
-      return camion;
+      return { ...camion };
     });
 
     setCamiones(camionesActualizados);
   };
 
-  // Función que controla el cambio de vistas
   const renderizarContenido = () => {
     switch (pestanaActiva) {
       case 'patio':
         return (
-          /* Aquí sustituimos el texto de relleno por tu tablero real de arrastre */
-          <div className="tablero">
+          <div className="drag-board">
             {areasConfig.map((areaInfo) => {
-              const area = areaInfo.id;
-              const limiteMaximoArea = areaInfo.capacidad;
-              const camionesActuales = camiones.filter(c => c.area === area).length;
-              const lugaresDisponibles = limiteMaximoArea - camionesActuales;
+              const nombreArea = areaInfo.id;
+              const capacidadMaxima = areaInfo.capacidad;
+              const camionesActuales = camiones.filter((c) => c.area === nombreArea).length;
 
               return (
                 <div
-                  key={area}
-                  className={`columna-area ${lugaresDisponibles === 0 ? 'columna-llena' : ''}`}
+                  key={nombreArea}
+                  className="drag-zone"
                   onDragOver={permitirSoltar}
-                  onDrop={(e) => alSoltar(e, area)}
+                  onDrop={(e) => alSoltar(e, nombreArea)}
                 >
-                  <div className="area-header">
-                    <div className="area-title">
-                      <span className="area-icon">{areaIcons[area]}</span>
-                      <h3>{area}</h3>
+                  <div className="drag-zone__header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="sidebar__icon-active">
+                        {areaIcons[nombreArea]}
+                      </span>
+                      <h3>{nombreArea}</h3>
                     </div>
-                    <span className="area-capacidad">
-                      Capacidad: {camionesActuales}/{limiteMaximoArea}
+                    <span className="zone-counter">
+                      Capacidad: {camionesActuales}/{capacidadMaxima}
                     </span>
                   </div>
 
-                  <div className="lista-camiones">
-                    {camiones
-                      .filter((camion) => camion.area === area)
-                      .map((camion) => (
-                        <TarjetaInfo
-                          key={camion.id}
-                          camion={camion}
-                          alIniciarArrastre={alIniciarArrastre}
-                        />
-                      ))}
+                  <div className="drag-zone__content">
+                    {camiones.filter((camion) => camion.area === nombreArea).length === 0 ? (
+                      <div className="no-buses">No hay autobuses</div>
+                    ) : (
+                      camiones
+                        .filter((camion) => camion.area === nombreArea)
+                        .map((camion) => (
+                          <TarjetaInfo 
+                            key={camion.id} 
+                            camion={camion} 
+                            alIniciarArrastre={alIniciarArrastre}
+                          />
+                        ))
+                    )}
                   </div>
                 </div>
               );
@@ -126,80 +127,77 @@ export default function ContenedorPrincipal() {
   };
 
   return (
-    <div className="layout-sistema">
+    <div className="layout-container">
       {/* MENÚ LATERAL */}
-      <aside className="sidebar-izquierdo">
-        <div className="logo-empresa">
-          <span style={{ color: '#C93B3B', fontWeight: 'bold', fontSize: '24px' }}>ADO</span>
+      <aside className="sidebar">
+        <div className="sidebar__logo">
+          <span style={{ color: '#e21c24', fontWeight: 'bold', fontSize: '24px', letterSpacing: '1px' }}>ADO</span>
         </div>
 
-        <nav className="menu-navegacion">
+        <nav className="sidebar__nav">
           <button 
-            className={`boton-pestana ${pestanaActiva === 'patio' ? 'activa' : ''}`}
+            className={`sidebar__item ${pestanaActiva === 'patio' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('patio')}
           >
-            <MdDashboard className="icono-menu" />
+            <MdDashboard className="sidebar__icon" />
             <span>Patio en tiempo real</span>
           </button>
 
           <button 
-            className={`boton-pestana ${pestanaActiva === 'registrar' ? 'activa' : ''}`}
+            className={`sidebar__item ${pestanaActiva === 'registrar' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('registrar')}
           >
-            <MdAssignmentTurnedIn className="icono-menu" />
+            <MdAssignmentTurnedIn className="sidebar__icon" />
             <span>Registrar camión</span>
           </button>
 
           <button 
-            className={`boton-pestana ${pestanaActiva === 'movimientos' ? 'activa' : ''}`}
+            className={`sidebar__item ${pestanaActiva === 'movimientos' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('movimientos')}
           >
-            <MdSwapHoriz className="icono-menu" />
+            <MdSwapHoriz className="sidebar__icon" />
             <span>Movimientos</span>
           </button>
 
           <button 
-            className={`boton-pestana ${pestanaActiva === 'historial' ? 'activa' : ''}`}
+            className={`sidebar__item ${pestanaActiva === 'historial' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('historial')}
           >
-            <MdHistory className="icono-menu" />
+            <MdHistory className="sidebar__icon" />
             <span>Historial</span>
           </button>
 
           <button 
-            className={`boton-pestana ${pestanaActiva === 'reportes' ? 'activa' : ''}`}
+            className={`sidebar__item ${pestanaActiva === 'reportes' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('reportes')}
           >
-            <MdBarChart className="icono-menu" />
+            <MdBarChart className="sidebar__icon" />
             <span>Reportes</span>
           </button>
 
           <button 
-            className={`boton-pestana ${pestanaActiva === 'configuracion' ? 'activa' : ''}`}
+            className={`sidebar__item ${pestanaActiva === 'configuracion' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('configuracion')}
           >
-            <MdSettings className="icono-menu" />
+            <MdSettings className="sidebar__icon" />
             <span>Configuración</span>
           </button>
         </nav>
 
-        <div className="footer-sidebar">
-          <button className="boton-pestana cerrar-sesion" onClick={() => alert('Cerrando sesión...')}>
-            <MdExitToApp className="icono-menu" />
-            <span>Cerrar sesión</span>
-          </button>
-        </div>
+        <button className="sidebar__logout" onClick={() => alert('Cerrando sesión...')}>
+          <MdExitToApp className="sidebar__icon" />
+          <span>Cerrar sesión</span>
+        </button>
       </aside>
 
-      {/* CONTENIDO PRINCIPAL DINÁMICO */}
-      <main className="contenido-derecho">
-        <header className="header-patio-superior">
-          <span>Control de Patio - Oaxaca</span>
+      {/* CONTENIDO DERECHO */}
+      <main className="main-content">
+        <header className="main-content__header">
+          <h1>Control de Patio - Oaxaca</h1>
+          <p>Vista general de ocupación por área</p>
         </header>
         
-        <div className="area-de-trabajo">
-          {renderizarContenido()}
-        </div>
+        {renderizarContenido()}
       </main>
     </div>
   );

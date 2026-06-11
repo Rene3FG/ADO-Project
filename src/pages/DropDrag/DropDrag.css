@@ -1,292 +1,291 @@
-/* --- LAYOUT GENERAL Y BARRA LATERAL (Para que el menú se quede a la izquierda) --- */
-.layout-sistema {
+/* Restablecer e inicializar layout de pantalla completa */
+.layout-container {
   display: flex;
-  height: 100vh;
   width: 100vw;
-  background-color: #F8FAFC; /* Gris muy tenue de fondo */
-  overflow: hidden;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}
-
-.sidebar-izquierdo {
-  width: 260px;
-  background-color: #FFFFFF;
-  border-right: 1px solid #E2E8F0;
-  display: flex;
-  flex-direction: column;
-  padding: 20px 0;
-  justify-content: space-between;
-}
-
-.logo-empresa {
-  padding: 0 20px 20px 20px;
-  font-weight: bold;
-  color: #C93B3B; /* Rojo ADO */
-  font-size: 24px;
-}
-
-.menu-navegacion {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex-grow: 1;
-  padding: 0 12px;
-}
-
-.boton-pestana {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: none;
-  border: none;
-  padding: 12px 16px;
-  border-radius: 8px;
-  color: #64748B;
-  font-size: 14px;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  width: 100%;
-}
-
-.boton-pestana:hover {
-  background-color: #F1F5F9;
-  color: #334155;
-}
-
-.boton-pestana.activa {
-  background-color: #6A307D; /* Morado ADO */
-  color: #FFFFFF;
-}
-
-.icono-menu {
-  font-size: 20px;
-}
-
-.cerrar-sesion {
-  color: #94A3B8;
-  margin-top: auto;
-  padding-bottom: 20px;
-}
-
-.contenido-derecho {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.header-patio-superior {
-  background-color: #FFFFFF;
-  padding: 15px 30px;
-  border-bottom: 1px solid #E2E8F0;
-  font-weight: bold;
-  color: #1E293B;
-  font-size: 18px;
-}
-
-.area-de-trabajo {
-  padding: 30px;
-  flex-grow: 1;
-  overflow-y: auto;
-}
-
-/* --- EL ARREGLO DEL TABLERO DE ÁREAS (Flexbox para columnas) --- */
-.tablero {
-  display: flex; /* ESTO ES LO MÁS IMPORTANTE: Pone las áreas una al lado de la otra */
-  gap: 20px; /* Espacio entre columnas */
-  align-items: flex-start;
-  flex-wrap: nowrap; /* Evita que se bajen si no caben (activa scroll horizontal si es necesario) */
-  padding-bottom: 20px;
-}
-
-.columna-area {
-  background-color: #FFFFFF;
-  border-radius: 12px;
-  width: 280px; /* Ancho fijo de cada columna */
-  min-width: 280px;
-  padding: 20px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  border: 2px solid transparent;
-  transition: border-color 0.2s;
-}
-
-/* Estilo visual cuando una columna está llena */
-.columna-area.columna-llena {
-  border-color: #FECACA; /* Borde rojo tenue */
-  background-color: #FFF5F5;
-}
-
-/* Estilos de la cabecera de cada columna (Nombre e icono) */
-.area-header {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  border-bottom: 1px solid #E2E8F0;
-  padding-bottom: 10px;
-  margin-bottom: 5px;
-}
-
-.area-title {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.area-icon {
-  font-size: 20px;
-  color: #6A307D; /* Morado para el icono */
-  display: flex;
-  align-items: center;
-}
-
-.area-header h3 {
+  height: 100vh;
   margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #1E293B;
+  padding: 0;
+  box-sizing: border-box;
+  background-color: #0b0d14; /* Fondo ultra oscuro */
+  color: #f1f5f9;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow: hidden;
 }
 
-.area-capacidad {
-  font-size: 12px;
-  color: #64748B;
-  font-weight: 500;
-}
-
-/* --- ESTILOS DE LAS TARJETAS DE CAMIONES (Limpias y ordenadas) --- */
-.lista-camiones {
+/* Sidebar Estilo de tu foto */
+.sidebar {
+  width: 240px;
+  height: 100vh;
+  background-color: #11131e;
+  border-right: 1px solid #1e2235;
   display: flex;
   flex-direction: column;
-  gap: 10px; /* Espacio entre tarjetas */
-  min-height: 100px; /* Área para soltar aunque esté vacía */
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
-.tarjeta-camion {
-  background-color: #F8FAFC;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  padding: 12px;
-  cursor: grab;
-  transition: all 0.2s;
+.sidebar__logo {
+  padding: 24px 20px;
+  border-bottom: 1px solid #1e2235;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar__nav {
+  flex: 1;
+  padding: 16px 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.tarjeta-camion:hover {
-  background-color: #F1F5F9;
-  transform: translateY(-2px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+.sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
 }
 
-.tarjeta-camion:active {
-  cursor: grabbing;
+.sidebar__item:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+  color: #f1f5f9;
 }
 
-.tarjeta-camion .codigo {
-  font-weight: bold;
-  color: #1E293B;
+.sidebar__item--active {
+  background-color: rgba(226, 28, 36, 0.1); /* Fondo sutil rojo */
+  color: #e21c24; /* Texto e icono rojo ADO */
+  font-weight: 600;
+  border-left: 3px solid #e21c24;
+}
+
+.sidebar__icon {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  width: 20px;
+}
+
+.sidebar__icon-active {
+  color: #e21c24;
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+}
+
+.sidebar__logout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 20px;
+  border: none;
+  border-top: 1px solid #1e2235;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  margin-top: auto;
+}
+
+/* Sección de contenido del Patio */
+.main-content {
+  flex: 1;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.main-content__header h1 {
+  font-size: 24px;
+  margin: 0 0 4px 0;
+  font-weight: 600;
+}
+
+.main-content__header p {
+  color: #64748b;
+  margin: 0 0 24px 0;
   font-size: 14px;
 }
 
-.tarjeta-camion .tipo {
-  color: #64748B;
-  font-size: 12px;
+/* TABLERO DRAG & DROP (ZONAS DEL PATIO) */
+.drag-board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  align-items: start;
+  width: 100%;
 }
 
-.tarjeta-camion .tiempo {
-  color: #C93B3B; /* Rojo para el tiempo */
+.drag-zone {
+  background-color: #11131e;
+  border: 1px solid #1e2235;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.drag-zone__header {
+  padding: 14px 16px;
+  background-color: #161927;
+  border-bottom: 1px solid #1e2235;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.drag-zone__header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.zone-counter {
+  background-color: #1e2235;
+  color: #94a3b8;
   font-size: 11px;
-  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.drag-zone__content {
+  padding: 16px;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+/* TARJETAS DE AUTOBUSES (Rectángulos independientes) */
+.bus-card {
+  background-color: #1c1f30; /* Fondo rectangular diferenciado */
+  border: 1px solid #2a2f4a;   /* Borde para envolver la info */
+  padding: 14px;
+  border-radius: 8px;
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-sizing: border-box;
+  transition: transform 0.15s, border-color 0.15s, background-color 0.15s;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.bus-card:active {
+  cursor: grabbing;
+  transform: scale(0.97);
+}
+
+.bus-card:hover {
+  border-color: #3b4268;
+  background-color: #22273d;
+  transform: translateY(-2px);
+}
+
+.bus-card__eco {
+  font-size: 15px;
+  font-weight: bold;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.bus-card__type {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.bus-card__status {
+  font-size: 11px;
+  color: #64748b;
   margin-top: 2px;
 }
 
-/* Update this section in your existing DropDrag.css file */
-
-/* --- EL ARREGLO DEL TABLERO DE ÁREAS (Adaptable para Computadora y Celular) --- */
-.tablero {
-  display: flex; /* Vista por defecto en Computadora: una al lado de la otra */
-  gap: 20px;
-  align-items: flex-start;
-  /* El overflow-x es importante para escritorio, pero lo desactivaremos en móvil */
-  overflow-x: auto; 
-  padding-bottom: 20px;
-  width: 100%; /* Asegura que el contenedor ocupe todo el ancho */
+.no-buses {
+  font-size: 12px;
+  color: #475569;
+  text-align: center;
+  margin: auto 0;
+  border: 1px dashed #1e2235;
+  padding: 20px 0;
+  border-radius: 6px;
 }
 
-/* CADA CUADRO DE ÁREA */
-.columna-area {
-  background-color: #FFFFFF;
-  border-radius: 12px;
-  width: 280px; /* Ancho fijo solo en computadoras */
-  min-width: 280px; /* Ancho mínimo para que no se compriman en escritorio */
+.pantalla-vacia {
   padding: 20px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  border: 2px solid transparent;
-  transition: border-color 0.2s;
-  box-sizing: border-box; /* Crucial para que el padding no altere el ancho */
+  color: #94a3b8;
 }
 
-/* --- RESPONSIVO: MODO CELULAR (Pantallas menores a 768px) --- */
+/* RESPONSIVO: DOS EN DOS EN CELULARES */
 @media (max-width: 768px) {
-  /* Hacemos que el contenedor de trabajo permita scroll vertical si se llena */
-  .area-de-trabajo {
-    padding: 15px;
-    overflow-y: auto;
+  .layout-container {
+    flex-direction: column;
   }
 
-  .tablero {
-    display: grid; /* Cambiamos a Grid para controlar las columnas */
-    /* ¡AQUÍ ESTÁ EL TRUCO! Obliga a que vayan de 2 en 2, ocupando la mitad cada una */
-    grid-template-columns: repeat(2, 1fr); 
-    gap: 12px; /* Espacio más compacto para celular */
-    overflow-x: hidden; /* Evitamos que se mueva de lado */
+  .sidebar {
     width: 100%;
-    /* Quitamos el padding lateral para que no empuje las cajas */
-    padding-left: 0;
-    padding-right: 0;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid #1e2235;
   }
 
-  .columna-area {
-    width: 100%; /* Que ocupe todo el espacio de su celda de la cuadrícula */
-    min-width: 0; /* Rompe el mínimo anterior para que pueda encogerse en el cel */
-    padding: 12px; /* Padding más pequeño para aprovechar la pantalla */
-    gap: 10px;
-    box-sizing: border-box; /* Asegura que no se superpongan */
+  .sidebar__nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 10px;
   }
 
-  /* Ajustamos textos de la cabecera del área para que no se amontonen */
-  .area-header h3 {
-    font-size: 14px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap; /* Evita que el texto largo rompa la caja */
-  }
-  
-  .area-capacidad {
-    font-size: 11px;
+  .sidebar__item {
+    padding: 8px 12px;
+    width: auto;
+    white-space: nowrap;
   }
 
-  /* Ajustamos las tarjetas de los camiones para que queden perfectas */
-  .tarjeta-camion {
-    padding: 8px;
+  .sidebar__logout {
+    display: none; /* Ocultar en barra superior móvil para ahorrar espacio */
   }
 
-  .tarjeta-camion .codigo {
-    font-size: 13px;
+  .main-content {
+    padding: 15px;
+  }
+
+  .drag-board {
+    grid-template-columns: repeat(2, 1fr) !important; /* Cuadrícula de 2 en 2 forzada */
+    gap: 12px;
+  }
+
+  .drag-zone__header h3 {
+    font-size: 12px;
   }
 }
 
-/* Opcional: Si el celular es MUY angosto (menos de 400px) y de 2 en 2 se ve muy apretado */
-@media (max-width: 400px) {
-  .tablero {
-    grid-template-columns: 1fr; /* Va de 1 en 1 solo en pantallas ultra pequeñas */
+@media (max-width: 480px) {
+  .drag-board {
+    grid-template-columns: repeat(2, 1fr) !important;
   }
+}
+
+.bus-card__status {
+  font-size: 11px;
+  color: #e21c24; /* Color rojo ADO para que el tiempo en vivo resalte */
+  background-color: rgba(226, 28, 36, 0.08); /* Un sutil fondo rojo semi-transparente */
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-top: 6px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
 }
