@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import TarjetaInfo from './tarjetaInfo.jsx';
+import mockDB from './CamionArea.json'; // 1. Importamos el archivo JSON de tu compañera
 import './DropDrag.css';
 
-// Iconos importados de la versión HEAD
 import { TbWash } from "react-icons/tb";
 import { BsFillFuelPumpDieselFill } from "react-icons/bs";
 import { CiDroplet } from "react-icons/ci";
@@ -11,10 +11,9 @@ import { TbWashDryDip } from "react-icons/tb";
 import { HiMiniWrenchScrewdriver } from "react-icons/hi2";
 import { SiBlockbench } from "react-icons/si";
 
-// Base de datos simulada (Versión remota/incoming)
-import mockDB from './CamionArea.json';
+// 2. Se eliminan las constantes estáticas locales (camionesIniciales, AREAS, LIMITE_MAXIMO)
+// porque ahora toda esa información se lee directamente desde mockDB de forma dinámica.
 
-// Diccionario de iconos asignados por nombre de área
 const areaIcons = {
   "Desfogue": <TbWash />,
   "Diesel": <BsFillFuelPumpDieselFill />,
@@ -26,8 +25,9 @@ const areaIcons = {
 };
 
 export default function DropDrag() {
-  const [camiones, setCamiones] = useState(mockDB.camiones); 
-  const areasConfig = mockDB.areas; 
+  // 3. El estado inicial ahora se carga con los camiones del JSON
+  const [camiones, setCamiones] = useState(mockDB.camiones);
+  const areasConfig = mockDB.areas; // Guardamos el array de áreas configuradas en el JSON
 
   const alIniciarArrastre = (e, idCamion) => {
     e.dataTransfer.setData('text/plain', idCamion);
@@ -37,29 +37,35 @@ export default function DropDrag() {
     e.preventDefault();
   };
 
-  const alSoltar = (e, nuevaAreaId) => {
+  const alSoltar = (e, nuevaArea) => {
     e.preventDefault();
 
     const idCamion = e.dataTransfer.getData('text/plain');
 
-    // Buscamos la capacidad máxima en nuestra configuración de áreas (JSON)
-    const infoAreaDestino = areasConfig.find(a => a.id === nuevaAreaId);
+    // 4. Buscamos dinámicamente el límite de capacidad de la configuración del JSON
+    const infoAreaDestino = areasConfig.find(a => a.id === nuevaArea);
     const limiteMaximoArea = infoAreaDestino ? infoAreaDestino.capacidad : 4;
 
-    // Se valida cuántos camiones hay ya en el área de destino
-    const camionesEnAreaDestino = camiones.filter(c => c.area === nuevaAreaId).length;
+    const camionesEnAreaDestino = camiones.filter(
+      camion => camion.area === nuevaArea
+    ).length;
 
-    // Si ya está llena, bloqueamos el movimiento
+    // 5. Validamos usando el límite dinámico del JSON en lugar de la constante fija
     if (camionesEnAreaDestino >= limiteMaximoArea) {
-      alert(`⚠️ El área de ${nuevaAreaId} ya alcanzó su límite máximo de ${limiteMaximoArea} lugares.`);
+      alert(
+        `⚠️ El área de ${nuevaArea} ya alcanzó su límite máximo de ${limiteMaximoArea} lugares.`
+      );
       return;
     }
 
-    // Si hay espacio, actualizamos el área del camión
     const camionesActualizados = camiones.map((camion) => {
       if (camion.id === idCamion) {
-        return { ...camion, area: nuevaAreaId };
+        return {
+          ...camion,
+          area: nuevaArea
+        };
       }
+
       return camion;
     });
 
@@ -73,39 +79,44 @@ export default function DropDrag() {
       </header>
 
       <div className="tablero">
+        {/* 6. Mapeamos usando las áreas que vienen declaradas en el JSON */}
         {areasConfig.map((areaInfo) => {
-          const nombreArea = areaInfo.id;
-          const capacidadMaxima = areaInfo.capacidad;
+          const area = areaInfo.id;               // El nombre del área (Ej: 'Desfogue')
+          const limiteMaximoArea = areaInfo.capacidad; // Su límite de capacidad respectivo
 
-          // --- CÁLCULO DE LUGARES EN TIEMPO REAL ---
-          const camionesActuales = camiones.filter((c) => c.area === nombreArea).length;
-          const lugaresDisponibles = capacidadMaxima - camionesActuales;
+          const camionesActuales = camiones.filter(
+            (camion) => camion.area === area
+          ).length;
+
+          // 7. Calculamos la disponibilidad usando el límite dinámico del JSON
+          const lugaresDisponibles = limiteMaximoArea - camionesActuales;
 
           return (
             <div
-              key={nombreArea}
-              className={`columna-area ${lugaresDisponibles === 0 ? 'columna-llena' : ''}`}
+              key={area}
+              className={`columna-area ${
+                lugaresDisponibles === 0 ? 'columna-llena' : ''
+              }`}
               onDragOver={permitirSoltar}
-              onDrop={(e) => alSoltar(e, nombreArea)}
+              onDrop={(e) => alSoltar(e, area)}
             >
-              <div className="encabezado-columna">
-                <div className="area-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {/* Aquí renderizamos el icono correspondiente si existe */}
+              <div className="area-header">
+                <div className="area-title">
                   <span className="area-icon">
-                    {areaIcons[nombreArea]}
+                    {areaIcons[area]}
                   </span>
-                  <h3>{nombreArea}</h3>
+
+                  <h3>{area}</h3>
                 </div>
-                
-                {/* Contador visual usando la capacidad del JSON */}
-                <span className={`contador-lugares ${lugaresDisponibles <= 1 ? 'alerta-espacio' : ''}`}>
-                  {lugaresDisponibles} / {capacidadMaxima} lugares libres
+
+                <span className="area-capacidad">
+                  Capacidad: {camionesActuales}/{limiteMaximoArea}
                 </span>
               </div>
 
               <div className="lista-camiones">
                 {camiones
-                  .filter((camion) => camion.area === nombreArea)
+                  .filter((camion) => camion.area === area)
                   .map((camion) => (
                     <TarjetaInfo
                       key={camion.id}
