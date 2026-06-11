@@ -1,21 +1,24 @@
+// const camionesIniciales = [
+//   { id: '1', codigo: 'ADO-001', tipo: 'Ejecutivo', area: 'Desfogue' },
+//   { id: '2', codigo: 'ADO-002', tipo: 'Primera Clase', area: 'Taller' },
+//   { id: '3', codigo: 'ADO-003', tipo: 'GL', area: 'Ad-Blue' },
+//   { id: '4', codigo: 'ADO-004', tipo: 'Platino', area: 'Taller' },
+//   { id: '5', codigo: 'ADO-005', tipo: 'Platino', area: 'Taller' },
+
+// ];
+
+// const AREAS = ['Desfogue', 'Diesel', 'Ad-Blue', 'Taller', 'Lavado Interior', 'Lavado Exterior', 'Lavado Interior', 'Descanso'];
+// const LIMITE_MAXIMO = 4; // El límite de espacios por área
+
 import { useState } from 'react';
 import TarjetaInfo from './TarjetaInfo.jsx';
 import './DropDrag.css';
 
-const camionesIniciales = [
-  { id: '1', codigo: 'ADO-001', tipo: 'Ejecutivo', area: 'Desfogue' },
-  { id: '2', codigo: 'ADO-002', tipo: 'Primera Clase', area: 'Taller' },
-  { id: '3', codigo: 'ADO-003', tipo: 'GL', area: 'Ad-Blue' },
-  { id: '4', codigo: 'ADO-004', tipo: 'Platino', area: 'Taller' },
-  { id: '5', codigo: 'ADO-005', tipo: 'Platino', area: 'Taller' },
-
-];
-
-const AREAS = ['Desfogue', 'Diesel', 'Ad-Blue', 'Taller', 'Lavado Interior', 'Lavado Exterior', 'Lavado Interior', 'Descanso'];
-const LIMITE_MAXIMO = 4; // El límite de espacios por área
+import mockDB from './CamionArea.json';
 
 export default function DropDrag() {
-  const [camiones, setCamiones] = useState(camionesIniciales);
+  const [camiones, setCamiones] = useState(mockDB.camiones); 
+  const areasConfig = mockDB.areas; // Corrección: Bien escrito "areasConfig"
 
   const alIniciarArrastre = (e, idCamion) => {
     e.dataTransfer.setData('text/plain', idCamion);
@@ -25,23 +28,27 @@ export default function DropDrag() {
     e.preventDefault();
   };
 
-  const alSoltar = (e, nuevaArea) => {
+  const alSoltar = (e, nuevaAreaId) => {
     e.preventDefault();
     const idCamion = e.dataTransfer.getData('text/plain');
 
-    // 1. Validar cuántos camiones hay ya en el área de destino
-    const camionesEnAreaDestino = camiones.filter(c => c.area === nuevaArea).length;
+    //Buscamos la capacidad máxima en nuestra configuración de áreas
+    const infoAreaDestino = areasConfig.find(a => a.id === nuevaAreaId);
+    const limiteMaximoArea = infoAreaDestino ? infoAreaDestino.capacidad : 4;
 
-    // 2. Si ya está llena (alcanzó los 4 espacios), bloqueamos el movimiento
-    if (camionesEnAreaDestino >= LIMITE_MAXIMO) {
-      alert(`⚠️ El área de ${nuevaArea} ya alcanzó su límite máximo de ${LIMITE_MAXIMO} lugares.`);
+    //Se valida cuántos camiones hay ya en el área de destino
+    const camionesEnAreaDestino = camiones.filter(c => c.area === nuevaAreaId).length;
+
+    //Si ya está llena, bloqueamos el movimiento usando la capacidad del JSON
+    if (camionesEnAreaDestino >= limiteMaximoArea) {
+      alert(`El área de ${nuevaAreaId} ya alcanzó su límite máximo de ${limiteMaximoArea} lugares.`);
       return;
     }
 
-    // 3. Si hay espacio, actualizamos el área del camión
+    //Si hay espacio, actualizamos el área del camión
     const camionesActualizados = camiones.map((camion) => {
       if (camion.id === idCamion) {
-        return { ...camion, area: nuevaArea };
+        return { ...camion, area: nuevaAreaId };
       }
       return { ...camion };
     });
@@ -56,29 +63,33 @@ export default function DropDrag() {
       </header>
 
       <div className="tablero">
-        {AREAS.map((area) => {
+        {}
+        {areasConfig.map((areaInfo) => {
+          const nombreArea = areaInfo.id;
+          const capacidadMaxima = areaInfo.capacidad;
+
           // --- CÁLCULO DE LUGARES EN TIEMPO REAL ---
-          const camionesActuales = camiones.filter((c) => c.area === area).length;
-          const lugaresDisponibles = LIMITE_MAXIMO - camionesActuales;
+          const camionesActuales = camiones.filter((c) => c.area === nombreArea).length;
+          const lugaresDisponibles = capacidadMaxima - camionesActuales;
 
           return (
             <div
-              key={area}
+              key={nombreArea}
               className={`columna-area ${lugaresDisponibles === 0 ? 'columna-llena' : ''}`}
               onDragOver={permitirSoltar}
-              onDrop={(e) => alSoltar(e, area)}
+              onDrop={(e) => alSoltar(e, nombreArea)}
             >
               <div className="encabezado-columna">
-                <h3>{area}</h3>
-                {/* Contador visual de espacios */}
+                <h3>{nombreArea}</h3>
+                {/* Contador visual usando la capacidad del JSON */}
                 <span className={`contador-lugares ${lugaresDisponibles <= 1 ? 'alerta-espacio' : ''}`}>
-                  {lugaresDisponibles} / {LIMITE_MAXIMO} lugares libres
+                  {lugaresDisponibles} / {capacidadMaxima} lugares libres
                 </span>
               </div>
 
               <div className="lista-camiones">
                 {camiones
-                  .filter((camion) => camion.area === area)
+                  .filter((camion) => camion.area === nombreArea)
                   .map((camion) => (
                     <TarjetaInfo 
                       key={camion.id} 
