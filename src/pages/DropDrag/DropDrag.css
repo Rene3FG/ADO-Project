@@ -1,71 +1,134 @@
-css
-
-body {
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-  background-color: var(--background);
-  color: var(--text-primary);
-}
-
-:root {
-  --primary: #5B177F;
-  --primary-dark: #652378;
-  --background: #f5f6fa;
-  --card: #ffffff;
-  --border: #e4e4e7;
-  --text-primary: #2d2d2d;
-  --text-secondary: #737373;
-}
-
-.contenedor-patio {
-  font-family: 'Inter', sans-serif;
-  padding: 24px;
-  background-color: var(--background);
-  min-height: 100vh;
-}
-
-.header-patio h1 {
-  color: var(--primary);
-  text-align: center;
-  margin-bottom: 30px;
-  font-size: 32px;
-}
-
-/* ========================= */
-/* TABLERO */
-/* ========================= */
-
-.tablero {
+/* --- LAYOUT GENERAL Y BARRA LATERAL (Para que el menú se quede a la izquierda) --- */
+.layout-sistema {
   display: flex;
-  gap: 20px;
-  align-items: flex-start;
-  flex-wrap: wrap;
+  height: 100vh;
+  width: 100vw;
+  background-color: #F8FAFC; /* Gris muy tenue de fondo */
+  overflow: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* ========================= */
-/* COLUMNAS */
-/* ========================= */
+.sidebar-izquierdo {
+  width: 260px;
+  background-color: #FFFFFF;
+  border-right: 1px solid #E2E8F0;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+  justify-content: space-between;
+}
+
+.logo-empresa {
+  padding: 0 20px 20px 20px;
+  font-weight: bold;
+  color: #C93B3B; /* Rojo ADO */
+  font-size: 24px;
+}
+
+.menu-navegacion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-grow: 1;
+  padding: 0 12px;
+}
+
+.boton-pestana {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: none;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: #64748B;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.boton-pestana:hover {
+  background-color: #F1F5F9;
+  color: #334155;
+}
+
+.boton-pestana.activa {
+  background-color: #6A307D; /* Morado ADO */
+  color: #FFFFFF;
+}
+
+.icono-menu {
+  font-size: 20px;
+}
+
+.cerrar-sesion {
+  color: #94A3B8;
+  margin-top: auto;
+  padding-bottom: 20px;
+}
+
+.contenido-derecho {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header-patio-superior {
+  background-color: #FFFFFF;
+  padding: 15px 30px;
+  border-bottom: 1px solid #E2E8F0;
+  font-weight: bold;
+  color: #1E293B;
+  font-size: 18px;
+}
+
+.area-de-trabajo {
+  padding: 30px;
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+/* --- EL ARREGLO DEL TABLERO DE ÁREAS (Flexbox para columnas) --- */
+.tablero {
+  display: flex; /* ESTO ES LO MÁS IMPORTANTE: Pone las áreas una al lado de la otra */
+  gap: 20px; /* Espacio entre columnas */
+  align-items: flex-start;
+  flex-wrap: nowrap; /* Evita que se bajen si no caben (activa scroll horizontal si es necesario) */
+  padding-bottom: 20px;
+}
 
 .columna-area {
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  width: 320px;
-  min-height: 420px;
-  padding: 16px;
-  box-shadow: 0 4px 12px rgba(0,0,0,.05);
-  transition: all .2s ease;
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  width: 280px; /* Ancho fijo de cada columna */
+  min-width: 280px;
+  padding: 20px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  border: 2px solid transparent;
+  transition: border-color 0.2s;
 }
 
-.columna-area:hover {
-  box-shadow: 0 8px 20px rgba(0,0,0,.08);
+/* Estilo visual cuando una columna está llena */
+.columna-area.columna-llena {
+  border-color: #FECACA; /* Borde rojo tenue */
+  background-color: #FFF5F5;
 }
 
+/* Estilos de la cabecera de cada columna (Nombre e icono) */
 .area-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  flex-direction: column;
+  gap: 5px;
+  border-bottom: 1px solid #E2E8F0;
+  padding-bottom: 10px;
+  margin-bottom: 5px;
 }
 
 .area-title {
@@ -74,110 +137,156 @@ body {
   gap: 10px;
 }
 
-.area-title h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
 .area-icon {
+  font-size: 20px;
+  color: #6A307D; /* Morado para el icono */
   display: flex;
   align-items: center;
-  justify-content: center;
+}
 
-  width: 38px;
-  height: 38px;
-
-  border-radius: 10px;
-
-  background: rgba(91, 23, 127, 0.1);
-  color: var(--primary);
-
-  font-size: 20px;
+.area-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1E293B;
 }
 
 .area-capacidad {
-  background: #f3f4f6;
-  padding: 5px 10px;
-  border-radius: 999px;
-
   font-size: 12px;
-  font-weight: 600;
-
-  color: #6b7280;
+  color: #64748B;
+  font-weight: 500;
 }
 
-/* ========================= */
-/* LISTA DE CAMIONES */
-/* ========================= */
-
+/* --- ESTILOS DE LAS TARJETAS DE CAMIONES (Limpias y ordenadas) --- */
 .lista-camiones {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px; /* Espacio entre tarjetas */
+  min-height: 100px; /* Área para soltar aunque esté vacía */
 }
 
-/* ========================= */
-/* TARJETAS */
-/* ========================= */
-
 .tarjeta-camion {
-  background: #ffffff;
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--primary);
-
-  border-radius: 12px;
-  padding: 14px;
-
-  box-shadow: 0 2px 8px rgba(0,0,0,.06);
-
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 12px;
   cursor: grab;
-  transition: all .2s ease;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .tarjeta-camion:hover {
+  background-color: #F1F5F9;
   transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .tarjeta-camion:active {
   cursor: grabbing;
-  transform: scale(0.98);
 }
 
-.tarjeta-camion h4 {
-  margin: 0 0 6px 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary);
+.tarjeta-camion .codigo {
+  font-weight: bold;
+  color: #1E293B;
+  font-size: 14px;
 }
 
-.tipo-camion {
-  margin: 0 0 10px 0;
-  font-size: 13px;
-  color: var(--text-secondary);
+.tarjeta-camion .tipo {
+  color: #64748B;
+  font-size: 12px;
 }
 
-/* ========================= */
-/* BADGE TIEMPO */
-/* ========================= */
-
-.badge-tiempo {
-  display: inline-block;
-  background-color: #ffffff;
-  border-left: 3px solid var(--primary-dark);
-
-  padding: 8px 10px;
-
-  border-radius: 6px;
-
-  width: calc(100% - 16px);
-
-  text-align: center;
+.tarjeta-camion .tiempo {
+  color: #C93B3B; /* Rojo para el tiempo */
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 2px;
 }
 
-.badge-tiempo span {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--primary);
+/* Update this section in your existing DropDrag.css file */
+
+/* --- EL ARREGLO DEL TABLERO DE ÁREAS (Adaptable para Computadora y Celular) --- */
+.tablero {
+  display: flex; /* Vista por defecto en Computadora: una al lado de la otra */
+  gap: 20px;
+  align-items: flex-start;
+  /* El overflow-x es importante para escritorio, pero lo desactivaremos en móvil */
+  overflow-x: auto; 
+  padding-bottom: 20px;
+  width: 100%; /* Asegura que el contenedor ocupe todo el ancho */
+}
+
+/* CADA CUADRO DE ÁREA */
+.columna-area {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  width: 280px; /* Ancho fijo solo en computadoras */
+  min-width: 280px; /* Ancho mínimo para que no se compriman en escritorio */
+  padding: 20px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  border: 2px solid transparent;
+  transition: border-color 0.2s;
+  box-sizing: border-box; /* Crucial para que el padding no altere el ancho */
+}
+
+/* --- RESPONSIVO: MODO CELULAR (Pantallas menores a 768px) --- */
+@media (max-width: 768px) {
+  /* Hacemos que el contenedor de trabajo permita scroll vertical si se llena */
+  .area-de-trabajo {
+    padding: 15px;
+    overflow-y: auto;
+  }
+
+  .tablero {
+    display: grid; /* Cambiamos a Grid para controlar las columnas */
+    /* ¡AQUÍ ESTÁ EL TRUCO! Obliga a que vayan de 2 en 2, ocupando la mitad cada una */
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 12px; /* Espacio más compacto para celular */
+    overflow-x: hidden; /* Evitamos que se mueva de lado */
+    width: 100%;
+    /* Quitamos el padding lateral para que no empuje las cajas */
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .columna-area {
+    width: 100%; /* Que ocupe todo el espacio de su celda de la cuadrícula */
+    min-width: 0; /* Rompe el mínimo anterior para que pueda encogerse en el cel */
+    padding: 12px; /* Padding más pequeño para aprovechar la pantalla */
+    gap: 10px;
+    box-sizing: border-box; /* Asegura que no se superpongan */
+  }
+
+  /* Ajustamos textos de la cabecera del área para que no se amontonen */
+  .area-header h3 {
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap; /* Evita que el texto largo rompa la caja */
+  }
+  
+  .area-capacidad {
+    font-size: 11px;
+  }
+
+  /* Ajustamos las tarjetas de los camiones para que queden perfectas */
+  .tarjeta-camion {
+    padding: 8px;
+  }
+
+  .tarjeta-camion .codigo {
+    font-size: 13px;
+  }
+}
+
+/* Opcional: Si el celular es MUY angosto (menos de 400px) y de 2 en 2 se ve muy apretado */
+@media (max-width: 400px) {
+  .tablero {
+    grid-template-columns: 1fr; /* Va de 1 en 1 solo en pantallas ultra pequeñas */
+  }
 }
