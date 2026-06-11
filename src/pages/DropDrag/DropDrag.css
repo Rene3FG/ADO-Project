@@ -1,3 +1,5 @@
+css
+
 body {
   margin: 0;
   font-family: 'Inter', sans-serif;
@@ -5,7 +7,7 @@ body {
   color: var(--text-primary);
 }
 
-:root{
+:root {
   --primary: #5B177F;
   --primary-dark: #652378;
   --background: #f5f6fa;
@@ -16,64 +18,126 @@ body {
 }
 
 .contenedor-patio {
-  font-family: Arial, sans-serif;
-  padding: 20px;
-  background-color: #f4f6f8;
+  font-family: 'Inter', sans-serif;
+  padding: 24px;
+  background-color: var(--background);
   min-height: 100vh;
 }
 
 .header-patio h1 {
-  color:var(--primary);
+  color: var(--primary);
   text-align: center;
   margin-bottom: 30px;
+  font-size: 32px;
 }
 
-/* El Tablero Flexbox */
+/* ========================= */
+/* TABLERO */
+/* ========================= */
+
 .tablero {
   display: flex;
   gap: 20px;
-  justify-content: center;
+  align-items: flex-start;
   flex-wrap: wrap;
-  color:var(--primary-dark);
 }
 
-/* Columnas de Áreas */
+/* ========================= */
+/* COLUMNAS */
+/* ========================= */
+
 .columna-area {
-  background-color: #ebecf0;
-  border-color: var(--primary-dark);
-  border-width: 3px;
-  border-style: solid;
-  border-radius: 8px;
-  width: 300px;
-  min-height: 400px;
-  padding: 15px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 320px;
+  min-height: 420px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,.05);
+  transition: all .2s ease;
 }
 
-.columna-area h3 {
-  margin-top: 0;
-  color:var(--primary);
-  border-bottom: 2px solid var(--primary-dark);
-  padding-bottom: 8px;
-  text-align: center;
+.columna-area:hover {
+  box-shadow: 0 8px 20px rgba(0,0,0,.08);
 }
+
+.area-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.area-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.area-title h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.area-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 38px;
+  height: 38px;
+
+  border-radius: 10px;
+
+  background: rgba(91, 23, 127, 0.1);
+  color: var(--primary);
+
+  font-size: 20px;
+}
+
+.area-capacidad {
+  background: #f3f4f6;
+  padding: 5px 10px;
+  border-radius: 999px;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  color: #6b7280;
+}
+
+/* ========================= */
+/* LISTA DE CAMIONES */
+/* ========================= */
 
 .lista-camiones {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 15px;
-  height: calc(100% - 40px);
+  gap: 12px;
 }
 
-/* Tarjetas de los Autobuses */
+/* ========================= */
+/* TARJETAS */
+/* ========================= */
+
 .tarjeta-camion {
-  background-color: rgb(237, 141, 141);
-  border-radius: 6px;
-  padding: 12px;
-  box-shadow: 0 2px 4px rgba(195, 26, 26, 0.1);
-  cursor: grab; /* Cursor de una mano */
-  transition: transform 0.2s, box-shadow 0.2s;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+
+  border-radius: 12px;
+  padding: 14px;
+
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+
+  cursor: grab;
+  transition: all .2s ease;
+}
+
+.tarjeta-camion:hover {
+  transform: translateY(-2px);
 }
 
 .tarjeta-camion:active {
@@ -82,53 +146,38 @@ body {
 }
 
 .tarjeta-camion h4 {
-  margin: 0 0 5px 0;
-  color: var(--text-primary)
-}
-
-.tarjeta-camion p {
-  margin: 0;
-  font-size: 0.9rem;
-  color:#ffffff
+  margin: 0 0 6px 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
 .tipo-camion {
-  margin: 0 0 8px 0;
-  font-size: 0.9rem;
-  color: #000000;
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
-/* Contenedor de la etiqueta de tiempo */
-.badge-tiempo {
-  display: inline-block;
-  background-color: #f0f4f8;
-  border-left: 3px solid #ce0037; /* Línea roja de ADO para resaltar */
-  padding: 4px 8px;
-  border-radius: 4px;
-  margin-top: 5px;
-  text-align: left;
-}
-
-.badge-tiempo span {
-  font-size: 0.8rem;
-  font-weight: bold;
-  color:var(--primary)
-}
+/* ========================= */
+/* BADGE TIEMPO */
+/* ========================= */
 
 .badge-tiempo {
   display: inline-block;
   background-color: #ffffff;
-  border-left: 3px solid var(--primary-dark); 
-  padding: 6px 10px;
-  border-radius: 4px;
-  margin-top: 5px;
-  width: 90%;
+  border-left: 3px solid var(--primary-dark);
+
+  padding: 8px 10px;
+
+  border-radius: 6px;
+
+  width: calc(100% - 16px);
+
   text-align: center;
 }
 
 .badge-tiempo span {
-  font-size: 0.85rem;
-  font-family: serif;
-  font-weight: bold;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--primary);
 }
