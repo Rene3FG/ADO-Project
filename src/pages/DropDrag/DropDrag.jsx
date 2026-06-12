@@ -3,7 +3,9 @@ import TarjetaInfo from './TarjetaInfo.jsx';
 import mockDB from './CamionArea.json';
 import './DropDrag.css';
 
-// Iconos del Menú Lateral (Sidebar)
+import Registro from '../Registro/Registro.jsx';
+
+// Iconos del SideBar
 import { MdDashboard, MdAssignmentTurnedIn, MdSwapHoriz, MdHistory, MdBarChart, MdSettings, MdExitToApp } from "react-icons/md";
 
 // Iconos de las Áreas del Patio
@@ -27,8 +29,8 @@ const areaIcons = {
 
 export default function DropDrag() {
   const [pestanaActiva, setPestanaActiva] = useState('patio');
-  const [camiones, setCamiones] = useState(mockDB.camiones); 
-  const areasConfig = mockDB.areas;
+  const [camiones, setCamiones] = useState(mockDB.camiones); //SetCamiones es el gatillo
+  const areasConfig = mockDB.areas; //Las áreas no cambian
 
   const alIniciarArrastre = (e, idCamion) => {
     e.dataTransfer.setData('text/plain', idCamion);
@@ -43,7 +45,7 @@ export default function DropDrag() {
     const idCamion = e.dataTransfer.getData('text/plain');
 
     const infoAreaDestino = areasConfig.find(a => a.id === nuevaAreaId);
-    const limiteMaximoArea = infoAreaDestino ? infoAreaDestino.capacidad : 4;
+    const limiteMaximoArea = infoAreaDestino ? infoAreaDestino.capacidad : 4; //json
 
     const camionesEnAreaDestino = camiones.filter(c => c.area === nuevaAreaId).length;
 
@@ -112,20 +114,26 @@ export default function DropDrag() {
           </div>
         );
       case 'registrar':
-        return <div className="pantalla-vacia"><h2>Pantalla Registrar Camión</h2></div>;
+        return <Registro />; //COMPROBACION
+
       case 'movimientos':
         return <div className="pantalla-vacia"><h2>Pantalla de Movimientos</h2></div>;
-      case 'historial':
+      
+        case 'historial':
         return <div className="pantalla-vacia"><h2>Pantalla de Historial</h2></div>;
-      case 'reportes':
+      
+        case 'reportes':
         return <div className="pantalla-vacia"><h2>Pantalla de Reportes</h2></div>;
-      case 'configuracion':
+      
+        case 'configuracion':
         return <div className="pantalla-vacia"><h2>Pantalla de Configuración</h2></div>;
-      default:
+      
+        default:
         return <div className="pantalla-vacia"><h2>Selecciona una opción</h2></div>;
     }
   };
 
+  //LAYOUT
   return (
     <div className="layout-container">
       {/* MENÚ LATERAL */}
