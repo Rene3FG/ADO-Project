@@ -1,6 +1,6 @@
 {
   "areas": [
-    { "id": "Desfogue", "capacidad": 4 },
+    { "id": "Desfogue", "capacidad": 4 }, 
     { "id": "Diesel", "capacidad": 4 },
     { "id": "Ad-Blue", "capacidad": 4 },
     { "id": "Lavado Exterior", "capacidad": 4 },
@@ -18,7 +18,7 @@
       "origen": "CDMX Norte",
       "destino": "Oaxaca Centro"
     },
-    
+
     { 
       "id": "2", 
       "codigo": "ADO-002", 

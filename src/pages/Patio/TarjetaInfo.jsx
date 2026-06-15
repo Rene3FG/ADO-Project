@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 export default function TarjetaInfo({ camion, alIniciarArrastre }) {
   const [segundos, setSegundos] = useState(0);
 
-  // Mantiene tu excelente lógica de reinicio por área
   useEffect(() => {
     setSegundos(0); 
 
@@ -22,14 +21,12 @@ export default function TarjetaInfo({ camion, alIniciarArrastre }) {
 
   return (
     <div
-      className="bus-card" // Cambiado para el rectángulo contenedor oscuro
+      className="bus-card"
       draggable
       onDragStart={(e) => alIniciarArrastre(e, camion.id)}
     >
       <div className="bus-card__eco">{camion.codigo}</div>
       <div className="bus-card__type">{camion.tipo}</div>
-      
-      {/* Tu indicador del temporizador estilizado en el ecosistema oscuro */}
       <div className="bus-card__status">
         Tiempo en área: {formatearTiempo(segundos)}
       </div>

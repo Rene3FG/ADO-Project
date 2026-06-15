@@ -106,7 +106,6 @@ export default function Registro() {
                 </select>
               </div>
 
-              {/* --- NUEVO CAMPO: CONDUCTOR --- */}
               <div className="input-group">
                 <label>Nombre del Conductor</label>
                 <input
