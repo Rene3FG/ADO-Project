@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.jsx'
 import '@fontsource/inter';
 import { RiBus2Line } from "react-icons/ri";
+import './index.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
