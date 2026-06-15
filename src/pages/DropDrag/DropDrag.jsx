@@ -145,6 +145,7 @@ export default function DropDrag() {
             onClick={() => setPestanaActiva('registrar')}
           >
             <MdAssignmentTurnedIn className="sidebar__icon" />
+            {/* Cambiar el color de la paleta */}
             <span>Registrar camión</span>
           </button>
           <button 
@@ -173,9 +174,20 @@ export default function DropDrag() {
             onClick={() => setPestanaActiva('configuracion')}
           >
             <MdSettings className="sidebar__icon" />
-            <span>Configuración</span>
+            <span>Configuración Avanzada</span>
           </button>
-        </nav>
+
+          <button
+            className={`sidebar__item ${pestanaActiva === 'Alarmas' ? 'sidebar__item--active' : ''}`}
+            onClick={() => setPestanaActiva('configuracion')}
+          >
+            <MdSettings className="sidebar__icon" />
+            {/* Cambiar el ícono */}
+            <span>Crear Alarmas</span> 
+          </button>       
+        
+        </nav> 
+        
 
         <button className="sidebar__logout" onClick={() => alert('Cerrando sesión...')}>
           <MdExitToApp className="sidebar__icon" />
@@ -194,4 +206,3 @@ export default function DropDrag() {
     </div>
   );
 }
-
