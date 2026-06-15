@@ -3,12 +3,10 @@ import TarjetaInfo from './TarjetaInfo.jsx';
 import mockDB from './CamionArea.json';
 import './DropDrag.css';
 
-import Registro from '../Registro/Registro.jsx';
+// Asegúrate de que esta importación sea correcta según tu proyecto
+import Registro from '../Registro/Registro.jsx'; 
 
-// Iconos del SideBar
 import { MdDashboard, MdAssignmentTurnedIn, MdSwapHoriz, MdHistory, MdBarChart, MdSettings, MdExitToApp } from "react-icons/md";
-
-// Iconos de las Áreas del Patio
 import { TbWash, TbWashDryDip } from "react-icons/tb";
 import { BsFillFuelPumpDieselFill } from "react-icons/bs";
 import { CiDroplet } from "react-icons/ci";
@@ -16,7 +14,6 @@ import { MdLocalCarWash } from "react-icons/md";
 import { HiMiniWrenchScrewdriver } from "react-icons/hi2";
 import { SiBlockbench } from "react-icons/si";
 
-// Diccionario para enlazar iconos con el ID del JSON
 const areaIcons = {
   "Desfogue": <TbWash />,
   "Diesel": <BsFillFuelPumpDieselFill />,
@@ -29,8 +26,8 @@ const areaIcons = {
 
 export default function DropDrag() {
   const [pestanaActiva, setPestanaActiva] = useState('patio');
-  const [camiones, setCamiones] = useState(mockDB.camiones); //SetCamiones es el gatillo
-  const areasConfig = mockDB.areas; //Las áreas no cambian
+  const [camiones, setCamiones] = useState(mockDB.camiones);
+  const areasConfig = mockDB.areas;
 
   const alIniciarArrastre = (e, idCamion) => {
     e.dataTransfer.setData('text/plain', idCamion);
@@ -45,7 +42,7 @@ export default function DropDrag() {
     const idCamion = e.dataTransfer.getData('text/plain');
 
     const infoAreaDestino = areasConfig.find(a => a.id === nuevaAreaId);
-    const limiteMaximoArea = infoAreaDestino ? infoAreaDestino.capacidad : 4; //json
+    const limiteMaximoArea = infoAreaDestino ? infoAreaDestino.capacidad : 4;
 
     const camionesEnAreaDestino = camiones.filter(c => c.area === nuevaAreaId).length;
 
@@ -114,29 +111,22 @@ export default function DropDrag() {
           </div>
         );
       case 'registrar':
-        return <Registro />; //COMPROBACION
-
+        return <Registro />;
       case 'movimientos':
         return <div className="pantalla-vacia"><h2>Pantalla de Movimientos</h2></div>;
-      
-        case 'historial':
+      case 'historial':
         return <div className="pantalla-vacia"><h2>Pantalla de Historial</h2></div>;
-      
-        case 'reportes':
+      case 'reportes':
         return <div className="pantalla-vacia"><h2>Pantalla de Reportes</h2></div>;
-      
-        case 'configuracion':
+      case 'configuracion':
         return <div className="pantalla-vacia"><h2>Pantalla de Configuración</h2></div>;
-      
-        default:
+      default:
         return <div className="pantalla-vacia"><h2>Selecciona una opción</h2></div>;
     }
   };
 
-  //LAYOUT
   return (
     <div className="layout-container">
-      {/* MENÚ LATERAL */}
       <aside className="sidebar">
         <div className="sidebar__logo">
           <span style={{ color: '#e21c24', fontWeight: 'bold', fontSize: '24px', letterSpacing: '1px' }}>ADO</span>
@@ -150,7 +140,6 @@ export default function DropDrag() {
             <MdDashboard className="sidebar__icon" />
             <span>Patio en tiempo real</span>
           </button>
-
           <button 
             className={`sidebar__item ${pestanaActiva === 'registrar' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('registrar')}
@@ -158,7 +147,6 @@ export default function DropDrag() {
             <MdAssignmentTurnedIn className="sidebar__icon" />
             <span>Registrar camión</span>
           </button>
-
           <button 
             className={`sidebar__item ${pestanaActiva === 'movimientos' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('movimientos')}
@@ -166,7 +154,6 @@ export default function DropDrag() {
             <MdSwapHoriz className="sidebar__icon" />
             <span>Movimientos</span>
           </button>
-
           <button 
             className={`sidebar__item ${pestanaActiva === 'historial' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('historial')}
@@ -174,7 +161,6 @@ export default function DropDrag() {
             <MdHistory className="sidebar__icon" />
             <span>Historial</span>
           </button>
-
           <button 
             className={`sidebar__item ${pestanaActiva === 'reportes' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('reportes')}
@@ -182,7 +168,6 @@ export default function DropDrag() {
             <MdBarChart className="sidebar__icon" />
             <span>Reportes</span>
           </button>
-
           <button 
             className={`sidebar__item ${pestanaActiva === 'configuracion' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('configuracion')}
@@ -198,7 +183,6 @@ export default function DropDrag() {
         </button>
       </aside>
 
-      {/* CONTENIDO DERECHO */}
       <main className="main-content">
         <header className="main-content__header">
           <h1>Control de Patio - Oaxaca</h1>
@@ -210,3 +194,4 @@ export default function DropDrag() {
     </div>
   );
 }
+

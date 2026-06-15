@@ -1,5 +1,13 @@
-#root {
+html, body, #root {
+  margin: 0;
+  padding: 0;
   width: 100%;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden; /* Elimina la barra de scroll doble */
+  background-color: #0b0d14;
+  box-sizing: border-box;
 }
 
+*, *::before, *::after {
+  box-sizing: inherit;
+}
