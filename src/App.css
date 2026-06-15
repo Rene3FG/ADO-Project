@@ -1,94 +1,270 @@
-#root {
-  width: 100%;
-  min-height: 100vh;
-  margin: 0;
-  padding: 0;
-  text-align: center;
+/* src/App.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+
+:root {
+  --ado-red: #ce0037;
+  --ado-purple: #6b21a8; /* El morado de la barra lateral de tu diseño */
+  --bg-light: #f8fafc;   /* Gris súper claro para el fondo */
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  
+  /* Colores de los espacios (Slots) */
+  --slot-free-bg: #f0fdf4;
+  --slot-free-text: #166534;
+  --slot-free-border: #bbf7d0;
+  --slot-occ-bg: #dc2626;
+  --slot-occ-text: #ffffff;
 }
 
-/* --- BARRA DE NAVEGACIÓN --- */
-.navbar {
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-light);
+  color: var(--text-main);
+}
+
+/* ================== LAYOUT PRINCIPAL ================== */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ================== BARRA LATERAL ================== */
+.sidebar {
+  width: 260px;
+  background: white;
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-logo {
+  padding: 20px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-logo h1 {
+  color: var(--ado-red);
+  font-weight: 900;
+  font-style: italic;
+  margin: 0;
+  font-size: 2.2rem;
+  letter-spacing: -1px;
+}
+
+.sidebar-menu {
+  padding: 20px 15px;
+  list-style: none;
+  margin: 0;
+}
+
+.sidebar-menu li a {
   display: flex;
   align-items: center;
-  background-color: #ce0037; /* Colocar el color asociado al ADO por fi */
-  padding: 15px 20px;
-  color: white;
-}
-
-.boton-hamburguesa {
-  background: transparent;
-  border: none;
-  color: white;
-  font-size: 2rem;
-  cursor: pointer;
-  padding: 0;
-  margin-right: 15px;
-}
-
-.titulo-nav {
-  font-size: 1.5rem;
-  font-weight: bold;
-}
-
-/* --- MENÚ LATERAL --- */
-.menu-lateral {
-  position: fixed;
-  top: 0;
-  left: -250px;
-  width: 250px;
-  height: 100vh;
-  background-color: #f67b83;
-  box-shadow: 2px 0 10px rgba(0,0,0,0.5);
-  transition: left 0.3s ease-in-out; /* Animación de deslizamiento, se puede cambiar */
-  z-index: 1000;
-  text-align: left;
-}
-
-/* Cuando el estado es true, esta clase empuja el menú hacia adentro de la pantalla */
-.menu-lateral.abierto {
-  left: 0; 
-}
-
-.boton-cerrar {
-  background: transparent;
-  border: none;
-  color: white;
-  font-size: 1.5rem;
-  cursor: pointer;
-  padding: 15px;
-  display: block;
-  margin-left: auto;
-}
-
-.menu-lateral ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.menu-lateral li {
-  border-bottom: 1px solid #3c546b;
-}
-
-.menu-lateral li a {
-  display: block;
-  padding: 20px;
-  color: white;
+  gap: 12px;
+  padding: 12px 15px;
   text-decoration: none;
-  font-size: 1.2rem;
+  color: var(--text-muted);
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 5px;
+  transition: all 0.2s;
+  cursor: pointer;
 }
 
-.menu-lateral li a:hover {
-  background-color: #3c546b;
+.sidebar-menu li a:hover {
+  background: var(--bg-light);
 }
 
-/* --- CONTENIDO PRINCIPAL --- */
-.contenido-principal {
-  padding: 40px 20px;
-  /* Usar la topografia desiganda al ADO :) */
+/* El botón activo morado de tu diseño */
+.sidebar-menu li a.active {
+  background: var(--ado-purple);
+  color: white;
+  box-shadow: 0 4px 6px rgba(107, 33, 168, 0.2);
 }
 
-.header-patio h1 {
-  color: #dae1e8;
-  margin-bottom: 10px;
+/* ================== CABECERA (TOPBAR) ================== */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  background: white;
+  border-bottom: 1px solid var(--border-color);
+  padding: 15px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.topbar-title {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: right;
+}
+
+.user-profile .name { font-weight: 800; font-size: 0.9rem; margin: 0; }
+.user-profile .role { color: var(--ado-purple); font-size: 0.75rem; margin: 0; font-weight: 600; }
+
+/* ================== ÁREA DE DASHBOARD ================== */
+.dashboard-container {
+  padding: 30px;
+}
+
+.dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+.dash-header h2 { margin: 0; font-weight: 800; font-size: 1.4rem; }
+.dash-header p { margin: 5px 0 0; color: var(--text-muted); font-size: 0.9rem; }
+
+/* Leyenda (Libre / Ocupado) */
+.leyenda {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.leyenda-item { display: flex; align-items: center; gap: 5px; }
+.caja-color { width: 15px; height: 15px; border-radius: 4px; }
+.caja-libre { background: var(--slot-free-bg); border: 1px solid var(--slot-free-border); }
+.caja-ocupada { background: var(--slot-occ-bg); }
+
+/* Grid Principal (Áreas vs Widgets) */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  gap: 25px;
+}
+
+.areas-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2 columnas de áreas como en tu imagen */
+  gap: 20px;
+}
+
+/* ================== TARJETAS DE ÁREA ================== */
+.area-card {
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.area-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.area-header h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ado-purple);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.area-header span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.slots-container {
+  display: flex;
+  gap: 10px;
+}
+
+/* ================== SLOTS (Camiones) ================== */
+.slot {
+  flex: 1;
+  text-align: center;
+  padding: 12px 5px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.slot.occ {
+  background: var(--slot-occ-bg);
+  color: var(--slot-occ-text);
+  box-shadow: 0 4px 6px rgba(220, 38, 38, 0.2);
+}
+
+.slot.free {
+  background: var(--slot-free-bg);
+  color: var(--slot-free-text);
+  border: 1px solid var(--slot-free-border);
+}
+
+.slot-time {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+/* ================== WIDGETS DERECHOS ================== */
+.widget-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.widget-card {
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.widget-title {
+  margin: 0 0 15px 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.btn-registrar-header {
+  background: var(--ado-purple);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-registrar-header:hover {
+  opacity: 0.9;
 }

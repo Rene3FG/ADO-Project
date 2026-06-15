@@ -1,47 +1,25 @@
-import { useState } from 'react'
-import './App.css'
+// src/App.jsx
+import { useState } from 'react';
+import { LoginPage } from './lib/presentation/pages/LoginPage';
+import { PatioPage } from './lib/presentation/pages/PatioPage';
 
 function App() {
-  //Creación del estado. Por defecto está en 'false'
-  const [menuAbierto, setMenuAbierto] = useState(false)
+  // Estado global muy sencillo para saber si hay alguien logueado
+  const [usuarioActual, setUsuarioActual] = useState(null);
 
-  // 2. Función que cambia el estado
-  const alternarMenu = () => {
-    setMenuAbierto(!menuAbierto)
+  // Si no hay usuario, pintamos la pantalla de Login
+  if (!usuarioActual) {
+    return (
+      <LoginPage 
+        onLoginSuccess={(datosUsuario) => setUsuarioActual(datosUsuario)} 
+      />
+    );
   }
 
+  // Si ya hay usuario, pintamos la pantalla del patio (y le pasamos los datos si los necesita)
   return (
-    <>
-      {/* Barra de navegación superior */}
-      <nav className="navbar">
-        <button className="boton-hamburguesa" onClick={alternarMenu}>
-          {}
-          ☰ 
-        </button>
-        <span className="titulo-nav">MENU</span>
-      </nav>
-
-      {}
-      <div className={`menu-lateral ${menuAbierto ? 'abierto' : ''}`}>
-        <button className="boton-cerrar" onClick={alternarMenu}>✖</button>
-        <ul>
-
-          {/* Igual y podemos agregar una miniatura para el menu */}
-          <li><a href="#lavado" onClick={alternarMenu}>Patio 🌲</a></li> 
-          <li><a href="#mantenimiento" onClick={alternarMenu}>Registrar Unidad 🚘</a></li>
-          <li><a href="#reportes" onClick={alternarMenu}>Movimientos 🔃</a></li>
-        </ul>
-      </div>
-
-      {/* {Contenido principal y original } */}
-      <main className="contenido-principal">
-        <header className="header-patio">
-          <h1>¡Bienvenido al patio!</h1>
-        </header>
-        <p>Sistema de monitoreo listo.</p>
-      </main>
-    </>
-  )
+    <PatioPage usuario={usuarioActual} />
+  );
 }
 
-export default App
+export default App;
