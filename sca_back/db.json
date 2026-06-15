@@ -1,0 +1,149 @@
+{
+  "buses": [
+    {
+      "busId": "253",
+      "busType": "OCC",
+      "departureTime": "12:56",
+      "requiredAreas": [
+        "Desfogue",
+        "Diesel",
+        "Ad-blue",
+        "Lavado Interior"
+      ],
+      "completedAreas": [
+        "Desfogue",
+        "Diesel",
+        "Ad-blue",
+        "Lavado Interior"
+      ],
+      "currentStatus": "En Espera",
+      "arrivalTime": "09:40:40",
+      "currentArea": "Salida",
+      "progressPercentage": 100,
+      "isPriority": false,
+      "observations": "Ninguna"
+    },
+    {
+      "busId": "466",
+      "busType": "AU",
+      "departureTime": "23:04",
+      "requiredAreas": [
+        "Desfogue",
+        "Ad-blue",
+        "Lavado Interior",
+        "Lavado Exterior"
+      ],
+      "completedAreas": [
+        "Ad-blue"
+      ],
+      "currentStatus": "En Espera",
+      "arrivalTime": "09:59:19",
+      "currentArea": "Lavado Interior",
+      "progressPercentage": 25,
+      "isPriority": false,
+      "observations": null
+    },
+    {
+      "busId": "5869",
+      "busType": "ADO",
+      "departureTime": "12:56",
+      "requiredAreas": [
+        "Lavado Interior",
+        "Lavado Exterior"
+      ],
+      "completedAreas": [],
+      "currentStatus": "En Espera",
+      "arrivalTime": "10:21:21",
+      "currentArea": "Lavado Interior",
+      "progressPercentage": 0,
+      "isPriority": false,
+      "observations": null
+    },
+    {
+      "busId": "32789",
+      "busType": "OCC",
+      "departureTime": "12:24",
+      "requiredAreas": [
+        "Lavado Interior",
+        "Lavado Exterior"
+      ],
+      "completedAreas": [
+        "Lavado Interior"
+      ],
+      "currentStatus": "En Espera",
+      "arrivalTime": "10:21:33",
+      "currentArea": "Lavado Exterior",
+      "progressPercentage": 50,
+      "isPriority": false,
+      "observations": null
+    },
+    {
+      "busId": "3632",
+      "busType": "OCC",
+      "departureTime": "08:59",
+      "requiredAreas": [
+        "Lavado Interior"
+      ],
+      "completedAreas": [],
+      "currentStatus": "En Espera",
+      "arrivalTime": "10:21:59",
+      "currentArea": "Espera",
+      "progressPercentage": 0,
+      "isPriority": false,
+      "observations": null
+    },
+    {
+      "busId": "256",
+      "busType": "AU",
+      "departureTime": "03:25",
+      "requiredAreas": [
+        "Lavado Interior",
+        "Lavado Exterior"
+      ],
+      "completedAreas": [
+        "Lavado Exterior"
+      ],
+      "currentStatus": "En Espera",
+      "arrivalTime": "10:22:20",
+      "currentArea": "Espera",
+      "progressPercentage": 50,
+      "isPriority": false,
+      "observations": null
+    },
+    {
+      "busId": "253",
+      "busType": "ADO",
+      "departureTime": "21:34",
+      "requiredAreas": [
+        "Diesel",
+        "Ad-blue",
+        "Taller",
+        "Lavado Interior"
+      ],
+      "completedAreas": [],
+      "currentStatus": "En Espera",
+      "arrivalTime": "11:28:43",
+      "currentArea": "Diesel",
+      "progressPercentage": 0,
+      "isPriority": false,
+      "observations": null
+    },
+    {
+      "busId": "325",
+      "busType": "OCC",
+      "departureTime": "23:45",
+      "requiredAreas": [
+        "Ad-blue",
+        "Taller",
+        "Lavado Exterior"
+      ],
+      "completedAreas": [],
+      "currentStatus": "En Espera",
+      "arrivalTime": "11:41:36",
+      "currentArea": "Ad-blue",
+      "progressPercentage": 0,
+      "isPriority": false,
+      "observations": null
+    }
+  ]
+}
