@@ -24,6 +24,8 @@ const areaIcons = {
 
 export default function DropDrag() {
   const [pestanaActiva, setPestanaActiva] = useState('patio');
+  const [camiones, setCamiones] = useState(mockDB.camiones); //SetCamiones es el gatillo
+  const areasConfig = mockDB.areas; //las áreas no cambian
   const [camiones, setCamiones] = useState(mockDB.camiones);
   const areasConfig = mockDB.areas;
 
