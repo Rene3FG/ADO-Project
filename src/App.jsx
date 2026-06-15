@@ -1,5 +1,5 @@
 import '@fontsource/inter';
-import DropDrag from "./pages/DropDrag/DropDrag.jsx"; 
+import DropDrag from "./pages/patio/DropDrag.jsx"; 
 
 function App() {
   return <DropDrag />;

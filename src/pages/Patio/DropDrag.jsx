@@ -2,9 +2,7 @@ import { useState } from 'react';
 import TarjetaInfo from './TarjetaInfo.jsx';
 import mockDB from './CamionArea.json';
 import './DropDrag.css';
-
-// Asegúrate de que esta importación sea correcta según tu proyecto
-import Registro from '../Registro/Registro.jsx'; 
+import Registro from '../Registro/Registro.jsx';
 
 import { MdDashboard, MdAssignmentTurnedIn, MdSwapHoriz, MdHistory, MdBarChart, MdSettings, MdExitToApp } from "react-icons/md";
 import { TbWash, TbWashDryDip } from "react-icons/tb";
@@ -28,6 +26,9 @@ export default function DropDrag() {
   const [pestanaActiva, setPestanaActiva] = useState('patio');
   const [camiones, setCamiones] = useState(mockDB.camiones);
   const areasConfig = mockDB.areas;
+
+  /* --- CORRECCIÓN 1: El estado del modal ahora está dentro del componente --- */
+  const [camionSeleccionado, setCamionSeleccionado] = useState(null);
 
   const alIniciarArrastre = (e, idCamion) => {
     e.dataTransfer.setData('text/plain', idCamion);
@@ -97,11 +98,17 @@ export default function DropDrag() {
                       camiones
                         .filter((camion) => camion.area === nombreArea)
                         .map((camion) => (
-                          <TarjetaInfo 
+                          /* --- CORRECCIÓN 2: Div envoltura cerrado correctamente con su llave --- */
+                          <div 
                             key={camion.id} 
-                            camion={camion} 
-                            alIniciarArrastre={alIniciarArrastre}
-                          />
+                            onDoubleClick={() => setCamionSeleccionado(camion)}
+                            title="Doble clic para ver detalles del Registro"
+                          >
+                            <TarjetaInfo 
+                              camion={camion} 
+                              alIniciarArrastre={alIniciarArrastre}
+                            />
+                          </div>
                         ))
                     )}
                   </div>
@@ -145,7 +152,6 @@ export default function DropDrag() {
             onClick={() => setPestanaActiva('registrar')}
           >
             <MdAssignmentTurnedIn className="sidebar__icon" />
-            {/* Cambiar el color de la paleta */}
             <span>Registrar camión</span>
           </button>
           <button 
@@ -176,18 +182,14 @@ export default function DropDrag() {
             <MdSettings className="sidebar__icon" />
             <span>Configuración Avanzada</span>
           </button>
-
           <button
             className={`sidebar__item ${pestanaActiva === 'Alarmas' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('configuracion')}
           >
             <MdSettings className="sidebar__icon" />
-            {/* Cambiar el ícono */}
             <span>Crear Alarmas</span> 
           </button>       
-        
         </nav> 
-        
 
         <button className="sidebar__logout" onClick={() => alert('Cerrando sesión...')}>
           <MdExitToApp className="sidebar__icon" />
@@ -203,6 +205,27 @@ export default function DropDrag() {
         
         {renderizarContenido()}
       </main>
+
+      {/* INFORMACION DEL CAMION */}
+      {camionSeleccionado && (
+        <div className="modal-overlay" onClick={() => setCamionSeleccionado(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-card__header">
+              <h2>Ficha de Registro: {camionSeleccionado.codigo}</h2>
+              <button className="modal-card__close" onClick={() => setCamionSeleccionado(null)}>&times;</button>
+            </div>
+            <div className="modal-card__body">
+              <div className="modal-data-row"><strong>Código:</strong> <span>{camionSeleccionado.codigo}</span></div>
+              <div className="modal-data-row"><strong>Tipo de Autobús:</strong> <span>{camionSeleccionado.tipo}</span></div>
+              <div className="modal-data-row"><strong>Área Asignada:</strong> <span>{camionSeleccionado.area}</span></div>
+              
+              <div className="modal-data-row"><strong>Conductor Asignado:</strong> <span>{camionSeleccionado.conductor || 'No asignado'}</span></div>
+              <div className="modal-data-row"><strong>Origen:</strong> <span>{camionSeleccionado.origen || 'N/A'}</span></div>
+              <div className="modal-data-row"><strong>Destino:</strong> <span>{camionSeleccionado.destino || 'N/A'}</span></div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
