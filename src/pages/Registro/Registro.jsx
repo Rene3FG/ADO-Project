@@ -1,24 +1,32 @@
 import { useState } from "react";
-import "./Resgistro.css";
+import "./Resgistro.css"; 
 
 export default function Registro() {
   const [paso, setPaso] = useState(1);
 
+  /* --- ESTADO ACTUALIZADO CON LOS NUEVOS CAMPOS --- */
   const [camion, setCamion] = useState({
     numero: "",
     tipoUnidad: "",
     observaciones: "",
     area: "",
+    conductor: "", // Nuevo
+    origen: "",    // Nuevo
+    destino: "",   // Nuevo
   });
 
   const registrarCamion = () => {
     alert("Autobús registrado correctamente");
 
+    /* Limpiamos todos los campos al finalizar */
     setCamion({
       numero: "",
       tipoUnidad: "",
       observaciones: "",
       area: "",
+      conductor: "",
+      origen: "",
+      destino: "",
     });
 
     setPaso(1);
@@ -66,9 +74,9 @@ export default function Registro() {
 
               <div className="input-group">
                 <label>Número de Autobús</label>
-
                 <input
                   type="text"
+                  placeholder="Ej: ADO-1001"
                   value={camion.numero}
                   onChange={(e) =>
                     setCamion({
@@ -81,7 +89,6 @@ export default function Registro() {
 
               <div className="input-group">
                 <label>Tipo de Unidad</label>
-
                 <select
                   value={camion.tipoUnidad}
                   onChange={(e) =>
@@ -91,25 +98,67 @@ export default function Registro() {
                     })
                   }
                 >
-                  <option value="">
-                    Seleccione
-                  </option>
-
-                  <option value="Foraneo">
-                    Foráneo
-                  </option>
-
-                  <option value="Local">
-                    Local
-                  </option>
+                  <option value="">Seleccione</option>
+                  <option value="Foraneo">Foráneo</option>
+                  <option value="Local">Local</option>
+                  <option value="GL">GL</option>
+                  <option value="Premium">Premium</option>
                 </select>
+              </div>
+
+              {/* --- NUEVO CAMPO: CONDUCTOR --- */}
+              <div className="input-group">
+                <label>Nombre del Conductor</label>
+                <input
+                  type="text"
+                  placeholder="Nombre completo"
+                  value={camion.conductor}
+                  onChange={(e) =>
+                    setCamion({
+                      ...camion,
+                      conductor: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              {/* --- NUEVO CAMPO: ORIGEN --- */}
+              <div className="input-group">
+                <label>Terminal de Origen</label>
+                <input
+                  type="text"
+                  placeholder="Ej: CDMX TAPO"
+                  value={camion.origen}
+                  onChange={(e) =>
+                    setCamion({
+                      ...camion,
+                      origen: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              {/* --- NUEVO CAMPO: DESTINO --- */}
+              <div className="input-group">
+                <label>Terminal de Destino</label>
+                <input
+                  type="text"
+                  placeholder="Ej: Oaxaca Centro"
+                  value={camion.destino}
+                  onChange={(e) =>
+                    setCamion({
+                      ...camion,
+                      destino: e.target.value,
+                    })
+                  }
+                />
               </div>
 
               <div className="input-group">
                 <label>Observaciones</label>
-
                 <textarea
                   rows="4"
+                  placeholder="Detalles de llegada o averías sutiles..."
                   value={camion.observaciones}
                   onChange={(e) =>
                     setCamion({
@@ -142,106 +191,50 @@ export default function Registro() {
 
         {paso === 3 && (
           <>
-            <h2 style={{ color: '#5B177F' }}>Seleccionar Área</h2>
+            <h2 style={{ color: '#5B177F' }}>Seleccionar Área Inicial</h2>
 
             <div className="area-grid">
-
               <div
-                className={`area-card ${
-                  camion.area === "AREA_ESPERA"
-                    ? "selected"
-                    : ""
-                }`}
-                onClick={() =>
-                  setCamion({
-                    ...camion,
-                    area: "AREA_ESPERA",
-                  })
-                }
-              >
-                Área de Espera
-              </div>
-
-              <div
-                className={`area-card ${
-                  camion.area === "DIESEL"
-                    ? "selected"
-                    : ""
-                }`}
-                onClick={() =>
-                  setCamion({
-                    ...camion,
-                    area: "DIESEL",
-                  })
-                }
-              >
-                Diesel
-              </div>
-
-              <div
-                className={`area-card ${
-                  camion.area === "ADBLUE"
-                    ? "selected"
-                    : ""
-                }`}
-                onClick={() =>
-                  setCamion({
-                    ...camion,
-                    area: "ADBLUE",
-                  })
-                }
-              >
-                AdBlue
-              </div>
-
-              <div
-                className={`area-card ${
-                  camion.area === "DESFOGUE"
-                    ? "selected"
-                    : ""
-                }`}
-                onClick={() =>
-                  setCamion({
-                    ...camion,
-                    area: "DESFOGUE",
-                  })
-                }
+                className={`area-card ${camion.area === "Desfogue" ? "selected" : ""}`}
+                onClick={() => setCamion({ ...camion, area: "Desfogue" })}
               >
                 Desfogue
               </div>
 
               <div
-                className={`area-card ${
-                  camion.area === "LAVADO_INTERIOR"
-                    ? "selected"
-                    : ""
-                }`}
-                onClick={() =>
-                  setCamion({
-                    ...camion,
-                    area: "LAVADO_INTERIOR",
-                  })
-                }
+                className={`area-card ${camion.area === "Diesel" ? "selected" : ""}`}
+                onClick={() => setCamion({ ...camion, area: "Diesel" })}
+              >
+                Diesel
+              </div>
+
+              <div
+                className={`area-card ${camion.area === "Ad-Blue" ? "selected" : ""}`}
+                onClick={() => setCamion({ ...camion, area: "Ad-Blue" })}
+              >
+                AdBlue
+              </div>
+
+              <div
+                className={`area-card ${camion.area === "Taller" ? "selected" : ""}`}
+                onClick={() => setCamion({ ...camion, area: "Taller" })}
+              >
+                Taller
+              </div>
+
+              <div
+                className={`area-card ${camion.area === "Lavado Interior" ? "selected" : ""}`}
+                onClick={() => setCamion({ ...camion, area: "Lavado Interior" })}
               >
                 Lavado Interior
               </div>
 
               <div
-                className={`area-card ${
-                  camion.area === "LAVADO_EXTERIOR"
-                    ? "selected"
-                    : ""
-                }`}
-                onClick={() =>
-                  setCamion({
-                    ...camion,
-                    area: "LAVADO_EXTERIOR",
-                  })
-                }
+                className={`area-card ${camion.area === "Lavado Exterior" ? "selected" : ""}`}
+                onClick={() => setCamion({ ...camion, area: "Lavado Exterior" })}
               >
                 Lavado Exterior
               </div>
-
             </div>
 
             <div className="button-group">
@@ -268,23 +261,22 @@ export default function Registro() {
 
             <div className="confirm-card">
               <p>
-                <strong>Número:</strong>{" "}
-                {camion.numero}
+                <strong>Número:</strong> {camion.numero || "No especificado"}
               </p>
-
               <p>
-                <strong>Tipo:</strong>{" "}
-                {camion.tipoUnidad}
+                <strong>Tipo:</strong> {camion.tipoUnidad || "No seleccionado"}
               </p>
-
               <p>
-                <strong>Observaciones:</strong>{" "}
-                {camion.observaciones}
+                <strong>Conductor:</strong> {camion.conductor || "No asignado"}
               </p>
-
               <p>
-                <strong>Área:</strong>{" "}
-                {camion.area}
+                <strong>Ruta:</strong> {camion.origen || "N/A"} &rarr; {camion.destino || "N/A"}
+              </p>
+              <p>
+                <strong>Área Inicial Asignada:</strong> {camion.area || "Ninguna"}
+              </p>
+              <p>
+                <strong>Observaciones:</strong> {camion.observaciones || "Sin observaciones"}
               </p>
             </div>
 

@@ -152,6 +152,7 @@ body {
   font-weight:600;
   cursor:pointer;
   transition:.2s;
+  color: var(--primary)
 }
 
 .area-card:hover{
@@ -172,6 +173,7 @@ body {
   border:1px solid #e5e5e5;
   border-radius:12px;
   padding:20px;
+  color: var(--primary)
 }
 
 .confirm-card p{
