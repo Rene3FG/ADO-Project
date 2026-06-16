@@ -4,21 +4,19 @@ import "./Resgistro.css";
 export default function Registro() {
   const [paso, setPaso] = useState(1);
 
-  /* --- ESTADO ACTUALIZADO CON LOS NUEVOS CAMPOS --- */
   const [camion, setCamion] = useState({
     numero: "",
     tipoUnidad: "",
     observaciones: "",
     area: "",
-    conductor: "", // Nuevo
-    origen: "",    // Nuevo
-    destino: "",   // Nuevo
+    conductor: "", 
+    origen: "",   
+    destino: "", 
   });
 
   const registrarCamion = () => {
     alert("Autobús registrado correctamente");
 
-    /* Limpiamos todos los campos al finalizar */
     setCamion({
       numero: "",
       tipoUnidad: "",
@@ -137,7 +135,6 @@ export default function Registro() {
                 />
               </div>
 
-              {/* --- NUEVO CAMPO: DESTINO --- */}
               <div className="input-group">
                 <label>Terminal de Destino</label>
                 <input
