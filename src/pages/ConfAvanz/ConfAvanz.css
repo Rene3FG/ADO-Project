@@ -1,0 +1,80 @@
+.config-panel h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 6px 0;
+  color: #ffffff;
+}
+
+.config-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 650px; 
+  margin-top: 20px;
+}
+
+.config-option-card {
+  background-color: #11131e;
+  border: 1px solid #1e2235;
+  border-radius: 10px;
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.config-option-card:hover {
+  border-color: #e21c24; 
+  background-color: #161927;
+  transform: translateX(4px); 
+}
+
+.config-option-icon {
+  font-size: 26px;
+  color: #e21c24; 
+  background-color: rgba(226, 28, 36, 0.08);
+  padding: 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.config-option-text h3 {
+  margin: 0 0 4px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.config-option-text p {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* 1. AGREGAMOS ESTA CLASE PARA CENTRAR TODO EL BLOQUE */
+.config-panel {
+  max-width: 650px;
+  margin: 40px auto 0 auto; /* ⬅️ El 'auto' centra todo en la pantalla */
+  
+  /* Quítale las diagonales a la siguiente línea si también quieres que el título quede en medio: */
+  /* text-align: center; */ 
+}
+
+.config-panel h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 6px 0;
+  color: #ffffff;
+}
+
+.config-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px; 
+}
