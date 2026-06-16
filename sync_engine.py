@@ -21,7 +21,7 @@ sheets = SheetsClient()
 
 def pull_all():
     """Ejecuta el ciclo completo de PULL para todas las hojas"""
-    logger.info("═══ INICIO PULL ═══")
+    logger.info("----- INICIO PULL -----")
     inicio = datetime.now()
     errores = {}
 
@@ -33,7 +33,7 @@ def pull_all():
             errores[nombre_hoja] = str(e)
 
     _log_sync("PULL_ALL", "pull", errores=errores, inicio=inicio)
-    logger.info(f"═══ FIN PULL ({(datetime.now()-inicio).seconds}s) ═══")
+    logger.info(f"------ FIN PULL ({(datetime.now()-inicio).seconds}s) -----")
 
 
 def _pull_hoja(nombre: str, config: dict):
@@ -232,7 +232,7 @@ def _pull_kpis(config):
 
 def push_all():
     """Pushea a Sheets todos los registros marcados como is_dirty=true"""
-    logger.info("═══ INICIO PUSH ═══")
+    logger.info("------ INICIO PUSH -----")
     inicio = datetime.now()
     errores = {}
 
@@ -244,7 +244,7 @@ def push_all():
             errores[nombre_hoja] = str(e)
 
     _log_sync("PUSH_ALL", "push", errores=errores, inicio=inicio)
-    logger.info(f"═══ FIN PUSH ({(datetime.now()-inicio).seconds}s) ═══")
+    logger.info(f"----- FIN PUSH ({(datetime.now()-inicio).seconds}s) -----")
 
 
 def _push_hoja(nombre: str, config: dict):

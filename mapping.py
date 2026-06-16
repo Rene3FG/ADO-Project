@@ -12,7 +12,7 @@ SHEET_NAMES = {
     "LAVADO_EXTERIOR":  "LAVADO EXTERIOR",
     "LAVADO_INTERIOR":  "LAVADO INTERIOR",
     "TIEMPOS":          "TIEMPOS",
-    "KPIS":             "KPI´S",          
+    "KPIS":             "KPI'S",          
 }
 
 EXCEL_EPOCH = datetime(1899, 12, 30)
