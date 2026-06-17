@@ -3,6 +3,7 @@ import TarjetaInfo from './TarjetaInfo.jsx';
 import mockDB from './CamionArea.json';
 import './DropDrag.css';
 import Registro from '../Registro/Registro.jsx';
+import ConfAvanz from '../ConfAvanz/ConfAvaz.jsx';
 
 import { MdDashboard, MdAssignmentTurnedIn, MdSwapHoriz, MdHistory, MdBarChart, MdSettings, MdExitToApp } from "react-icons/md";
 import { TbWash, TbWashDryDip } from "react-icons/tb";
@@ -137,7 +138,7 @@ export default function DropDrag() {
       case 'reportes':
         return <div className="pantalla-vacia"><h2>Pantalla de Reportes</h2></div>;
       case 'configuracion':
-        return <div className="pantalla-vacia"><h2>Pantalla de Configuración</h2></div>;
+        return <ConfAvanz />;
       default:
         return <div className="pantalla-vacia"><h2>Selecciona una opción</h2></div>;
     }
