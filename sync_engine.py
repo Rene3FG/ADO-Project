@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import json
 from datetime import datetime
 from loguru import logger
 from sqlalchemy import text
@@ -6,7 +9,7 @@ from config import SYNC_INTERVAL_SECONDS
 from sheets_client import SheetsClient
 from db_client import (
     engine, upsert_corrida, upsert_movimiento,
-    get_dirty_movimientos, mark_synced
+    get_dirty_movimientos, mark_synced, AREA_NOMBRE_DB
 )
 from mapping import (
     PLANEACION, CENTRAL, DIESEL, ADDBLUE, TALLER,
@@ -53,6 +56,8 @@ def _pull_hoja(nombre: str, config: dict):
                     _pull_row_central(conn, row, i, config)
                 elif nombre == "TALLER":
                     _pull_row_taller(conn, row, i, config)
+                elif nombre == "TIEMPOS":
+                    _pull_row_tiempos(conn, row, i, config)
                 else:
                     _pull_row_area(conn, row, i, config, nombre)
             except Exception as e:
@@ -87,30 +92,24 @@ def _pull_row_central(conn, row, sheets_row, config):
     if not data.get("serie"):
         return
 
-    # Upsert registro
-    from db_client import get_tipo_id
-    from datetime import date
-    with engine.begin() as _:
-        pass  # conn ya viene del contexto
-
     conn.execute(text("""
-        INSERT INTO registros (fecha, serie, tipo_id, hora_registro, avance, ubicacion_texto, tiempo_restante,
-                               sheets_row, last_modified_by, sheets_synced_at, is_dirty)
+        INSERT INTO records (date, serial_number, type_id, registration_time, progress, location_text, time_remaining,
+                              sheets_row, last_modified_by, sheets_synced_at, is_dirty)
         VALUES (CURRENT_DATE, :serie, 1, :hora_registro, :avance, :ubicacion_texto, :tiempo_restante,
                 :sheets_row, 'sheets', now(), false)
-        ON CONFLICT (fecha, serie) DO UPDATE SET
-            avance=EXCLUDED.avance,
-            ubicacion_texto=EXCLUDED.ubicacion_texto,
-            tiempo_restante=EXCLUDED.tiempo_restante,
+        ON CONFLICT (date, serial_number) DO UPDATE SET
+            progress=EXCLUDED.progress,
+            location_text=EXCLUDED.location_text,
+            time_remaining=EXCLUDED.time_remaining,
             sheets_row=EXCLUDED.sheets_row,
             sheets_synced_at=now(),
             is_dirty=false
-        WHERE registros.last_modified_by = 'sheets'
+        WHERE records.last_modified_by = 'sheets'
     """), {**data, "sheets_row": sheets_row})
 
     # Upsert checklist
     registro = conn.execute(
-        text("SELECT id FROM registros WHERE fecha=CURRENT_DATE AND serie=:s"), {"s": data["serie"]}
+        text("SELECT id FROM records WHERE date=CURRENT_DATE AND serial_number=:s"), {"s": data["serie"]}
     ).fetchone()
     if not registro:
         return
@@ -123,13 +122,13 @@ def _pull_row_central(conn, row, sheets_row, config):
         area_id = get_area_id(conn, area_nombre)
         if not area_id:
             continue
+        # area_checklists no tiene columnas de tracking (is_dirty/last_modified_by);
+        # el Sheet siempre gana aquí, no hay protección de "last write wins".
         conn.execute(text("""
-            INSERT INTO checklist_areas (registro_id, area_id, completada, espacios, last_modified_by, is_dirty)
-            VALUES (:r, :a, :c, :e, 'sheets', false)
-            ON CONFLICT (registro_id, area_id) DO UPDATE SET
-                completada=EXCLUDED.completada, espacios=EXCLUDED.espacios,
-                sheets_synced_at=now(), is_dirty=false
-            WHERE checklist_areas.last_modified_by = 'sheets'
+            INSERT INTO area_checklists (record_id, area_id, is_checked, quantity)
+            VALUES (:r, :a, :c, :e)
+            ON CONFLICT (record_id, area_id) DO UPDATE SET
+                is_checked=EXCLUDED.is_checked, quantity=EXCLUDED.quantity
         """), {"r": registro_id, "a": area_id, "c": completada, "e": espacios})
 
 
@@ -175,14 +174,14 @@ def _pull_row_taller(conn, row, sheets_row, config):
     area_id = get_area_id(conn, "TALLER")
     from datetime import date
     registro = conn.execute(
-        text("SELECT id FROM registros WHERE fecha=:f AND serie=:s"),
+        text("SELECT id FROM records WHERE date=:f AND serial_number=:s"),
         {"f": date.today(), "s": data_mov["serie"]}
     ).fetchone()
     if not registro:
         return
 
     movimiento = conn.execute(
-        text("SELECT id FROM movimientos WHERE registro_id=:r AND area_id=:a ORDER BY id DESC LIMIT 1"),
+        text("SELECT id FROM movements WHERE record_id=:r AND area_id=:a ORDER BY id DESC LIMIT 1"),
         {"r": registro[0], "a": area_id}
     ).fetchone()
     if not movimiento:
@@ -194,17 +193,55 @@ def _pull_row_taller(conn, row, sheets_row, config):
         fn = config["conversion_detalle"].get(campo, config["conversion_detalle"]["default"])
         detalle[campo] = fn(val)
 
+    # workshop_details no tiene UNIQUE(movement_id) ni columnas de tracking,
+    # así que el upsert se hace a mano en vez de ON CONFLICT.
+    existe = conn.execute(
+        text("SELECT id FROM workshop_details WHERE movement_id=:m"), {"m": movimiento[0]}
+    ).fetchone()
+
+    campos  = ", ".join(detalle.keys())
+    valores = ", ".join(f":{k}" for k in detalle.keys())
+    update  = ", ".join(f"{k}=:{k}" for k in detalle.keys())
+
+    if existe:
+        conn.execute(
+            text(f"UPDATE workshop_details SET {update} WHERE movement_id=:movement_id"),
+            {"movement_id": movimiento[0], **detalle}
+        )
+    else:
+        conn.execute(
+            text(f"INSERT INTO workshop_details (movement_id, {campos}) VALUES (:movement_id, {valores})"),
+            {"movement_id": movimiento[0], **detalle}
+        )
+
+
+def _pull_row_tiempos(conn, row, sheets_row, config):
+    data = {}
+    for col_idx, campo, fn in config["columnas"]:
+        val = row[col_idx] if col_idx < len(row) else None
+        data[campo] = fn(val)
+
+    if not data.get("serie"):
+        return
+
+    for campo, fn in config.get("campo_calculado", {}).items():
+        data[campo] = fn(data)
+
     conn.execute(text("""
-        INSERT INTO taller_detalle (movimiento_id, {campos}, last_modified_by, is_dirty)
-        VALUES (:movimiento_id, {valores}, 'sheets', false)
-        ON CONFLICT (movimiento_id) DO UPDATE SET
-            {update}, sheets_synced_at=now(), is_dirty=false
-        WHERE taller_detalle.last_modified_by = 'sheets'
-    """.format(
-        campos  = ", ".join(detalle.keys()),
-        valores = ", ".join(f":{k}" for k in detalle.keys()),
-        update  = ", ".join(f"{k}=EXCLUDED.{k}" for k in detalle.keys()),
-    )), {"movimiento_id": movimiento[0], **detalle})
+        INSERT INTO times (
+            serial_number, entry_time, is_completed, exit_time_num, entry_time_num,
+            duration_days, sheets_row, last_modified_by, sheets_synced_at, is_dirty
+        ) VALUES (
+            :serie, :hora_entrada, :completado, :hora_salida_num, :hora_entrada_num,
+            :duracion_dias, :sheets_row, 'sheets', now(), false
+        )
+        ON CONFLICT (serial_number) DO UPDATE SET
+            entry_time=EXCLUDED.entry_time, is_completed=EXCLUDED.is_completed,
+            exit_time_num=EXCLUDED.exit_time_num, entry_time_num=EXCLUDED.entry_time_num,
+            duration_days=EXCLUDED.duration_days, sheets_row=EXCLUDED.sheets_row,
+            sheets_synced_at=now(), is_dirty=false
+        WHERE times.last_modified_by = 'sheets'
+    """), {**data, "sheets_row": sheets_row})
 
 
 def _pull_kpis(config):
@@ -217,11 +254,10 @@ def _pull_kpis(config):
             data[campo] = None
 
     with engine.begin() as conn:
-        from datetime import date
         campos  = ", ".join(data.keys())
         valores = ", ".join(f":{k}" for k in data.keys())
         conn.execute(
-            text(f"INSERT INTO kpis_snapshot (fecha, {campos}, sheets_synced_at) VALUES (CURRENT_DATE, {valores}, now())"),
+            text(f"INSERT INTO kpis__snapshot ({campos}) VALUES ({valores})"),
             data
         )
     logger.info("[PULL] KPIs guardados")
@@ -262,15 +298,15 @@ def _push_area(config):
         rows = get_dirty_movimientos(conn, area_nombre)
         for row in rows:
             fila = row.sheets_row
-            hora_entrada_str = row.hora_entrada.strftime("%H:%M:%S") if row.hora_entrada else ""
-            hora_salida_num  = _datetime_to_excel_serial(row.hora_salida)
-            hora_entrada_num = _datetime_to_excel_serial(row.hora_entrada)
+            hora_entrada_str = row.entry_time.strftime("%H:%M:%S") if row.entry_time else ""
+            hora_salida_num  = _datetime_to_excel_serial(row.exit_time)
+            hora_entrada_num = _time_to_excel_serial(row.entry_time)
             duracion = (hora_salida_num - hora_entrada_num) if hora_salida_num and hora_entrada_num else ""
 
             valores = [
                 row.serie,
                 hora_entrada_str,
-                row.completado,
+                row.is_completed,
                 hora_salida_num or "",
                 hora_entrada_num or "",
                 "",   # espacios_disp: no modificar desde la app
@@ -281,11 +317,11 @@ def _push_area(config):
             else:
                 nueva_fila = sheets.append_row(config["sheet"], valores)
                 conn.execute(
-                    text("UPDATE movimientos SET sheets_row=:r WHERE id=:id"),
+                    text("UPDATE movements SET sheets_row=:r WHERE id=:id"),
                     {"r": nueva_fila, "id": row.id}
                 )
 
-            mark_synced(conn, "movimientos", row.id)
+            mark_synced(conn, "movements", row.id)
             logger.info(f"[PUSH] {area_nombre} serie={row.serie} fila={fila}")
 
 
@@ -295,9 +331,9 @@ def _push_central(config):
         from datetime import date
         registros = conn.execute(
             text("""
-                SELECT r.*, t.nombre as tipo_nombre
-                FROM registros r JOIN tipos_camion t ON t.id=r.tipo_id
-                WHERE r.fecha=:f AND r.is_dirty=true AND r.last_modified_by='app'
+                SELECT r.*, t.name as tipo_nombre
+                FROM records r JOIN bus_types t ON t.id=r.type_id
+                WHERE r.date=:f AND r.is_dirty=true AND r.last_modified_by='app'
             """),
             {"f": date.today()}
         ).fetchall()
@@ -308,53 +344,47 @@ def _push_central(config):
 
             checklist = conn.execute(
                 text("""
-                    SELECT a.nombre, ca.completada, ca.espacios
-                    FROM checklist_areas ca JOIN areas a ON a.id=ca.area_id
-                    WHERE ca.registro_id=:r ORDER BY a.orden_flujo
+                    SELECT a.name, ca.is_checked, ca.quantity
+                    FROM area_checklists ca JOIN area a ON a.id=ca.area_id
+                    WHERE ca.record_id=:r
                 """),
                 {"r": reg.id}
             ).fetchall()
 
-            check_map = {c.nombre: (c.completada, c.espacios) for c in checklist}
+            check_map = {c.name: (c.is_checked, c.quantity) for c in checklist}
 
             def bool_num(nombre):
-                b, n = check_map.get(nombre, (False, 0))
+                b, n = check_map.get(AREA_NOMBRE_DB.get(nombre, nombre), (False, 0))
                 return [b, n or 0]
 
-            hora_reg = _datetime_to_excel_serial(reg.hora_registro)
+            hora_reg = _datetime_to_excel_serial(reg.registration_time)
             valores = (
-                [hora_reg, reg.serie] +
+                [hora_reg, reg.serial_number] +
                 bool_num("DIESEL") + bool_num("ADDBLUE") + bool_num("TALLER") +
                 bool_num("DESFOGUE") + bool_num("LAVADO EXTERIOR") + bool_num("LAVADO INTERIOR") +
-                [reg.ubicacion_texto or "", reg.tiempo_restante or "", reg.avance or 0]
+                [reg.location_text or "", reg.time_remaining or "", reg.progress or 0]
             )
             sheets.write_row(config["sheet"], reg.sheets_row, valores)
-            mark_synced(conn, "registros", reg.id)
+            mark_synced(conn, "records", reg.id)
 
 
 def _push_tiempos(config):
     with engine.begin() as conn:
-        from datetime import date
         rows = conn.execute(
-            text("""
-                SELECT t.* FROM tiempos t
-                JOIN registros r ON r.id=t.registro_id
-                WHERE r.fecha=:f AND t.is_dirty=true AND t.last_modified_by='app'
-            """),
-            {"f": date.today()}
+            text("SELECT * FROM times WHERE is_dirty=true AND last_modified_by='app'")
         ).fetchall()
 
         for row in rows:
             valores = [
-                row.serie,
-                row.hora_entrada.strftime("%H:%M:%S") if row.hora_entrada else "",
-                row.completado,
-                row.hora_salida_num or "",
-                row.hora_entrada_num or "",
+                row.serial_number,
+                row.entry_time.strftime("%H:%M:%S") if row.entry_time else "",
+                row.is_completed,
+                row.exit_time_num or "",
+                row.entry_time_num or "",
             ]
             if row.sheets_row:
                 sheets.write_row(config["sheet"], row.sheets_row, valores)
-            mark_synced(conn, "tiempos", row.id)
+            mark_synced(conn, "times", row.id)
 
 
 
@@ -378,17 +408,29 @@ def _datetime_to_excel_serial(dt) -> float | None:
     if dt is None:
         return None
     from mapping import EXCEL_EPOCH
+    # Postgres devuelve TIMESTAMPTZ como datetime aware (sesión en UTC); el
+    # valor original vino de un EXCEL_EPOCH naive, así que se quita el tzinfo
+    # para poder restar sin perder ni desplazar la hora.
+    if dt.tzinfo is not None:
+        dt = dt.replace(tzinfo=None)
     delta = dt - EXCEL_EPOCH
     return delta.days + delta.seconds / 86400
+
+
+def _time_to_excel_serial(t) -> float | None:
+    """Igual que _datetime_to_excel_serial pero para columnas TIME (sin fecha)."""
+    if t is None:
+        return None
+    return (t.hour * 3600 + t.minute * 60 + t.second) / 86400
 
 
 def _log_sync(hoja: str, direccion: str, errores: dict, inicio: datetime):
     with engine.begin() as conn:
         conn.execute(
             text("""
-                INSERT INTO sync_log (hoja, direccion, errores, iniciado_at, finalizado_at, exitoso)
-                VALUES (:h, :d, :e::jsonb, :i, now(), :ok)
+                INSERT INTO sync_logs (sheet, direction, errors, started_at, finished_at, success)
+                VALUES (:h, :d, CAST(:e AS jsonb), :i, now(), :ok)
             """),
-            {"h": hoja, "d": direccion, "e": str(errores) if errores else None,
+            {"h": hoja, "d": direccion, "e": json.dumps(errores) if errores else None,
              "i": inicio, "ok": len(errores) == 0}
         )

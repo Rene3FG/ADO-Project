@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gspread
 from google.oauth2.service_account import Credentials
 from loguru import logger
@@ -56,9 +58,10 @@ class SheetsClient:
         Retorna el número de fila donde fue insertada.
         """
         ws = self.get_sheet(sheet_name)
+        # row_count es el tamaño configurado de la hoja, no la última fila con datos
+        fila_anterior = len(ws.col_values(1))
         ws.append_row(valores, value_input_option="USER_ENTERED")
-        # gspread no retorna el número de fila directamente; lo calculamos
-        return ws.row_count
+        return fila_anterior + 1
 
     def update_cell(self, sheet_name: str, fila: int, col: int, valor):
         """

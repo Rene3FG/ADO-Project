@@ -1,4 +1,6 @@
+from __future__ import annotations
 
+import json
 from datetime import datetime, date
 from loguru import logger
 from sqlalchemy import create_engine, text
@@ -6,17 +8,29 @@ from config import DATABASE_URL
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
+# El schema en Supabase usa nombres de área en inglés; el resto del código
+# (Sheets, mapping.py) sigue usando los nombres en español.
+AREA_NOMBRE_DB = {
+    "DIESEL":          "DIESEL",
+    "ADDBLUE":         "ADDBLUE",
+    "TALLER":          "WORKSHOP",
+    "DESFOGUE":        "DRAINAGE",
+    "LAVADO EXTERIOR": "EXTERIOR WASH",
+    "LAVADO INTERIOR": "INTERIOR WASH",
+    "RECEPCION":       "RECEPTION",
+}
+
 # ── Helpers ────────────────────────────────────────────────
 
 def get_tipo_id(conn, nombre: str) -> int | None:
     row = conn.execute(
-        text("SELECT id FROM tipos_camion WHERE nombre = :n"), {"n": nombre}
+        text("SELECT id FROM bus_types WHERE name = :n"), {"n": nombre}
     ).fetchone()
     return row[0] if row else None
 
 def get_area_id(conn, nombre: str) -> int | None:
     row = conn.execute(
-        text("SELECT id FROM areas WHERE nombre = :n"), {"n": nombre}
+        text("SELECT id FROM area WHERE name = :n"), {"n": AREA_NOMBRE_DB.get(nombre, nombre)}
     ).fetchone()
     return row[0] if row else None
 
@@ -38,7 +52,7 @@ def upsert_corrida(conn, data: dict, sheets_row: int):
     data["fecha"] = date.today()
 
     existing = conn.execute(
-        text("SELECT id, last_modified_at, last_modified_by FROM corridas WHERE fecha=:f AND serie=:s"),
+        text("SELECT id, last_modified_at, last_modified_by FROM trips WHERE date=:f AND serial_number=:s"),
         {"f": data["fecha"], "s": data["serie"]}
     ).fetchone()
 
@@ -50,25 +64,25 @@ def upsert_corrida(conn, data: dict, sheets_row: int):
             return
         conn.execute(
             text("""
-                UPDATE corridas SET
-                    hora_corrida=:hora_corrida, hora_salida=:hora_salida,
-                    tipo_id=:tipo_id, need_recepcion=:need_recepcion,
-                    need_desfogue=:need_desfogue, need_diesel=:need_diesel,
-                    need_adblue=:need_adblue, need_lav_ext=:need_lav_ext,
-                    need_lav_int=:need_lav_int, need_taller=:need_taller,
+                UPDATE trips SET
+                    scheduled_time=:hora_corrida, departure_time=:hora_salida,
+                    type_id=:tipo_id, needs_reception=:need_recepcion,
+                    needs_drainage=:need_desfogue, needs_diesel=:need_diesel,
+                    needs_adblue=:need_adblue, needs_ext_wash=:need_lav_ext,
+                    needs_int_wash=:need_lav_int, needs_workshop=:need_taller,
                     sheets_row=:sheets_row, last_modified_by='sheets',
                     sheets_synced_at=:sheets_synced_at, is_dirty=false
-                WHERE fecha=:fecha AND serie=:serie
+                WHERE date=:fecha AND serial_number=:serie
             """), data
         )
     else:
         data["is_dirty"] = False
         conn.execute(
             text("""
-                INSERT INTO corridas (
-                    fecha, hora_corrida, hora_salida, serie, tipo_id,
-                    need_recepcion, need_desfogue, need_diesel, need_adblue,
-                    need_lav_ext, need_lav_int, need_taller,
+                INSERT INTO trips (
+                    date, scheduled_time, departure_time, serial_number, type_id,
+                    needs_reception, needs_drainage, needs_diesel, needs_adblue,
+                    needs_ext_wash, needs_int_wash, needs_workshop,
                     sheets_row, last_modified_by, sheets_synced_at, is_dirty
                 ) VALUES (
                     :fecha, :hora_corrida, :hora_salida, :serie, :tipo_id,
@@ -86,8 +100,12 @@ def upsert_movimiento(conn, data: dict, area_nombre: str, sheets_row: int):
     if not area_id:
         return
 
+    # TALLER trae duracion_dias del Sheet; las demás áreas no, así que se
+    # rellena con NULL para que el bind de la query siempre tenga el valor.
+    data.setdefault("duracion_dias", None)
+
     registro = conn.execute(
-        text("SELECT id FROM registros WHERE fecha=:f AND serie=:s"),
+        text("SELECT id FROM records WHERE date=:f AND serial_number=:s"),
         {"f": date.today(), "s": data["serie"]}
     ).fetchone()
 
@@ -95,8 +113,8 @@ def upsert_movimiento(conn, data: dict, area_nombre: str, sheets_row: int):
 
     existing = conn.execute(
         text("""
-            SELECT id, last_modified_by FROM movimientos
-            WHERE registro_id=:r AND area_id=:a
+            SELECT id, last_modified_by FROM movements
+            WHERE record_id=:r AND area_id=:a
             ORDER BY id DESC LIMIT 1
         """),
         {"r": registro_id, "a": area_id}
@@ -110,9 +128,9 @@ def upsert_movimiento(conn, data: dict, area_nombre: str, sheets_row: int):
             return
         conn.execute(
             text("""
-                UPDATE movimientos SET
-                    hora_entrada=:hora_entrada, hora_salida=:hora_salida,
-                    completado=:completado, duracion_dias=:duracion_dias,
+                UPDATE movements SET
+                    entry_time=:hora_entrada, exit_time=:hora_salida,
+                    is_completed=:completado, duration_days=:duracion_dias,
                     sheets_row=:sheets_row, last_modified_by='sheets',
                     sheets_synced_at=:now, is_dirty=false
                 WHERE id=:id
@@ -122,9 +140,9 @@ def upsert_movimiento(conn, data: dict, area_nombre: str, sheets_row: int):
     else:
         conn.execute(
             text("""
-                INSERT INTO movimientos (
-                    registro_id, area_id, serie, hora_entrada, hora_salida,
-                    completado, duracion_dias, sheets_row,
+                INSERT INTO movements (
+                    record_id, area_id, serial_number, entry_time, exit_time,
+                    is_completed, duration_days, sheets_row,
                     last_modified_by, sheets_synced_at, is_dirty
                 ) VALUES (
                     :registro_id, :area_id, :serie, :hora_entrada, :hora_salida,
@@ -143,9 +161,9 @@ def get_dirty_movimientos(conn, area_nombre: str) -> list:
     area_id = get_area_id(conn, area_nombre)
     return conn.execute(
         text("""
-            SELECT m.*, r.serie
-            FROM movimientos m
-            JOIN registros r ON r.id = m.registro_id
+            SELECT m.*, r.serial_number AS serie
+            FROM movements m
+            JOIN records r ON r.id = m.record_id
             WHERE m.area_id = :a
               AND m.is_dirty = true
               AND m.last_modified_by = 'app'
@@ -167,33 +185,33 @@ def archivar_turno(conn, turno: int, usuario_id: int):
     Archiva el turno actual: crea un snapshot JSON y cierra los registros activos.
     """
     registros = conn.execute(
-        text("SELECT row_to_json(r) FROM registros r WHERE fecha=:f AND turno=:t"),
+        text("SELECT row_to_json(r) FROM records r WHERE date=:f AND shift=:t"),
         {"f": date.today(), "t": turno}
     ).fetchall()
 
     movimientos = conn.execute(
         text("""
-            SELECT row_to_json(m) FROM movimientos m
-            JOIN registros r ON r.id = m.registro_id
-            WHERE r.fecha=:f AND r.turno=:t
+            SELECT row_to_json(m) FROM movements m
+            JOIN records r ON r.id = m.record_id
+            WHERE r.date=:f AND r.shift=:t
         """),
         {"f": date.today(), "t": turno}
     ).fetchall()
 
     conn.execute(
         text("""
-            INSERT INTO cierres_turno (fecha, turno, cerrado_por, snapshot_registros, snapshot_movimientos)
-            VALUES (:f, :t, :u, :sr::jsonb, :sm::jsonb)
+            INSERT INTO shift_closures (date, shift, closed_by, records_snapshot, movements_snapshot)
+            VALUES (:f, :t, :u, CAST(:sr AS jsonb), CAST(:sm AS jsonb))
         """),
         {
             "f": date.today(), "t": turno, "u": usuario_id,
-            "sr": str([r[0] for r in registros]),
-            "sm": str([m[0] for m in movimientos]),
+            "sr": json.dumps([r[0] for r in registros]),
+            "sm": json.dumps([m[0] for m in movimientos]),
         }
     )
 
     conn.execute(
-        text("UPDATE registros SET activo=false WHERE fecha=:f AND turno=:t"),
+        text("UPDATE records SET is_active=false WHERE date=:f AND shift=:t"),
         {"f": date.today(), "t": turno}
     )
     logger.info(f"Turno {turno} archivado correctamente.")
@@ -204,9 +222,9 @@ def _create_registro_placeholder(conn, serie: int) -> int:
     """Crea un registro mínimo si no existe (el operador lo completará)"""
     result = conn.execute(
         text("""
-            INSERT INTO registros (fecha, serie, tipo_id, last_modified_by)
+            INSERT INTO records (date, serial_number, type_id, last_modified_by)
             VALUES (:f, :s, 1, 'sheets')
-            ON CONFLICT (fecha, serie) DO NOTHING
+            ON CONFLICT (date, serial_number) DO NOTHING
             RETURNING id
         """),
         {"f": date.today(), "s": serie}
@@ -214,7 +232,7 @@ def _create_registro_placeholder(conn, serie: int) -> int:
     if result:
         return result[0]
     return conn.execute(
-        text("SELECT id FROM registros WHERE fecha=:f AND serie=:s"),
+        text("SELECT id FROM records WHERE date=:f AND serial_number=:s"),
         {"f": date.today(), "s": serie}
     ).fetchone()[0]
 

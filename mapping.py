@@ -63,7 +63,7 @@ def parse_time_str(val):
 PLANEACION = {
     "sheet":        SHEET_NAMES["PLANEACION"],
     "rango":        "A2:K1000",
-    "tabla_pg":     "corridas",
+    "tabla_pg":     "trips",
     "clave_unica":  ["fecha", "serie"],
     "columnas": [
         # (indice_col_0, campo_pg, funcion_conversion)
@@ -93,8 +93,8 @@ PLANEACION = {
 CENTRAL = {
     "sheet":    SHEET_NAMES["CENTRAL"],
     "rango":    "A2:S200",
-    "tabla_registros":  "registros",
-    "tabla_checklist":  "checklist_areas",
+    "tabla_registros":  "records",
+    "tabla_checklist":  "area_checklists",
     "clave_unica": ["fecha", "serie"],
 
     "columnas_registro": [
@@ -122,7 +122,7 @@ def area_config(sheet_key, area_nombre):
     return {
         "sheet":       SHEET_NAMES[sheet_key],
         "rango":       "A2:F500",
-        "tabla_pg":    "movimientos",
+        "tabla_pg":    "movements",
         "area_nombre": area_nombre,
         "clave_unica": ["serie", "hora_entrada"],
         "columnas": [
@@ -130,7 +130,7 @@ def area_config(sheet_key, area_nombre):
             (1, "hora_entrada",  parse_time_str),     # string "HH:MM:SS"
             (2, "completado",    parse_bool),
             (3, "hora_salida",   excel_serial_to_datetime),
-            (4, "hora_entrada2", excel_serial_to_datetime),  # decimal Excel
+            (4, "hora_entrada2", excel_serial_to_time),  # decimal Excel
             (5, "espacios_disp", parse_int),  # solo para lectura, no se persiste
         ],
         # hora_entrada final = hora_entrada2 (decimal) si existe, sino parse de col 1
@@ -147,8 +147,8 @@ LAVADO_INTERIOR = area_config("LAVADO_INTERIOR", "LAVADO INTERIOR")
 TALLER = {
     "sheet":          SHEET_NAMES["TALLER"],
     "rango":          "A2:T500",
-    "tabla_pg":       "movimientos",
-    "tabla_detalle":  "taller_detalle",
+    "tabla_pg":       "movements",
+    "tabla_detalle":  "workshop_details",
     "area_nombre":    "TALLER",
     "clave_unica":    ["serie", "hora_entrada"],
 
@@ -157,30 +157,35 @@ TALLER = {
         (1, "hora_entrada",  parse_time_str),
         (2, "completado",    parse_bool),
         (3, "hora_salida",   excel_serial_to_datetime),
-        (4, "hora_entrada2", excel_serial_to_datetime),
+        (4, "hora_entrada2", excel_serial_to_time),
         (5, "duracion_dias", parse_float),
     ],
 
-    # Columnas de subáreas: (indice, campo_taller_detalle)
+    # Columnas de subáreas: (indice, campo_workshop_details)
+    # workshop_details (Supabase) separó "transmisión/frenos" en dos columnas
+    # y agregó oil_change/battery_check/shock_absorbers, que el Sheet aún
+    # no tiene como columnas propias — quedan en su default (false) hasta
+    # que se agregue esa fuente de datos.
     "columnas_detalle": [
-        (6,  "llantas"),
-        (7,  "preventivo"),
-        (8,  "fosa_prev_alineacion"),
-        (9,  "aire_acondicionado"),
-        (10, "transmision_frenos"),
-        (11, "motor"),
-        (12, "electrico"),
-        (13, "camionetas"),
-        (14, "vestidura"),
-        (15, "carroceria_periecos"),
-        (16, "pintura_periecos"),
-        (17, "pintura_pinflo"),
-        (18, "carroceria_pinflo"),
-        (19, "porcentaje_avance"),
+        (6,  "tires"),
+        (7,  "preventive_maintenance"),
+        (8,  "alignment_pit"),
+        (9,  "air_conditioning"),
+        (10, "transmission_inspection"),
+        (10, "brakes_inspection"),
+        (11, "engine"),
+        (12, "electrical"),
+        (13, "vans"),
+        (14, "upholstery"),
+        (15, "bodywork_peripherals"),
+        (16, "paint_peripherals"),
+        (17, "paint_pinflo"),
+        (18, "bodywork_pinflo"),
+        (19, "progress_percentage"),
     ],
     "conversion_detalle": {
-        "porcentaje_avance": parse_float,
-        "default":           parse_bool,
+        "progress_percentage": parse_float,
+        "default":             parse_bool,
     }
 }
 
@@ -189,7 +194,7 @@ TALLER = {
 TIEMPOS = {
     "sheet":     SHEET_NAMES["TIEMPOS"],
     "rango":     "A2:E200",
-    "tabla_pg":  "tiempos",
+    "tabla_pg":  "times",
     "clave_unica": ["serie"],
     "columnas": [
         (0, "serie",            parse_int),
@@ -211,29 +216,31 @@ TIEMPOS = {
 
 KPIS = {
     "sheet":    SHEET_NAMES["KPIS"],
-    "tabla_pg": "kpis_snapshot",
+    "tabla_pg": "kpis__snapshot",
     "tipo":     "snapshot",   # siempre INSERT, nunca UPSERT
 
     # (celda_a1, campo_pg, conversion)
+    # campo_pg debe ser exactamente el nombre de columna en kpis__snapshot
+    # (sync_engine._pull_kpis construye el INSERT dinámicamente con estas keys).
     "celdas": [
-        ("B10", "total_camiones",                  parse_int),
-        ("B11", "camiones_necesitan_taller",        parse_int),
-        ("B12", "camiones_liberados",               parse_int),
-        ("B13", "camiones_atendidos",               parse_int),
-        ("B14", "camiones_en_andenes",              parse_int),
-        ("B15", "camiones_foraneos",                parse_int),
-        ("B16", "camiones_necesitan_lavado",        parse_int),
-        ("B17", "unidades_prioritarias_cumplidas",  parse_int),
-        ("B18", "num_mecanicos",                    parse_float),
-        ("B19", "capacidad_total_andenes",          parse_float),
+        ("B10", "total_buses",                 parse_int),
+        ("B11", "buses_needing_workshop",      parse_int),
+        ("B12", "released_buses",              parse_int),
+        ("B13", "serviced_buses",              parse_int),
+        ("B14", "buses_in_bays",               parse_int),
+        ("B15", "foreign_buses",               parse_int),
+        ("B16", "buses_needing_wash",          parse_int),
+        ("B17", "priority_units_completed",    parse_int),
+        ("B18", "mechanics_count",             parse_float),
+        ("B19", "total_bay_capacity",          parse_float),
         # KPIs calculados (columna D o similar en el sheet)
-        ("D1",  "pct_necesitan_taller",   parse_float),
-        ("D2",  "pct_liberados",          parse_float),
-        ("D3",  "carga_por_mecanico",     parse_float),
-        ("D4",  "utilizacion_andenes",    parse_float),
-        ("D5",  "flujo_foraneos",         parse_float),
-        ("D6",  "pct_necesitan_lavado",   parse_float),
-        ("D7",  "cumplimiento_prioridad", parse_float),
+        ("D1",  "pct_needing_workshop",   parse_float),
+        ("D2",  "pct_released",           parse_float),
+        ("D3",  "workload_per_mechanic",  parse_float),
+        ("D4",  "bay_utilization",        parse_float),
+        ("D5",  "foreign_bus_flow",       parse_float),
+        ("D6",  "pct_needing_wash",       parse_float),
+        ("D7",  "priority_compliance",    parse_float),
     ],
 }
 
