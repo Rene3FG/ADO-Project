@@ -11,6 +11,7 @@ import { CiDroplet } from "react-icons/ci";
 import { MdLocalCarWash } from "react-icons/md";
 import { HiMiniWrenchScrewdriver } from "react-icons/hi2";
 import { SiBlockbench } from "react-icons/si";
+import { MdAddAlert } from "react-icons/md";
 
 const areaIcons = {
   "Desfogue": <TbWash />,
@@ -24,8 +25,19 @@ const areaIcons = {
 
 export default function DropDrag() {
   const [pestanaActiva, setPestanaActiva] = useState('patio');
-  const [camiones, setCamiones] = useState(mockDB.camiones); //SetCamiones es el gatillo
+  const [camiones, setCamiones] = useState(mockDB.camiones); //SetCamiones es el gatillo 
+  const [alertas, setAlertas] = useState([]);
   const areasConfig = mockDB.areas; //Las áreas no cambian
+
+  const crearAlerta = (alertaNueva) => {
+  setAlertas((prev) => [...prev, alertaNueva]);
+
+  setTimeout(() => {
+    setAlertas((prev) =>
+      prev.filter((alerta) => alerta !== alertaNueva)
+    );
+  }, 5000);
+  };
 
   const [camionSeleccionado, setCamionSeleccionado] = useState(null);
 
@@ -61,7 +73,7 @@ export default function DropDrag() {
     setCamiones(camionesActualizados);
   };
 
-  const renderizarContenido = () => {
+   const renderizarContenido = () => {
     switch (pestanaActiva) {
       case 'patio':
         return (
@@ -102,10 +114,11 @@ export default function DropDrag() {
                             onDoubleClick={() => setCamionSeleccionado(camion)}
                             title="Doble clic para ver detalles del Registro"
                           >
-                            <TarjetaInfo 
-                              camion={camion} 
-                              alIniciarArrastre={alIniciarArrastre}
-                            />
+                           <TarjetaInfo 
+                          camion={camion} 
+                          alIniciarArrastre={alIniciarArrastre}
+                         crearAlerta={crearAlerta}
+                          />
                           </div>
                         ))
                     )}
@@ -202,6 +215,18 @@ export default function DropDrag() {
           <h1>Control de Patio - Oaxaca</h1>
           <p>Vista general de ocupación por área</p>
         </header>
+        {alertas.length > 0 && (
+         <div className="alertas-container">
+           {alertas.map((alerta, index) => (
+          <div key={index} className="alerta-toast">
+           <MdAddAlert />
+          <span>
+         El autobús {alerta.autobus} está en {alerta.area} y lleva {alerta.tiempo}
+         </span>
+        </div>
+    ))}
+  </div>
+)}
         
         {renderizarContenido()}
       </main>
