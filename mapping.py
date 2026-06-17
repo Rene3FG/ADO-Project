@@ -83,7 +83,7 @@ PLANEACION = {
         # tipos que no requieren desfogue/adblue
         {
             "condicion": lambda row: row.get("tipo_nombre") in ("AU", "SUR", "TXO"),
-            "accion":    lambda row: row.update({"need_desfogue": 1, "need_adblue": 1})
+            "accion":    lambda row: row.update({"need_desfogue": 0, "need_adblue": 0})
         }
     ]
 }
