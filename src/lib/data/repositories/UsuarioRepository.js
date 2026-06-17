@@ -30,6 +30,7 @@ export const UsuarioRepository = {
         .select(`
           nombre,
           id_rol,
+          area_asignada,
           rol:id_rol(nombre_rol)
         `)
         .eq('id_empleado', idLimpio)
@@ -51,7 +52,8 @@ export const UsuarioRepository = {
         usuario: {
           id: idLimpio,
           nombre: perfilData.nombre,
-          rol: nombreRol
+          rol: nombreRol,
+          areaAsignada: perfilData.area_asignada // Agregamos esto
         }
       };
 
