@@ -16,7 +16,7 @@ Drag & Drop UI (Diseño)     Forms UI (Formularios)
         └──────────┬────────────────┘
                    │ HTTP REST
            ┌───────▼────────┐
-           │   SCA API      │  SCA_API.ipynb (FastAPI, puerto 8000)
+           │   SCA API      │  api.py (FastAPI, puerto 8000)
            └───────┬────────┘
                    │ SQLAlchemy
            ┌───────▼────────┐
@@ -122,11 +122,25 @@ Ejecuta un ciclo inmediatamente al arrancar y luego repite cada `SYNC_INTERVAL_S
 
 ### API REST (consumida por Diseño y Formularios)
 
-Abre `SCA_API.ipynb` en Jupyter y corre las celdas en orden. Levanta un servidor FastAPI en `http://0.0.0.0:8000` (daemon thread, el notebook sigue interactivo):
+```bash
+python api.py
+```
+
+o directamente con uvicorn (lo que usa Render en producción):
+
+```bash
+uvicorn api:app --host 0.0.0.0 --port 8000
+```
 
 - Swagger: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
-Comparte `http://<tu-IP>:8000` con los otros equipos mientras estés en la misma red. Ver la última celda del notebook para el contrato de escritura y la lista de endpoints.
+`SCA_API.ipynb` tiene el mismo código en formato notebook (útil para explorar endpoints celda por celda con `httpx`), pero `api.py` es el entrypoint que se despliega — un notebook no es desplegable en Render.
+
+#### Deploy en Render
+
+Web Service con:
+- **Start command:** `uvicorn api:app --host 0.0.0.0 --port $PORT`
+- **Variables de entorno:** las mismas de `.env` (`DATABASE_URL`, `SPREADSHEET_ID`, etc. — ver sección anterior)
 
 ---
