@@ -162,17 +162,16 @@ TALLER = {
     ],
 
     # Columnas de subáreas: (indice, campo_workshop_details)
-    # workshop_details (Supabase) separó "transmisión/frenos" en dos columnas
-    # y agregó oil_change/battery_check/shock_absorbers, que el Sheet aún
-    # no tiene como columnas propias — quedan en su default (false) hasta
-    # que se agregue esa fuente de datos.
+    # workshop_details (Supabase) tiene "transmission_and_brakes" combinado
+    # (no separado en transmission_inspection/brakes_inspection); columnas
+    # como oil_change/battery_check/shock_absorbers no existen en la DB real
+    # y el Sheet tampoco las tiene como columnas propias.
     "columnas_detalle": [
         (6,  "tires"),
         (7,  "preventive_maintenance"),
         (8,  "alignment_pit"),
         (9,  "air_conditioning"),
-        (10, "transmission_inspection"),
-        (10, "brakes_inspection"),
+        (10, "transmission_and_brakes"),
         (11, "engine"),
         (12, "electrical"),
         (13, "vans"),

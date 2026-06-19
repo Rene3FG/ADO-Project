@@ -47,9 +47,13 @@ def _pull_hoja(nombre: str, config: dict):
     rows = sheets.read_range(config["sheet"], config["rango"])
     logger.info(f"[PULL] {nombre}: {len(rows)} filas leídas")
 
-    with engine.begin() as conn:
-        for i, row in enumerate(rows, start=2):   # fila 2 = primera de datos
-            try:
+    # Una transacción por fila: si una fila falla, Postgres aborta esa
+    # transacción pero las demás filas siguen en transacciones nuevas. Con
+    # una sola transacción para toda la hoja, el primer error envenena la
+    # conexión y tira TODA la hoja del ciclo (ver InFailedSqlTransaction).
+    for i, row in enumerate(rows, start=2):   # fila 2 = primera de datos
+        try:
+            with engine.begin() as conn:
                 if nombre == "PLANEACION":
                     _pull_row_planeacion(conn, row, i, config)
                 elif nombre == "CENTRAL":
@@ -60,8 +64,8 @@ def _pull_hoja(nombre: str, config: dict):
                     _pull_row_tiempos(conn, row, i, config)
                 else:
                     _pull_row_area(conn, row, i, config, nombre)
-            except Exception as e:
-                logger.warning(f"[PULL] {nombre} fila {i}: {e}")
+        except Exception as e:
+            logger.warning(f"[PULL] {nombre} fila {i}: {e}")
 
 
 def _pull_row_planeacion(conn, row, sheets_row, config):
