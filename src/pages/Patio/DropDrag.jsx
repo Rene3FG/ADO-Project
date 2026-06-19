@@ -148,8 +148,12 @@ export default function DropDrag() {
     <div className="layout-container">
       <aside className="sidebar">
         <div className="sidebar__logo">
-          <span style={{ color: '#e21c24', fontWeight: 'bold', fontSize: '24px', letterSpacing: '1px' }}>ADO</span>
-        </div>
+          <img
+            src="/logo-ado.png"
+           alt="ADO"
+        className="sidebar__logo-img"
+      />
+     </div>
 
         <nav className="sidebar__nav">
           <button 
