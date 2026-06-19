@@ -131,8 +131,6 @@ export default function DropDrag() {
         );
       case 'registrar':
         return <Registro />;
-      case 'movimientos':
-        return <div className="pantalla-vacia"><h2>Pantalla de Movimientos</h2></div>;
       case 'historial':
         return <div className="pantalla-vacia"><h2>Pantalla de Historial</h2></div>;
       case 'reportes':
@@ -169,13 +167,6 @@ export default function DropDrag() {
             <span>Registrar camión</span>
           </button>
           <button 
-            className={`sidebar__item ${pestanaActiva === 'movimientos' ? 'sidebar__item--active' : ''}`}
-            onClick={() => setPestanaActiva('movimientos')}
-          >
-            <MdSwapHoriz className="sidebar__icon" />
-            <span>Movimientos</span>
-          </button>
-          <button 
             className={`sidebar__item ${pestanaActiva === 'historial' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('historial')}
           >
@@ -195,13 +186,6 @@ export default function DropDrag() {
           >
             <MdSettings className="sidebar__icon" />
             <span>Configuración Avanzada</span>
-          </button>
-          <button
-            className={`sidebar__item ${pestanaActiva === 'Alarmas' ? 'sidebar__item--active' : ''}`}
-            onClick={() => setPestanaActiva('configuracion')}
-          >
-            <MdSettings className="sidebar__icon" />
-            <span>Crear Alarmas</span> 
           </button>       
         </nav> 
 

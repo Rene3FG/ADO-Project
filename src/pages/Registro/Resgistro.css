@@ -8,8 +8,8 @@ body {
 :root{
   --primary: #5B177F;
   --primary-dark: #652378;
-  --background: #f5f6fa;
-  --card: #ffffff;
+  --background: #11131e;
+  --card-text: #e21c24;
   --border: #e4e4e7;
   --text-primary: #2d2d2d;
   --text-secondary: #737373;
@@ -17,7 +17,7 @@ body {
 
 .registro-page{
   min-height:100vh;
-  background:var(--background);
+  background-color: #11131e;
   padding:30px;
   display:flex;
   justify-content:center;
@@ -27,14 +27,14 @@ body {
 .registro-card{
   width:100%;
   max-width:950px;
-  background:white;
+  background:#11131e;
   border-radius:16px;
   padding:30px;
   box-shadow:0 4px 20px rgba(0,0,0,.08);
 }
 
 .registro-title{
-  color:var(--primary);
+  color:var(--card-text);
   font-size:30px;
   font-weight:700;
   margin-bottom:5px;
@@ -90,7 +90,7 @@ body {
   margin-bottom:6px;
   font-size:13px;
   font-weight:600;
-  color:#555;
+  color:#ffffff;
 }
 
 .input-group input,
@@ -130,7 +130,7 @@ body {
 .input-group select:focus,
 .input-group textarea:focus{
   outline:none;
-  border-color:var(--primary);
+  border-color:var(--card-text);
   box-shadow:0 0 0 3px rgba(122,45,145,.15);
   color: var(--text-primary);
 }
