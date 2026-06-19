@@ -1,80 +1,243 @@
-.config-panel h2 {
-  font-size: 22px;
-  font-weight: 600;
-  margin: 0 0 6px 0;
-  color: #ffffff;
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--background);
+  color: var(--text-primary);
 }
 
-.config-grid {
+/* 1. ACTUALIZAMOS LA PALETA DE COLORES (Variables) */
+:root {
+  --primary: #e21c24; /* Rojo ADO */
+  --primary-dark: #b8151c; /* Rojo oscuro para el hover de botones */
+  --background: #0b0d14; /* Fondo principal de la app */
+  --card-bg: #11131e; /* Fondo de tarjetas */
+  --input-bg: #161927; /* Fondo de inputs y elementos internos */
+  --border: #1e2235; /* Borde oscuro */
+  --text-primary: #ffffff; /* Texto blanco principal */
+  --text-secondary: #64748b; /* Texto gris secundario */
+}
+
+.registro-page {
+  min-height: 100vh;
+  background-color: var(--background);
+  padding: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.registro-card {
+  width: 100%;
+  max-width: 950px;
+  background: var(--card-bg); /* Color de tarjeta oscura */
+  border: 1px solid var(--border); /* Borde sutil oscuro */
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5); /* Sombra para modo oscuro */
+}
+
+.registro-title {
+  color: var(--text-primary);
+  font-size: 30px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.registro-subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 25px;
+}
+
+/* PASOS (Indicadores circulares) */
+
+.step-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.step {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 600;
+}
+
+.step.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+/* FORMULARIO */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.input-group {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-width: 650px; 
-  margin-top: 20px;
 }
 
-.config-option-card {
-  background-color: #11131e;
-  border: 1px solid #1e2235;
-  border-radius: 10px;
-  padding: 18px 24px;
+.input-group label {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.input-group input,
+.input-group select,
+.input-group textarea {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--input-bg); /* Fondo oscuro para los campos */
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+/* Placeholder color */
+.input-group input::placeholder,
+.input-group textarea::placeholder {
+  color: #475569; /* Gris oscuro para el texto de ayuda */
+  font-weight: 400;
+}
+
+/* Para select (opciones) */
+.input-group select option {
+  color: var(--text-primary);
+  background: var(--card-bg);
+}
+
+.input-group textarea {
+  min-height: 100px;
+  resize: none;
+}
+
+/* Focus de campos (Iluminación roja ADO) */
+.input-group input:focus,
+.input-group select:focus,
+.input-group textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(226, 28, 36, 0.15); /* Halo rojo transparente */
+}
+
+/* ÁREAS (Tarjetas seleccionables) */
+
+.area-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+
+.area-card {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+  color: var(--text-primary);
+}
+
+.area-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  background-color: var(--card-bg);
+}
+
+.area-card.selected {
+  background: rgba(226, 28, 36, 0.08); /* Fondo rojizo suave (como en config-panel) */
+  border: 1px solid var(--primary);
+  color: var(--primary);
+}
+
+/* RESUMEN */
+
+.confirm-card {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  color: var(--text-secondary);
+}
+
+.confirm-card p {
+  margin: 10px 0;
+}
+
+.confirm-card p strong {
+  color: var(--text-primary); /* Resalta las etiquetas del resumen en blanco */
+}
+
+/* BOTONES */
+
+.button-group {
   display: flex;
-  align-items: center;
-  gap: 20px;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 25px;
+}
+
+.btn-primary,
+.btn-success {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 12px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover,
+.btn-success:hover {
+  background: var(--primary-dark);
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 12px 22px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.config-option-card:hover {
-  border-color: #e21c24; 
-  background-color: #161927;
-  transform: translateX(4px); 
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
 }
 
-.config-option-icon {
-  font-size: 26px;
-  color: #e21c24; 
-  background-color: rgba(226, 28, 36, 0.08);
-  padding: 10px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+/* RESPONSIVE */
 
-.config-option-text h3 {
-  margin: 0 0 4px 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.config-option-text p {
-  margin: 0;
-  font-size: 13px;
-  color: #64748b;
-  line-height: 1.4;
-}
-
-/* 1. AGREGAMOS ESTA CLASE PARA CENTRAR TODO EL BLOQUE */
-.config-panel {
-  max-width: 650px;
-  margin: 40px auto 0 auto; /* ⬅️ El 'auto' centra todo en la pantalla */
-  
-  /* Quítale las diagonales a la siguiente línea si también quieres que el título quede en medio: */
-  /* text-align: center; */ 
-}
-
-.config-panel h2 {
-  font-size: 22px;
-  font-weight: 600;
-  margin: 0 0 6px 0;
-  color: #ffffff;
-}
-
-.config-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-top: 20px; 
+@media(max-width:768px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .area-grid {
+    grid-template-columns: 1fr;
+  }
+  .button-group {
+    flex-direction: column;
+  }
 }
