@@ -29,6 +29,12 @@
   align-items: center;
 }
 
+.sidebar__logo-img {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
+}
+
 .sidebar__nav {
   flex: 1;
   padding: 16px 0;
