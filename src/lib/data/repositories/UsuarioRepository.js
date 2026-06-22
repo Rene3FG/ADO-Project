@@ -34,7 +34,7 @@ export const UsuarioRepository = {
           rol:id_rol(nombre_rol)
         `)
         .eq('id_empleado', idLimpio)
-        .single();
+        .maybeSingle();
 
       if (perfilError) {
         console.error("🔥 Error al buscar el perfil:", perfilError);
@@ -72,5 +72,43 @@ export const UsuarioRepository = {
         console.error("Error al cerrar sesión:", error.message);
         throw error;
     }
+  },
+// --- AGREGAR ESTO AL FINAL DE TU UsuarioRepository ---
+
+  obtenerTodos: async () => {
+    const { data, error } = await supabase
+      .from('usuario')
+      .select('*, rol:id_rol(nombre_rol)')
+      .order('id_empleado', { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return data;
+  },
+
+  guardarUsuario: async (datos, esNuevo) => {
+    // Nota: En un entorno de producción estricto, la contraseña se envía a Supabase Auth.
+    // Aquí actualizamos la tabla 'usuario' para la gestión de datos.
+    const payload = {
+      id_empleado: datos.id_empleado,
+      nombre: datos.nombre,
+      id_rol: parseInt(datos.id_rol),
+      area_asignada: datos.area_asignada || null
+    };
+
+    if (esNuevo) {
+      const { data, error } = await supabase.from('usuario').insert([payload]);
+      if (error) throw new Error(error.message);
+      return data;
+    } else {
+      const { data, error } = await supabase.from('usuario').update(payload).eq('id_empleado', datos.id_empleado);
+      if (error) throw new Error(error.message);
+      return data;
+    }
+  },
+
+  eliminarUsuario: async (id_empleado) => {
+    const { error } = await supabase.from('usuario').delete().eq('id_empleado', id_empleado);
+    if (error) throw new Error(error.message);
+    return true;
   }
 };

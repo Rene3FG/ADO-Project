@@ -3,19 +3,26 @@ import { useState } from 'react';
 import { useMenuBloc } from '../../logic/useMenuBloc';
 import { usePatioBloc } from '../../logic/usePatioBloc';
 import { RegistroUnidadPage } from './RegistroUnidadPage';
+import { UsuariosPage } from './UsuariosPage'; 
+// NUEVO: Importamos las páginas de tu compañero
+import { HistorialPage } from './HistorialPage';
+import { ReportesPage } from './ReportesPage';
 import "../../../App.css";
 
 export const PatioPage = ({ usuario }) => {
-  // Ahora traemos menuAbierto y alternarMenu del BLoC
   const { menuAbierto, alternarMenu, cerrarMenu, cerrarSesion } = useMenuBloc();
   const [vistaActual, setVistaActual] = useState('patio');
   
   const [destinosOperador, setDestinosOperador] = useState({});
   
+  const [movimientoAConfirmar, setMovimientoAConfirmar] = useState(null);
+  const [inicioAConfirmar, setInicioAConfirmar] = useState(null); 
+  
   const { 
     autobuses, cargando, cargarAutobuses,
-    busSeleccionado, cerrarModal, abrirModalMover,
-    obtenerOcupacion, arrancarServicio, confirmarMovimientoDirecto
+    busSeleccionado, cerrarModal, abrirModalMover, moviendo,
+    obtenerOcupacion, arrancarServicio, confirmarMovimientoDirecto,
+    obtenerSemaforo, promediosArea
   } = usePatioBloc(); 
 
   const esAdmin = !usuario.areaAsignada || usuario.areaAsignada === 'General';
@@ -48,13 +55,22 @@ export const PatioPage = ({ usuario }) => {
 
   const obtenerSlotsArea = (nombreArea, capacidad) => {
     const busesEnArea = autobuses.filter(bus => bus.currentArea === nombreArea);
-    const slots = busesEnArea.slice(0, capacidad).map(bus => (
-      <div key={bus.id_autobus} className={`slot ${bus.estadoServicio === 'En Proceso' ? 'process' : 'occ'}`} onClick={() => abrirModalMover(bus)} style={{ cursor: 'pointer', position: 'relative' }}>
-        {bus.isPriority && <span style={{ position: 'absolute', top: '-8px', right: '-8px', fontSize: '1.2rem' }}>⚠️</span>}
-        <span>{bus.busId}</span>
-        <span className="slot-time">{bus.estadoServicio === 'En Proceso' ? '⏱️ Proceso' : 'En Espera'}</span>
-      </div>
-    ));
+    const slots = busesEnArea.slice(0, capacidad).map(bus => {
+      const semaforo = obtenerSemaforo ? obtenerSemaforo(bus) : null;
+      let dotColor = 'transparent';
+      if (semaforo) {
+        dotColor = semaforo.color === 'rojo' ? '#ef4444' : semaforo.color === 'naranja' ? '#f59e0b' : '#22c55e';
+      }
+
+      return (
+        <div key={bus.id_autobus} className={`slot ${bus.estadoServicio === 'En Proceso' ? 'process' : 'occ'}`} onClick={() => abrirModalMover(bus)} style={{ cursor: 'pointer', position: 'relative' }}>
+          {semaforo && <div style={{ position: 'absolute', top: '5px', left: '5px', width: '10px', height: '10px', borderRadius: '50%', backgroundColor: dotColor, border: '1px solid white' }}></div>}
+          {bus.isPriority && <span style={{ position: 'absolute', top: '-8px', right: '-8px', fontSize: '1.2rem' }}>⚠️</span>}
+          <span>{bus.busId}</span>
+          <span className="slot-time">{bus.estadoServicio === 'En Proceso' ? '⏱️ Proceso' : 'En Espera'}</span>
+        </div>
+      );
+    });
     const espaciosLibres = capacidad - slots.length;
     for (let i = 0; i < espaciosLibres; i++) {
       slots.push(<div key={`free-${nombreArea}-${i}`} className="slot free"><span>Libre</span></div>);
@@ -63,28 +79,45 @@ export const PatioPage = ({ usuario }) => {
   };
 
   const alertasPrioridad = autobuses.filter(bus => bus.isPriority && bus.currentArea !== 'Salida');
+  const alertasRetraso = autobuses.filter(bus => obtenerSemaforo && obtenerSemaforo(bus)?.color === 'rojo');
 
-  // Función combinada para navegar y cerrar el menú en móvil
   const navegarA = (vista) => {
     setVistaActual(vista);
     cerrarMenu();
     if (vista === 'patio') cargarAutobuses();
   };
 
+  const ejecutarMovimientoConfirmado = async () => {
+    if (!movimientoAConfirmar) return;
+    const { bus, destino } = movimientoAConfirmar;
+    
+    await confirmarMovimientoDirecto(bus, destino);
+    
+    setDestinosOperador(prev => { const n = {...prev}; delete n[bus.busId]; return n; });
+    setMovimientoAConfirmar(null);
+  };
+
+  const ejecutarInicioConfirmado = async () => {
+    if (!inicioAConfirmar) return;
+    await arrancarServicio(inicioAConfirmar);
+    setInicioAConfirmar(null);
+  };
+
   return (
     <div className="app-layout">
-      
-      {/* Capa oscura en móvil para cerrar el menú tocando afuera */}
       {menuAbierto && <div className="overlay-menu" onClick={cerrarMenu}></div>}
 
-      {/* ================= BARRA LATERAL ================= */}
       <aside className={`sidebar ${menuAbierto ? 'abierto' : ''}`}>
         <div className="sidebar-logo"><h1>ADO</h1></div>
         <ul className="sidebar-menu">
           <li><a className={vistaActual === 'patio' ? 'active' : ''} onClick={() => navegarA('patio')}>🏠 {esAdmin ? 'Patio Central' : 'Mi Área'}</a></li>
           {esAdmin && <li><a className={vistaActual === 'registrar' ? 'active' : ''} onClick={() => navegarA('registrar')}>⊕ Registrar camión</a></li>}
-          {esAdmin && <li><a>🔃 Movimientos</a></li>}
-          {esAdmin && <li><a>📊 Reportes</a></li>}
+          
+          {/* NUEVO: Enlaces reales al trabajo de tu compañero */}
+          {esAdmin && <li><a className={vistaActual === 'historial' ? 'active' : ''} onClick={() => navegarA('historial')}>🕒 Historial</a></li>}
+          {esAdmin && <li><a className={vistaActual === 'reportes' ? 'active' : ''} onClick={() => navegarA('reportes')}>📊 Reportes</a></li>}
+          
+          {esAdmin && <li><a className={vistaActual === 'usuarios' ? 'active' : ''} onClick={() => navegarA('usuarios')}>👥 Gestión Usuarios</a></li>}
           <li style={{ marginTop: '20px' }}><a onClick={cerrarSesion} style={{ color: '#ef4444' }}>🚪 Cerrar sesión</a></li>
         </ul>
       </aside>
@@ -92,7 +125,6 @@ export const PatioPage = ({ usuario }) => {
       <main className="main-content">
         <header className="topbar">
           <div className="topbar-left">
-            {/* NUEVO: Botón Hamburguesa visible solo en móviles */}
             <button className="hamburger-btn" onClick={alternarMenu}>☰</button>
             <div className="topbar-title">Control de Patio - Oaxaca</div>
           </div>
@@ -123,13 +155,34 @@ export const PatioPage = ({ usuario }) => {
                     <div className="areas-grid">
                       {definicionAreas.map((area) => (
                         <div key={area.id} className="area-card">
-                          <div className="area-header"><h3>{area.icono} {area.nombre}</h3><span>Cap: {area.capacidad}</span></div>
+                          <div className="area-header">
+                            <h3>{area.icono} {area.nombre}</h3>
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-main)', marginBottom: '2px', fontWeight: 600 }}>Promedio: {promediosArea ? promediosArea[area.id] : '--'} min</span>
+                              <span>Cap: {area.capacidad}</span>
+                            </div>
+                          </div>
                           <div className="slots-container">{cargando ? <p>Cargando...</p> : obtenerSlotsArea(area.id, area.capacidad)}</div>
                         </div>
                       ))}
                     </div>
 
                     <div className="widget-panel">
+                      {alertasRetraso.length > 0 && (
+                        <div className="widget-card" style={{ border: '1px solid #ef4444', backgroundColor: '#fef2f2' }}>
+                          <h3 className="widget-title" style={{ color: '#dc2626' }}>🔴 Alertas de Retraso</h3>
+                          {alertasRetraso.map(bus => {
+                            const semaforo = obtenerSemaforo(bus);
+                            return (
+                              <div key={bus.id_autobus} style={{ backgroundColor: 'white', padding: '10px', borderRadius: '6px', marginBottom: '8px', fontSize: '0.85rem', borderLeft: '4px solid #ef4444' }}>
+                                <strong>Unidad {bus.busId} en {bus.currentArea}</strong>
+                                <br />Lleva {semaforo.elapsed} min (Promedio: {semaforo.promedio} min)
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
                       <div className="widget-card">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <p style={{ margin: 0, fontWeight: 600, color: 'var(--text-muted)' }}>Autobuses en patio</p>
@@ -169,6 +222,7 @@ export const PatioPage = ({ usuario }) => {
                   <div style={{ backgroundColor: '#D32F2F', color: 'white', padding: '20px', textAlign: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
                     <h1 style={{ margin: 0, fontSize: '24px' }}>Área: {usuario.areaAsignada}</h1>
                     <p style={{ margin: '5px 0 0 0', fontSize: '18px', fontWeight: 'bold', color: '#FFEB3B' }}>Ocupación: {ocupacionActual}/{capacidadMaxArea} camiones</p>
+                    {promediosArea && <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>⏱️ Tiempo Promedio: {promediosArea[usuario.areaAsignada]} min</p>}
                   </div>
 
                   <div style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -178,6 +232,7 @@ export const PatioPage = ({ usuario }) => {
                       busesDelOperador.map(bus => {
                         const sugerencia = obtenerSugerencia(bus); 
                         const destinoSeleccionado = destinosOperador[bus.busId] || ''; 
+                        const semaforo = obtenerSemaforo ? obtenerSemaforo(bus) : null;
 
                         return (
                           <div key={bus.id_autobus} style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '6px solid #1976D2' }}>
@@ -191,6 +246,21 @@ export const PatioPage = ({ usuario }) => {
                               <p style={{ margin: '0 0 5px 0' }}><strong>Hora límite:</strong> {bus.departureTime}</p>
                               {bus.isPriority && <p style={{ color: '#D32F2F', fontWeight: 'bold', margin: '5px 0' }}>¡PRIORIDAD ALTA!</p>}
                             </div>
+
+                            {semaforo && (
+                              <div style={{ 
+                                padding: '15px', borderRadius: '8px', marginBottom: '15px', textAlign: 'center',
+                                backgroundColor: semaforo.color === 'rojo' ? '#fee2e2' : semaforo.color === 'naranja' ? '#fef3c7' : '#dcfce7',
+                                border: `1px solid ${semaforo.color === 'rojo' ? '#ef4444' : semaforo.color === 'naranja' ? '#f59e0b' : '#22c55e'}`
+                              }}>
+                                <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#333' }}>
+                                  {semaforo.color === 'rojo' ? '🔴 SERVICIO RETRASADO' : semaforo.color === 'naranja' ? '🟠 TIEMPO POR TERMINAR' : '🟢 A TIEMPO'}
+                                </span>
+                                <p style={{ margin: '5px 0 0 0', fontSize: '1rem', color: '#555' }}>
+                                  Llevas: <strong>{semaforo.elapsed} min</strong> | Promedio del área: <strong>{semaforo.promedio} min</strong>
+                                </p>
+                              </div>
+                            )}
 
                             <div style={{ backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '8px', border: '1px solid #eee', marginBottom: '15px' }}>
                               <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', fontSize: '14px', color: '#333', textAlign: 'center' }}>Ruta asignada:</p>
@@ -213,7 +283,7 @@ export const PatioPage = ({ usuario }) => {
                             </div>
 
                             {bus.estadoServicio === 'Pendiente' ? (
-                              <button onClick={() => arrancarServicio(bus)} style={{ width: '100%', padding: '15px', backgroundColor: '#388E3C', color: 'white', fontSize: '18px', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                              <button onClick={() => setInicioAConfirmar(bus)} style={{ width: '100%', padding: '15px', backgroundColor: '#388E3C', color: 'white', fontSize: '18px', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
                                 INICIAR SERVICIO
                               </button>
                             ) : (
@@ -234,19 +304,16 @@ export const PatioPage = ({ usuario }) => {
                                     const esSugerida = areaId === sugerencia;
                                     return (
                                       <option key={areaId} value={areaId} disabled={estaLleno}>
-                                        {areaDef.nombre} {estaLleno ? '- LLENO' : ''} {esSugerida ? '⭐ (Sugerido)' : ''}
+                                        {areaDef.nombre} {estaLleno ? '- LLENO' : ''} {esSugerida ? ' (Sugerido)' : ''}
                                       </option>
                                     );
                                   })}
-                                  <option value="Salida">Salida del Complejo 🏁 {sugerencia === 'Salida' ? '⭐ (Sugerido)' : ''}</option>
-                                  <option value="Espera">Espera 🚏 {sugerencia === 'Espera' ? '⭐ (Sugerido)' : ''}</option>
+                                  <option value="Salida">Salida del Complejo 🏁 {sugerencia === 'Salida' ? ' (Sugerido)' : ''}</option>
+                                  <option value="Espera">Espera 🚏 {sugerencia === 'Espera' ? ' (Sugerido)' : ''}</option>
                                 </select>
 
                                 <button 
-                                  onClick={() => {
-                                    confirmarMovimientoDirecto(bus, destinoSeleccionado);
-                                    setDestinosOperador(prev => { const n = {...prev}; delete n[bus.busId]; return n; });
-                                  }} 
+                                  onClick={() => setMovimientoAConfirmar({ bus, destino: destinoSeleccionado })} 
                                   disabled={!destinoSeleccionado} 
                                   style={{ width: '100%', padding: '15px', backgroundColor: '#1976D2', color: 'white', fontSize: '18px', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: (!destinoSeleccionado) ? 'not-allowed' : 'pointer', opacity: (!destinoSeleccionado) ? 0.5 : 1 }}
                                 >
@@ -263,7 +330,12 @@ export const PatioPage = ({ usuario }) => {
               )}
             </>
           )}
+
+          {/* NUEVO: Renderizado de las páginas de tu compañero */}
           {vistaActual === 'registrar' && esAdmin && <RegistroUnidadPage />}
+          {vistaActual === 'usuarios' && esAdmin && <UsuariosPage />}
+          {vistaActual === 'historial' && esAdmin && <HistorialPage />}
+          {vistaActual === 'reportes' && esAdmin && <ReportesPage />}
         </div>
 
         {/* ================= MODAL ADMIN ================= */}
@@ -278,9 +350,7 @@ export const PatioPage = ({ usuario }) => {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '2px solid var(--bg-light)', paddingBottom: '10px' }}>
                 <h3 style={{ margin: 0, color: 'var(--ado-purple)', fontSize: '1.4rem' }}>Detalles Unidad #{busSeleccionado.busId}</h3>
-                <button onClick={cerrarModal} style={{ background: '#f1f5f9', border: 'none', fontSize: '1.2rem', cursor: 'pointer', width: '35px', height: '35px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>
-                  ✖
-                </button>
+                <button onClick={cerrarModal} style={{ background: '#f1f5f9', border: 'none', fontSize: '1.2rem', cursor: 'pointer', width: '35px', height: '35px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#333' }}>✖</button>
               </div>
               
               <div style={{ backgroundColor: 'var(--bg-light)', padding: '15px', borderRadius: '12px', marginBottom: '20px', fontSize: '1rem' }}>
@@ -306,6 +376,77 @@ export const PatioPage = ({ usuario }) => {
             </div>
           </div>
         )}
+
+        {/* ================= MODAL DE CONFIRMACIÓN DE INICIO DE SERVICIO ================= */}
+        {inicioAConfirmar && (
+          <div 
+            onClick={() => setInicioAConfirmar(null)} 
+            style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2500, padding: '20px', boxSizing: 'border-box' }}
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()} 
+              style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '350px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', textAlign: 'center' }}
+            >
+              <div style={{ fontSize: '3rem', marginBottom: '10px' }}>▶️</div>
+              <h3 style={{ margin: '0 0 10px 0', color: 'var(--text-main)', fontSize: '1.3rem' }}>Confirmar Inicio</h3>
+              <p style={{ margin: '0 0 20px 0', color: 'var(--text-muted)', fontSize: '1rem', lineHeight: '1.5' }}>
+                ¿Estás seguro de iniciar el servicio para la unidad <strong>#{inicioAConfirmar.busId}</strong>? Se registrará la hora actual.
+              </p>
+              
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button 
+                  onClick={() => setInicioAConfirmar(null)} 
+                  style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'white', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={ejecutarInicioConfirmado} 
+                  style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#388E3C', color: 'white', fontWeight: 800, cursor: 'pointer' }}
+                >
+                  Sí, iniciar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= MODAL DE CONFIRMACIÓN ANTI-DEDAZOS (MOVIMIENTO) ================= */}
+        {movimientoAConfirmar && (
+          <div 
+            onClick={() => setMovimientoAConfirmar(null)} 
+            style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2500, padding: '20px', boxSizing: 'border-box' }}
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()} 
+              style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '350px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', textAlign: 'center' }}
+            >
+              <div style={{ fontSize: '3rem', marginBottom: '10px' }}>⚠️</div>
+              <h3 style={{ margin: '0 0 10px 0', color: 'var(--text-main)', fontSize: '1.3rem' }}>Confirmar Movimiento</h3>
+              <p style={{ margin: '0 0 20px 0', color: 'var(--text-muted)', fontSize: '1rem', lineHeight: '1.5' }}>
+                ¿Estás seguro de enviar la unidad <strong>#{movimientoAConfirmar.bus.busId}</strong> a la estación de <strong>{movimientoAConfirmar.destino}</strong>?
+              </p>
+              
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button 
+                  onClick={() => setMovimientoAConfirmar(null)} 
+                  disabled={moviendo}
+                  style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'white', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={ejecutarMovimientoConfirmado} 
+                  disabled={moviendo}
+                  style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--ado-red)', color: 'white', fontWeight: 800, cursor: moviendo ? 'not-allowed' : 'pointer', opacity: moviendo ? 0.7 : 1 }}
+                >
+                  {moviendo ? 'Enviando...' : 'Sí, enviar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </main>
     </div>
   );

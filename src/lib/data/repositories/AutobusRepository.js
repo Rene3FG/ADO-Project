@@ -10,14 +10,15 @@ export const AutobusRepository = {
     if (depDate < now) depDate.setDate(depDate.getDate() + 1);
     const esPrioridad = ((depDate - now) / (1000 * 60)) <= 60;
 
-    const { data, error } = await supabase
+    // 1. Insertamos el camión
+    const { data: busData, error: busError } = await supabase
       .from('autobus')
       .insert([{
         numero_serie: datos.numeroSerie,
         tipo_unidad: datos.tipoUnidad,
         tiene_bano: datos.tipoUnidad !== 'AU',
         estado_actual: datos.areaInicial,
-        hora_salida: datos.horaSalida,
+        hora_salida: datos.horaSalida.length === 5 ? `${datos.horaSalida}:00` : datos.horaSalida,
         areas_requeridas: datos.areasRequeridas,
         areas_completadas: [],
         porcentaje_avance: 0,
@@ -25,10 +26,36 @@ export const AutobusRepository = {
         observaciones: datos.observaciones,
         estado_servicio: 'Pendiente',
         historial_tiempos: {}
-      }]);
+      }])
+      .select();
 
-    if (error) throw new Error(error.message);
-    return data;
+    if (busError) throw new Error(`Fallo al guardar camión: ${busError.message}`);
+    const nuevoBus = busData[0];
+
+    // 2. Buscamos el ID del área usando maybeSingle() para evitar el Error 406
+    const { data: areaData, error: areaError } = await supabase
+      .from('area')
+      .select('id_area')
+      .eq('nombre_area', datos.areaInicial)
+      .maybeSingle();
+
+    if (areaError) console.error("Error al buscar área:", areaError);
+
+    // 3. Escribimos en la bitácora y forzamos el aviso si falla
+    if (areaData) {
+      const { error: bitacoraError } = await supabase.from('bitacora_movimiento').insert([{
+        id_autobus: nuevoBus.id_autobus,
+        id_area: areaData.id_area,
+        hora_entrada: new Date().toISOString()
+      }]);
+      
+      // Si la bitácora falla, ahora sí saltará el error en la pantalla roja
+      if (bitacoraError) throw new Error(`El camión se registró, pero falló el historial: ${bitacoraError.message}`);
+    } else {
+      console.warn(`⚠️ No se encontró un área llamada exactamente '${datos.areaInicial}' en tu tabla 'area'.`);
+    }
+
+    return nuevoBus;
   },
 
   obtenerAutobusesActivos: async () => {
@@ -55,7 +82,6 @@ export const AutobusRepository = {
     }));
   },
 
-  // NUEVO: Registrar hora de inicio de servicio
   iniciarServicio: async (bus) => {
     const horaActual = new Date().toLocaleTimeString('es-MX', { hour12: false, hour: '2-digit', minute:'2-digit' });
     const nuevoHistorial = { ...bus.historialTiempos };
@@ -82,7 +108,6 @@ export const AutobusRepository = {
     const totalRequeridas = bus.requiredAreas.length;
     const nuevoPorcentaje = totalRequeridas === 0 ? 100 : Math.round((completadas.length / totalRequeridas) * 100);
 
-    // Registramos la hora de fin en el historial del área que está dejando
     const horaActual = new Date().toLocaleTimeString('es-MX', { hour12: false, hour: '2-digit', minute:'2-digit' });
     const nuevoHistorial = { ...bus.historialTiempos };
     if (!nuevoHistorial[bus.currentArea]) nuevoHistorial[bus.currentArea] = {};
@@ -92,18 +117,34 @@ export const AutobusRepository = {
       estado_actual: nuevaArea, 
       areas_completadas: completadas,
       porcentaje_avance: nuevoPorcentaje,
-      estado_servicio: 'Pendiente', // Al llegar a la nueva área, vuelve a estar pendiente
+      estado_servicio: 'Pendiente', 
       historial_tiempos: nuevoHistorial,
       tiempo_en_area: 0 
     };
 
-    // Si se va del patio, sellamos la hora de salida global
-    if (nuevaArea === 'Salida') {
-        updates.hora_salida_patio = new Date().toISOString();
-    }
+    if (nuevaArea === 'Salida') updates.hora_salida_patio = new Date().toISOString();
 
     const { data, error } = await supabase.from('autobus').update(updates).eq('id_autobus', bus.id_autobus);
     if (error) throw new Error(error.message);
+
+    // Cerramos el registro anterior en la bitácora
+    await supabase.from('bitacora_movimiento')
+      .update({ hora_salida: new Date().toISOString() })
+      .eq('id_autobus', bus.id_autobus)
+      .is('hora_salida', null); 
+
+    // Abrimos un nuevo registro en la bitácora usando maybeSingle()
+    if (nuevaArea !== 'Salida') {
+      const { data: areaData } = await supabase.from('area').select('id_area').eq('nombre_area', nuevaArea).maybeSingle();
+      if (areaData) {
+        await supabase.from('bitacora_movimiento').insert([{
+          id_autobus: bus.id_autobus,
+          id_area: areaData.id_area,
+          hora_entrada: new Date().toISOString()
+        }]);
+      }
+    }
+
     return data;
   }
 };
