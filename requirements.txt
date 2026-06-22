@@ -1,0 +1,11 @@
+gspread>=6.0
+google-auth>=2.0
+sqlalchemy>=2.0
+psycopg2-binary>=2.9
+loguru>=0.7
+schedule>=1.2
+python-dotenv>=1.0
+pandas
+openpyxl
+fastapi>=0.110
+uvicorn[standard]>=0.29

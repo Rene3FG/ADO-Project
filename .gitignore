@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python (sync engine)
+.env
+credentials/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+scaapi.ipynb
