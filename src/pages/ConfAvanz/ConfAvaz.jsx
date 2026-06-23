@@ -5,7 +5,6 @@ import "./ConfAvanz.css";
 export default function ConfAvanz() {  
   return (
     <div className="config-panel">
-      <h2>Configuración del Sistema</h2>
       <p style={{ color: '#64748b', marginBottom: '30px', fontSize: '14px' }}>
         Selecciona una tarea administrativa para el control del patio.
       </p>
