@@ -1,7 +1,7 @@
 import { useState } from "react";
 import "./Resgistro.css"; 
 
-export default function Registro() {
+export default function Registro({ agregarCamion }) { 
   const [paso, setPaso] = useState(1);
 
   const [camion, setCamion] = useState({
@@ -15,20 +15,33 @@ export default function Registro() {
   });
 
   const registrarCamion = () => {
-    alert("Autobús registrado correctamente");
 
-    setCamion({
-      numero: "",
-      tipoUnidad: "",
-      observaciones: "",
-      area: "",
-      conductor: "",
-      origen: "",
-      destino: "",
-    });
-
-    setPaso(1);
+  const nuevoCamion = {
+    id: Date.now().toString(),
+    codigo: camion.numero,
+    tipo: camion.tipoUnidad,
+    area: camion.area,
+    conductor: camion.conductor,
+    origen: camion.origen,
+    destino: camion.destino
   };
+
+  agregarCamion(nuevoCamion);
+
+  alert("Autobús registrado correctamente");
+
+  setCamion({
+    numero: "",
+    tipoUnidad: "",
+    observaciones: "",
+    area: "",
+    conductor: "",
+    origen: "",
+    destino: "",
+  });
+
+  setPaso(1);
+};
 
   return (
     <div className="registro-page">
