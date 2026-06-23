@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import TarjetaInfo from './TarjetaInfo.jsx';
-import mockDB from './CamionArea.json';
 import './DropDrag.css';
 import Registro from '../Registro/Registro.jsx';
 import ConfAvanz from '../ConfAvanz/ConfAvaz.jsx';
+import { AutobusRepository } from '../../lib/data/repositories/AutobusRepository';
+import { AREAS_PATIO } from '../../lib/areasConfig';
+import { HistorialPage } from '../../lib/presentation/pages/HistorialPage';
+import { ReportesPage } from '../../lib/presentation/pages/ReportesPage';
 
 import { MdDashboard, MdAssignmentTurnedIn, MdSwapHoriz, MdHistory, MdBarChart, MdSettings, MdExitToApp } from "react-icons/md";
 import { TbWash, TbWashDryDip } from "react-icons/tb";
@@ -17,18 +20,37 @@ import { MdAddAlert } from "react-icons/md";
 const areaIcons = {
   "Desfogue": <TbWash />,
   "Diesel": <BsFillFuelPumpDieselFill />,
-  "Ad-Blue": <CiDroplet />,
+  "Ad-blue": <CiDroplet />,
   "Lavado Exterior": <MdLocalCarWash />,
   "Lavado Interior": <TbWashDryDip />,
   "Taller": <HiMiniWrenchScrewdriver />,
-  "Descanso": <SiBlockbench />
+  "Espera": <SiBlockbench />
 };
 
 export default function DropDrag() {
   const [pestanaActiva, setPestanaActiva] = useState('patio');
-  const [camiones, setCamiones] = useState(mockDB.camiones); //SetCamiones es el gatillo 
+  const [camiones, setCamiones] = useState([]);
+  const [cargando, setCargando] = useState(true);
   const [alertas, setAlertas] = useState([]);
-  const areasConfig = mockDB.areas; //Las áreas no cambian
+  const areasConfig = AREAS_PATIO;
+
+  const cargarCamiones = useCallback(async () => {
+    setCargando(true);
+    try {
+      const data = await AutobusRepository.obtenerAutobusesActivos();
+      setCamiones(data);
+    } catch (error) {
+      console.error('No se pudieron cargar los autobuses:', error);
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    cargarCamiones();
+    const intervalo = setInterval(cargarCamiones, 30000); // refresca cada 30 seg
+    return () => clearInterval(intervalo);
+  }, [cargarCamiones]);
 
   const crearAlerta = (alertaNueva) => {
   setAlertas((prev) => [...prev, alertaNueva]);
@@ -43,35 +65,34 @@ export default function DropDrag() {
   const [camionSeleccionado, setCamionSeleccionado] = useState(null);
 
   const alIniciarArrastre = (e, idCamion) => {
-    e.dataTransfer.setData('text/plain', idCamion);
+    e.dataTransfer.setData('text/plain', String(idCamion));
   };
 
   const permitirSoltar = (e) => {
     e.preventDefault();
   };
 
-  const alSoltar = (e, nuevaAreaId) => {
+  const alSoltar = async (e, nuevaAreaId) => {
     e.preventDefault();
     const idCamion = e.dataTransfer.getData('text/plain');
+    const bus = camiones.find((c) => String(c.busId) === idCamion);
+    if (!bus || bus.currentArea === nuevaAreaId) return;
 
     const infoAreaDestino = areasConfig.find(a => a.id === nuevaAreaId);
     const limiteMaximoArea = infoAreaDestino ? infoAreaDestino.capacidad : 4;
-
-    const camionesEnAreaDestino = camiones.filter(c => c.area === nuevaAreaId).length;
+    const camionesEnAreaDestino = camiones.filter(c => c.currentArea === nuevaAreaId).length;
 
     if (camionesEnAreaDestino >= limiteMaximoArea) {
       alert(`El área de ${nuevaAreaId} ya alcanzó su límite máximo de ${limiteMaximoArea} lugares.`);
       return;
     }
 
-    const camionesActualizados = camiones.map((camion) => {
-      if (camion.id === idCamion) {
-        return { ...camion, area: nuevaAreaId };
-      }
-      return { ...camion };
-    });
-
-    setCamiones(camionesActualizados);
+    try {
+      await AutobusRepository.moverAutobus(bus, nuevaAreaId);
+      await cargarCamiones();
+    } catch (error) {
+      alert(`No se pudo mover la unidad: ${error.message}`);
+    }
   };
 
    const renderizarContenido = () => {
@@ -79,10 +100,12 @@ export default function DropDrag() {
       case 'patio':
         return (
           <div className="drag-board">
-            {areasConfig.map((areaInfo) => {
+            {cargando && camiones.length === 0 ? (
+              <div className="pantalla-vacia"><h2>Cargando patio...</h2></div>
+            ) : areasConfig.map((areaInfo) => {
               const nombreArea = areaInfo.id;
               const capacidadMaxima = areaInfo.capacidad;
-              const camionesActuales = camiones.filter((c) => c.area === nombreArea).length;
+              const camionesActuales = camiones.filter((c) => c.currentArea === nombreArea).length;
 
               return (
                 <div
@@ -96,7 +119,7 @@ export default function DropDrag() {
                       <span className="sidebar__icon-active">
                         {areaIcons[nombreArea]}
                       </span>
-                      <h3>{nombreArea}</h3>
+                      <h3>{areaInfo.nombre}</h3>
                     </div>
                     <span className="zone-counter">
                       Capacidad: {camionesActuales}/{capacidadMaxima}
@@ -104,19 +127,19 @@ export default function DropDrag() {
                   </div>
 
                   <div className="drag-zone__content">
-                    {camiones.filter((camion) => camion.area === nombreArea).length === 0 ? (
+                    {camiones.filter((camion) => camion.currentArea === nombreArea).length === 0 ? (
                       <div className="no-buses">No hay autobuses</div>
                     ) : (
                       camiones
-                        .filter((camion) => camion.area === nombreArea)
+                        .filter((camion) => camion.currentArea === nombreArea)
                         .map((camion) => (
-                          <div 
-                            key={camion.id} 
+                          <div
+                            key={camion.busId}
                             onDoubleClick={() => setCamionSeleccionado(camion)}
                             title="Doble clic para ver detalles del Registro"
                           >
-                           <TarjetaInfo 
-                          camion={camion} 
+                           <TarjetaInfo
+                          camion={camion}
                           alIniciarArrastre={alIniciarArrastre}
                          crearAlerta={crearAlerta}
                           />
@@ -130,11 +153,11 @@ export default function DropDrag() {
           </div>
         );
       case 'registrar':
-        return <Registro />;
+        return <Registro onRegistrado={() => { setPestanaActiva('patio'); cargarCamiones(); }} />;
       case 'historial':
-        return <div className="pantalla-vacia"><h2>Pantalla de Historial</h2></div>;
+        return <HistorialPage />;
       case 'reportes':
-        return <div className="pantalla-vacia"><h2>Pantalla de Reportes</h2></div>;
+        return <ReportesPage />;
       case 'configuracion':
         return <ConfAvanz />;
       default:
@@ -225,17 +248,16 @@ export default function DropDrag() {
         <div className="modal-overlay" onClick={() => setCamionSeleccionado(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-card__header">
-              <h2>Ficha de Registro: {camionSeleccionado.codigo}</h2>
+              <h2>Ficha de Registro: {camionSeleccionado.busId}</h2>
               <button className="modal-card__close" onClick={() => setCamionSeleccionado(null)}>&times;</button>
             </div>
             <div className="modal-card__body">
-              <div className="modal-data-row"><strong>Código:</strong> <span>{camionSeleccionado.codigo}</span></div>
-              <div className="modal-data-row"><strong>Tipo de Autobús:</strong> <span>{camionSeleccionado.tipo}</span></div>
-              <div className="modal-data-row"><strong>Área Asignada:</strong> <span>{camionSeleccionado.area}</span></div>
-              
-              <div className="modal-data-row"><strong>Conductor Asignado:</strong> <span>{camionSeleccionado.conductor || 'No asignado'}</span></div>
-              <div className="modal-data-row"><strong>Origen:</strong> <span>{camionSeleccionado.origen || 'N/A'}</span></div>
-              <div className="modal-data-row"><strong>Destino:</strong> <span>{camionSeleccionado.destino || 'N/A'}</span></div>
+              <div className="modal-data-row"><strong>Serie:</strong> <span>{camionSeleccionado.busId}</span></div>
+              <div className="modal-data-row"><strong>Tipo de Autobús:</strong> <span>{camionSeleccionado.busType}</span></div>
+              <div className="modal-data-row"><strong>Área Asignada:</strong> <span>{camionSeleccionado.currentArea}</span></div>
+              <div className="modal-data-row"><strong>Hora límite de salida:</strong> <span>{camionSeleccionado.departureTime}</span></div>
+              <div className="modal-data-row"><strong>Avance:</strong> <span>{camionSeleccionado.progressPercentage}%</span></div>
+              {/* Conductor/Origen/Destino no se persisten: no existe ese campo en trips/records todavía */}
             </div>
           </div>
         </div>

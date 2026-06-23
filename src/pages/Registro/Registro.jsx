@@ -1,33 +1,67 @@
 import { useState } from "react";
-import "./Resgistro.css"; 
+import "./Resgistro.css";
+import { AutobusRepository } from "../../lib/data/repositories/AutobusRepository";
 
-export default function Registro() {
+// Tipos reales de GET /tipos-camion (bus_types). Los valores que tenía este
+// formulario antes (Foraneo/Local/GL/Premium) no existen en esa tabla y la
+// API rechazaría el registro con 400.
+const TIPOS_UNIDAD = ["AU", "SUR", "TXO", "ETN", "ADO", "PLATINO"];
+
+export default function Registro({ onRegistrado }) {
   const [paso, setPaso] = useState(1);
+  const [guardando, setGuardando] = useState(false);
 
   const [camion, setCamion] = useState({
     numero: "",
     tipoUnidad: "",
     observaciones: "",
     area: "",
-    conductor: "", 
-    origen: "",   
-    destino: "", 
+    conductor: "",
+    origen: "",
+    destino: "",
   });
 
-  const registrarCamion = () => {
-    alert("Autobús registrado correctamente");
+  const registrarCamion = async () => {
+    const serie = Number(camion.numero);
+    if (!Number.isInteger(serie) || serie <= 0) {
+      alert("El número de autobús debe ser numérico (el serial real de la unidad, ej: 1001).");
+      return;
+    }
+    if (!camion.tipoUnidad || !camion.area) {
+      alert("Falta seleccionar tipo de unidad o área inicial.");
+      return;
+    }
 
-    setCamion({
-      numero: "",
-      tipoUnidad: "",
-      observaciones: "",
-      area: "",
-      conductor: "",
-      origen: "",
-      destino: "",
-    });
+    setGuardando(true);
+    try {
+      // Conductor/Origen/Destino/Observaciones no se persisten todavía:
+      // no existe ese campo en trips/records en el esquema actual.
+      await AutobusRepository.registrarAutobus({
+        numeroSerie: serie,
+        tipoUnidad: camion.tipoUnidad,
+        horaSalida: null,
+        areasRequeridas: [camion.area],
+        areaInicial: camion.area,
+      });
 
-    setPaso(1);
+      alert("Autobús registrado correctamente");
+
+      setCamion({
+        numero: "",
+        tipoUnidad: "",
+        observaciones: "",
+        area: "",
+        conductor: "",
+        origen: "",
+        destino: "",
+      });
+      setPaso(1);
+      onRegistrado?.();
+    } catch (error) {
+      alert(`No se pudo registrar: ${error.message}`);
+    } finally {
+      setGuardando(false);
+    }
   };
 
   return (
@@ -71,10 +105,10 @@ export default function Registro() {
             <div className="form-grid">
 
               <div className="input-group">
-                <label>Número de Autobús</label>
+                <label>Número de Serie</label>
                 <input
-                  type="text"
-                  placeholder="Ej: ADO-1001"
+                  type="number"
+                  placeholder="Ej: 1001"
                   value={camion.numero}
                   onChange={(e) =>
                     setCamion({
@@ -97,10 +131,9 @@ export default function Registro() {
                   }
                 >
                   <option value="">Seleccione</option>
-                  <option value="Foraneo">Foráneo</option>
-                  <option value="Local">Local</option>
-                  <option value="GL">GL</option>
-                  <option value="Premium">Premium</option>
+                  {TIPOS_UNIDAD.map((tipo) => (
+                    <option key={tipo} value={tipo}>{tipo}</option>
+                  ))}
                 </select>
               </div>
 
@@ -205,8 +238,8 @@ export default function Registro() {
               </div>
 
               <div
-                className={`area-card ${camion.area === "Ad-Blue" ? "selected" : ""}`}
-                onClick={() => setCamion({ ...camion, area: "Ad-Blue" })}
+                className={`area-card ${camion.area === "Ad-blue" ? "selected" : ""}`}
+                onClick={() => setCamion({ ...camion, area: "Ad-blue" })}
               >
                 AdBlue
               </div>
@@ -287,8 +320,9 @@ export default function Registro() {
               <button
                 className="btn-success"
                 onClick={registrarCamion}
+                disabled={guardando}
               >
-                Confirmar Registro
+                {guardando ? 'Registrando...' : 'Confirmar Registro'}
               </button>
             </div>
           </>

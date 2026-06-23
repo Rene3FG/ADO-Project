@@ -3,40 +3,33 @@ import { useState } from 'react';
 import { useMenuBloc } from '../../logic/useMenuBloc';
 import { usePatioBloc } from '../../logic/usePatioBloc';
 import { RegistroUnidadPage } from './RegistroUnidadPage';
-import { UsuariosPage } from './UsuariosPage'; 
+import { UsuariosPage } from './UsuariosPage';
 // NUEVO: Importamos las páginas de tu compañero
 import { HistorialPage } from './HistorialPage';
 import { ReportesPage } from './ReportesPage';
+import { AREAS_PATIO } from '../../areasConfig';
 import "../../../App.css";
 
 export const PatioPage = ({ usuario }) => {
   const { menuAbierto, alternarMenu, cerrarMenu, cerrarSesion } = useMenuBloc();
   const [vistaActual, setVistaActual] = useState('patio');
-  
+
   const [destinosOperador, setDestinosOperador] = useState({});
-  
+
   const [movimientoAConfirmar, setMovimientoAConfirmar] = useState(null);
-  const [inicioAConfirmar, setInicioAConfirmar] = useState(null); 
-  
-  const { 
+  const [inicioAConfirmar, setInicioAConfirmar] = useState(null);
+
+  const {
     autobuses, cargando, cargarAutobuses,
     busSeleccionado, cerrarModal, abrirModalMover, moviendo,
     obtenerOcupacion, arrancarServicio, confirmarMovimientoDirecto,
     obtenerSemaforo, promediosArea
-  } = usePatioBloc(); 
+  } = usePatioBloc();
 
   const esAdmin = !usuario.areaAsignada || usuario.areaAsignada === 'General';
   const WORKFLOW_ORDER = ['Desfogue', 'Diesel', 'Ad-blue', 'Taller', 'Lavado Interior', 'Lavado Exterior'];
-  
-  const definicionAreas = [
-    { id: 'Desfogue', nombre: 'Desfogue', capacidad: 4, icono: '💨' },
-    { id: 'Diesel', nombre: 'Diesel', capacidad: 3, icono: '⛽' },
-    { id: 'Lavado Exterior', nombre: 'Lavado Exterior', capacidad: 4, icono: '🚿' },
-    { id: 'Lavado Interior', nombre: 'Lavado Interior', capacidad: 3, icono: '🧽' },
-    { id: 'Ad-blue', nombre: 'AdBlue', capacidad: 2, icono: '💧' },
-    { id: 'Taller', nombre: 'Taller', capacidad: 2, icono: '🛠️' },
-    { id: 'Espera', nombre: 'Área de Espera', capacidad: 6, icono: '🚏' }
-  ];
+
+  const definicionAreas = AREAS_PATIO;
 
   const obtenerSugerencia = (bus) => {
     const completadas = bus.completedAreas || [];
