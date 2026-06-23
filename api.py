@@ -41,6 +41,19 @@ class CorrridaUpdate(BaseModel):
     need_lav_int:   Optional[int]  = None
     need_taller:    Optional[int]  = None
 
+class CorridaCreate(BaseModel):
+    serie:          int
+    tipo_nombre:    str
+    hora_corrida:   Optional[str] = None
+    hora_salida:    Optional[str] = None
+    need_recepcion: Optional[int] = 0
+    need_desfogue:  Optional[int] = 0
+    need_diesel:    Optional[int] = 0
+    need_adblue:    Optional[int] = 0
+    need_lav_ext:   Optional[int] = 0
+    need_lav_int:   Optional[int] = 0
+    need_taller:    Optional[int] = 0
+
 class RegistroUpdate(BaseModel):
     ubicacion_texto: Optional[str]   = None
     tiempo_restante: Optional[float] = None
@@ -159,6 +172,43 @@ def update_corrida(serie: int, body: CorrridaUpdate):
         ), params)
 
     return {"ok": True, "serie": serie, "fecha": target}
+
+@app.post("/corridas", status_code=201, summary="Registra una corrida nueva (ad-hoc, fuera de PLANEACION)")
+def create_corrida(body: CorridaCreate):
+    target = str(date.today())
+    with db() as conn:
+        existing = conn.execute(text(
+            "SELECT id FROM trips WHERE date=:f AND serial_number=:s"
+        ), {"f": target, "s": body.serie}).fetchone()
+        if existing:
+            raise HTTPException(409, f"Ya existe una corrida serie={body.serie} para {target}")
+
+        tipo_row = conn.execute(text(
+            "SELECT id FROM bus_types WHERE name=:n"
+        ), {"n": body.tipo_nombre}).fetchone()
+        if not tipo_row:
+            raise HTTPException(400, "tipo_nombre no válido")
+
+        conn.execute(text(
+            "INSERT INTO trips"
+            " (date, serial_number, type_id, scheduled_time, departure_time,"
+            "  needs_reception, needs_drainage, needs_diesel, needs_adblue,"
+            "  needs_ext_wash, needs_int_wash, needs_workshop,"
+            "  is_dirty, last_modified_by, last_modified_at)"
+            " VALUES (:f, :s, :tipo_id, :hora_corrida, :hora_salida,"
+            "  :need_recepcion, :need_desfogue, :need_diesel, :need_adblue,"
+            "  :need_lav_ext, :need_lav_int, :need_taller,"
+            "  true, 'app', :ts)"
+        ), {
+            "f": target, "s": body.serie, "tipo_id": tipo_row[0],
+            "hora_corrida": body.hora_corrida, "hora_salida": body.hora_salida,
+            "need_recepcion": body.need_recepcion, "need_desfogue": body.need_desfogue,
+            "need_diesel": body.need_diesel, "need_adblue": body.need_adblue,
+            "need_lav_ext": body.need_lav_ext, "need_lav_int": body.need_lav_int,
+            "need_taller": body.need_taller, "ts": datetime.now(),
+        })
+
+    return get_corrida(body.serie, target)
 
 
 # ── Registros (`/registros`) ──────────────────────────────────────
