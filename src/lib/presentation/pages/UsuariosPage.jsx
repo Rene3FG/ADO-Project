@@ -3,7 +3,7 @@ import { useUsuariosBloc } from '../../logic/useUsuariosBloc';
 
 export const UsuariosPage = () => {
   const {
-    usuarios, cargando, modalAbierto, esEdicion, guardando, formData,
+    usuarios, cargando, disponible, modalAbierto, esEdicion, guardando, formData,
     abrirModalNuevo, abrirModalEditar, cerrarModal, handleInputChange, guardarUsuario, eliminarUsuario
   } = useUsuariosBloc();
 
@@ -21,6 +21,12 @@ export const UsuariosPage = () => {
           + NUEVO USUARIO
         </button>
       </div>
+
+      {!disponible && (
+        <div style={{ backgroundColor: '#fffbeb', border: '1px solid #f59e0b', borderRadius: '8px', padding: '12px 15px', marginBottom: '20px', fontSize: '0.9rem', color: '#92400e' }}>
+          Pendiente: la gestión de usuarios todavía no está conectada — las tablas que usaba esta pantalla (esquema viejo en español) ya no existen. Falta coordinar con el equipo de Formularios.
+        </div>
+      )}
 
       {cargando ? (
         <p style={{ textAlign: 'center', padding: '20px' }}>Cargando personal...</p>

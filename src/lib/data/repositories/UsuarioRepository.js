@@ -1,4 +1,16 @@
 // src/lib/data/repositories/UsuarioRepository.js
+//
+// TODO (login no funcional): este código asume Supabase Auth
+// (auth.signInWithPassword contra un correo falso "<id>@ado.local") más una
+// tabla 'usuario'/'rol' en español. Verificado contra el esquema real
+// (2026-06-23): la tabla 'users' tiene su propio 'password_hash' — no usa
+// Supabase Auth en absoluto — y se llama 'users'/'roles' (inglés), no
+// 'usuario'/'rol'. autenticar() de abajo no puede funcionar tal cual contra
+// producción. Arreglarlo de verdad requiere decidir con el equipo de
+// Formularios (dueño de users/roles) cómo se verifica el password — lo más
+// probable es un endpoint de login nuevo que compare el hash en el servidor,
+// no algo que se pueda hacer con el anon key desde el cliente. No se
+// improvisa esa solución aquí; queda fuera de alcance de esta integración.
 import { supabase } from '../supabaseClient';
 
 export const UsuarioRepository = {
@@ -73,42 +85,8 @@ export const UsuarioRepository = {
         throw error;
     }
   },
-// --- AGREGAR ESTO AL FINAL DE TU UsuarioRepository ---
 
-  obtenerTodos: async () => {
-    const { data, error } = await supabase
-      .from('usuario')
-      .select('*, rol:id_rol(nombre_rol)')
-      .order('id_empleado', { ascending: true });
-
-    if (error) throw new Error(error.message);
-    return data;
-  },
-
-  guardarUsuario: async (datos, esNuevo) => {
-    // Nota: En un entorno de producción estricto, la contraseña se envía a Supabase Auth.
-    // Aquí actualizamos la tabla 'usuario' para la gestión de datos.
-    const payload = {
-      id_empleado: datos.id_empleado,
-      nombre: datos.nombre,
-      id_rol: parseInt(datos.id_rol),
-      area_asignada: datos.area_asignada || null
-    };
-
-    if (esNuevo) {
-      const { data, error } = await supabase.from('usuario').insert([payload]);
-      if (error) throw new Error(error.message);
-      return data;
-    } else {
-      const { data, error } = await supabase.from('usuario').update(payload).eq('id_empleado', datos.id_empleado);
-      if (error) throw new Error(error.message);
-      return data;
-    }
-  },
-
-  eliminarUsuario: async (id_empleado) => {
-    const { error } = await supabase.from('usuario').delete().eq('id_empleado', id_empleado);
-    if (error) throw new Error(error.message);
-    return true;
-  }
+  // El CRUD de usuarios (obtenerTodos/guardarUsuario/eliminarUsuario) se quitó de aquí:
+  // apuntaba a la tabla vieja 'usuario'/'rol' en español, que ya no existe.
+  // useUsuariosBloc.js queda deshabilitado hasta coordinar con Formularios.
 };

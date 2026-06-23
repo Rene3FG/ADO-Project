@@ -34,6 +34,16 @@ npm install
 npm run dev
 ```
 
+Variables de entorno (`.env.local`, ver `.env.example`):
+
+- `VITE_API_URL` — URL de la SCA API (`https://ado-project.onrender.com` en producción, `http://localhost:8000` en desarrollo).
+
+La app elige automáticamente entre la vista de escritorio (Patio con drag & drop) y la vista de celular (Login + formularios) según el ancho de pantalla.
+
+### TODO conocido: login no funcional
+
+El login de la vista móvil (`useAuthBloc` / `UsuarioRepository.autenticar`) todavía asume Supabase Auth contra una tabla `usuario`/`rol` en español que ya no existe. La tabla real `users` tiene su propio `password_hash` (no usa Supabase Auth) y se llama `users`/`roles`. Falta coordinar con el equipo de Formularios (dueño de esas tablas) cómo se va a verificar el password — probablemente un endpoint de login que compare el hash en el servidor. La gestión de usuarios (`UsuariosPage`) está deshabilitada por la misma razón.
+
 ---
 
 ## Backend — rama `Excel`

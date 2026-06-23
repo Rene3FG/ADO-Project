@@ -1,32 +1,26 @@
 // src/lib/logic/useUsuariosBloc.js
-import { useState, useEffect } from 'react';
-import { UsuarioRepository } from '../data/repositories/UsuarioRepository';
+//
+// TODO (gestión de usuarios deshabilitada): UsuarioRepository sigue escrito
+// contra las tablas viejas en español (usuario/rol), que ya no existen en la
+// Supabase compartida — el equipo de Formularios las reemplazó por users/roles
+// en inglés. La SCA API tampoco expone endpoints de usuarios (no es su
+// dominio). Hasta que se decida con ese equipo cómo se va a administrar
+// usuarios (endpoint nuevo, o que ellos mismos lo resuelvan), esta pantalla
+// no hace ninguna llamada real — ver UsuarioRepository.js para el detalle.
+import { useState } from 'react';
 
 export const useUsuariosBloc = () => {
-  const [usuarios, setUsuarios] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  
+  const [usuarios] = useState([]);
+  const [cargando] = useState(false);
+  const disponible = false;
+
   // Estados para el Modal de Crear/Editar
   const [modalAbierto, setModalAbierto] = useState(false);
   const [esEdicion, setEsEdicion] = useState(false);
   const [guardando, setGuardando] = useState(false);
-  
+
   const estadoInicial = { id_empleado: '', nombre: '', id_rol: '2', area_asignada: '', password: '' };
   const [formData, setFormData] = useState(estadoInicial);
-
-  const cargarUsuarios = async () => {
-    setCargando(true);
-    try {
-      const data = await UsuarioRepository.obtenerTodos();
-      setUsuarios(data);
-    } catch (error) {
-      alert("Error al cargar usuarios: " + error.message);
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  useEffect(() => { cargarUsuarios(); }, []);
 
   const abrirModalNuevo = () => {
     setEsEdicion(false);
@@ -55,31 +49,15 @@ export const useUsuariosBloc = () => {
 
   const guardarUsuario = async (e) => {
     e.preventDefault();
-    setGuardando(true);
-    try {
-      await UsuarioRepository.guardarUsuario(formData, !esEdicion);
-      await cargarUsuarios();
-      cerrarModal();
-    } catch (error) {
-      alert("Error al guardar: Verifica que el ID no esté duplicado.");
-    } finally {
-      setGuardando(false);
-    }
+    alert('Gestión de usuarios no disponible todavía (pendiente de coordinar con Formularios).');
   };
 
-  const eliminarUsuario = async (id, nombre) => {
-    if(window.confirm(`¿Estás seguro de que deseas eliminar permanentemente al usuario ${nombre}?`)) {
-      try {
-        await UsuarioRepository.eliminarUsuario(id);
-        await cargarUsuarios();
-      } catch(error) {
-        alert("Error al eliminar usuario.");
-      }
-    }
+  const eliminarUsuario = async () => {
+    alert('Gestión de usuarios no disponible todavía (pendiente de coordinar con Formularios).');
   };
 
   return {
-    usuarios, cargando, modalAbierto, esEdicion, guardando, formData,
+    usuarios, cargando, disponible, modalAbierto, esEdicion, guardando, formData,
     abrirModalNuevo, abrirModalEditar, cerrarModal, handleInputChange, guardarUsuario, eliminarUsuario
   };
 };

@@ -1,5 +1,5 @@
 // src/lib/logic/usePatioBloc.js
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AutobusRepository } from '../data/repositories/AutobusRepository';
 
 // Tiempos iniciales "quemados" (En minutos). El sistema los ajustará con los datos reales.
@@ -62,11 +62,37 @@ export const usePatioBloc = () => {
     setPromediosArea(nuevosPromedios);
   };
 
+  // TODO: el esquema actual (records/movements) no tiene un campo persistido
+  // para "servicio iniciado" — solo sabemos cuándo entró a la área (entry_time),
+  // no cuándo el operador confirmó que ya está siendo atendida. Por eso ese
+  // segundo momento se guarda solo en memoria del cliente (se pierde al recargar
+  // la página). Si esto importa para reportes, hay que agregar la columna en
+  // movements y exponerla en POST/PUT /movimientos.
+  const iniciadosRef = useRef({}); // { [busId]: { area, horaInicio } }
+
+  const aplicarIniciados = (data) =>
+    data.map((bus) => {
+      const local = iniciadosRef.current[bus.busId];
+      if (local && local.area === bus.currentArea) {
+        return {
+          ...bus,
+          estadoServicio: 'En Proceso',
+          historialTiempos: {
+            ...bus.historialTiempos,
+            [bus.currentArea]: { ...bus.historialTiempos[bus.currentArea], inicio: local.horaInicio },
+          },
+        };
+      }
+      return bus;
+    });
+
+  const limpiarIniciado = (busId) => { delete iniciadosRef.current[busId]; };
+
   const cargarAutobuses = async () => {
     setCargando(true);
     try {
       const data = await AutobusRepository.obtenerAutobusesActivos();
-      const activos = data.filter(bus => bus.currentArea !== 'Salida');
+      const activos = aplicarIniciados(data.filter(bus => bus.currentArea !== 'Salida'));
       setAutobuses(activos);
       calcularPromediosDinamicos(data); // Calculamos usando incluso los que ya salieron si están en la query
     } catch (error) {
@@ -85,6 +111,8 @@ export const usePatioBloc = () => {
   const arrancarServicio = async (bus) => {
     try {
       await AutobusRepository.iniciarServicio(bus);
+      const horaActual = new Date().toLocaleTimeString('es-MX', { hour12: false, hour: '2-digit', minute: '2-digit' });
+      iniciadosRef.current[bus.busId] = { area: bus.currentArea, horaInicio: horaActual };
       await cargarAutobuses();
     } catch (error) { alert("Error al iniciar servicio."); }
   };
@@ -94,9 +122,10 @@ export const usePatioBloc = () => {
     setMoviendo(true);
     try {
       await AutobusRepository.moverAutobus(busSeleccionado, areaDestino);
+      limpiarIniciado(busSeleccionado.busId);
       await cargarAutobuses();
       cerrarModal();
-    } catch (error) { alert("Error al mover la unidad."); } 
+    } catch (error) { alert("Error al mover la unidad."); }
     finally { setMoviendo(false); }
   };
 
@@ -105,8 +134,9 @@ export const usePatioBloc = () => {
     setMoviendo(true);
     try {
       await AutobusRepository.moverAutobus(bus, destino);
+      limpiarIniciado(bus.busId);
       await cargarAutobuses();
-    } catch (error) { alert("Error al mover la unidad."); } 
+    } catch (error) { alert("Error al mover la unidad."); }
     finally { setMoviendo(false); }
   };
 

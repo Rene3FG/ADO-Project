@@ -1,150 +1,144 @@
 // src/lib/data/repositories/AutobusRepository.js
-import { supabase } from '../supabaseClient';
+// Migrado de Supabase directo (esquema viejo autobus/area/bitacora_movimiento,
+// que ya no existe en producción) a la SCA API (corridas/registros/movimientos).
+import { apiFetch, AREA_API_TO_LOCAL, AREA_LOCAL_TO_API } from '../apiClient';
+
+// Pydantic "need_*" de /corridas <-> nombre de área local (mismos ids que usa
+// useRegistroBloc.WORKFLOW_ORDER y PatioPage.definicionAreas).
+const NEED_FIELD_TO_AREA = {
+  need_recepcion: 'Recepcion',
+  need_desfogue: 'Desfogue',
+  need_diesel: 'Diesel',
+  need_adblue: 'Ad-blue',
+  need_lav_ext: 'Lavado Exterior',
+  need_lav_int: 'Lavado Interior',
+  need_taller: 'Taller',
+};
+
+function esPrioridad(horaSalida) {
+  if (!horaSalida) return false;
+  const [h, m] = horaSalida.split(':').map(Number);
+  const ahora = new Date();
+  const salida = new Date();
+  salida.setHours(h, m, 0, 0);
+  if (salida < ahora) salida.setDate(salida.getDate() + 1);
+  return (salida - ahora) / (1000 * 60) <= 60;
+}
+
+function construirHistorial(movimientosDelBus) {
+  const historial = {};
+  for (const m of movimientosDelBus) {
+    const areaLocal = AREA_API_TO_LOCAL[m.area_nombre] || m.area_nombre;
+    historial[areaLocal] = {
+      inicio: (m.hora_entrada || '').substring(0, 5),
+      fin: m.hora_salida ? m.hora_salida.substring(0, 5) : undefined,
+    };
+  }
+  return historial;
+}
 
 export const AutobusRepository = {
   registrarAutobus: async (datos) => {
-    const now = new Date();
-    const [hours, minutes] = datos.horaSalida.split(':');
-    const depDate = new Date();
-    depDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
-    if (depDate < now) depDate.setDate(depDate.getDate() + 1);
-    const esPrioridad = ((depDate - now) / (1000 * 60)) <= 60;
+    const needs = Object.fromEntries(
+      Object.entries(NEED_FIELD_TO_AREA).map(([campo, area]) => [
+        campo,
+        datos.areasRequeridas.includes(area) ? 1 : 0,
+      ])
+    );
 
-    // 1. Insertamos el camión
-    const { data: busData, error: busError } = await supabase
-      .from('autobus')
-      .insert([{
-        numero_serie: datos.numeroSerie,
-        tipo_unidad: datos.tipoUnidad,
-        tiene_bano: datos.tipoUnidad !== 'AU',
-        estado_actual: datos.areaInicial,
-        hora_salida: datos.horaSalida.length === 5 ? `${datos.horaSalida}:00` : datos.horaSalida,
-        areas_requeridas: datos.areasRequeridas,
-        areas_completadas: [],
-        porcentaje_avance: 0,
-        es_prioridad: esPrioridad,
-        observaciones: datos.observaciones,
-        estado_servicio: 'Pendiente',
-        historial_tiempos: {}
-      }])
-      .select();
+    await apiFetch('/corridas', {
+      method: 'POST',
+      body: JSON.stringify({
+        serie: Number(datos.numeroSerie),
+        tipo_nombre: datos.tipoUnidad,
+        hora_salida: datos.horaSalida || null,
+        ...needs,
+      }),
+    });
 
-    if (busError) throw new Error(`Fallo al guardar camión: ${busError.message}`);
-    const nuevoBus = busData[0];
-
-    // 2. Buscamos el ID del área usando maybeSingle() para evitar el Error 406
-    const { data: areaData, error: areaError } = await supabase
-      .from('area')
-      .select('id_area')
-      .eq('nombre_area', datos.areaInicial)
-      .maybeSingle();
-
-    if (areaError) console.error("Error al buscar área:", areaError);
-
-    // 3. Escribimos en la bitácora y forzamos el aviso si falla
-    if (areaData) {
-      const { error: bitacoraError } = await supabase.from('bitacora_movimiento').insert([{
-        id_autobus: nuevoBus.id_autobus,
-        id_area: areaData.id_area,
-        hora_entrada: new Date().toISOString()
-      }]);
-      
-      // Si la bitácora falla, ahora sí saltará el error en la pantalla roja
-      if (bitacoraError) throw new Error(`El camión se registró, pero falló el historial: ${bitacoraError.message}`);
-    } else {
-      console.warn(`⚠️ No se encontró un área llamada exactamente '${datos.areaInicial}' en tu tabla 'area'.`);
+    // Coloca la unidad en su área inicial (si no es una espera pura)
+    const areaApi = AREA_LOCAL_TO_API[datos.areaInicial];
+    if (areaApi) {
+      await apiFetch('/movimientos', {
+        method: 'POST',
+        body: JSON.stringify({ serie: Number(datos.numeroSerie), area_nombre: areaApi }),
+      });
     }
-
-    return nuevoBus;
   },
 
   obtenerAutobusesActivos: async () => {
-    const { data, error } = await supabase
-      .from('autobus')
-      .select('*')
-      .order('id_autobus', { ascending: false });
+    const [registros, corridas, movimientos] = await Promise.all([
+      apiFetch('/registros'),
+      apiFetch('/corridas'),
+      apiFetch('/movimientos'),
+    ]);
 
-    if (error) throw new Error(error.message);
+    const corridaPorSerie = new Map(corridas.map((c) => [c.serie, c]));
+    const movsPorSerie = new Map();
+    for (const m of movimientos) {
+      const lista = movsPorSerie.get(m.serie) || [];
+      lista.push(m);
+      movsPorSerie.set(m.serie, lista);
+    }
 
-    return data.map(item => ({
-      id_autobus: item.id_autobus,
-      busId: item.numero_serie,
-      busType: item.tipo_unidad,
-      departureTime: item.hora_salida ? item.hora_salida.substring(0, 5) : '00:00',
-      requiredAreas: item.areas_requeridas || [],
-      completedAreas: item.areas_completadas || [],
-      currentArea: item.estado_actual,
-      progressPercentage: item.porcentaje_avance,
-      isPriority: item.es_prioridad,
-      estadoServicio: item.estado_servicio,
-      historialTiempos: item.historial_tiempos || {},
-      ingresoPatio: item.hora_ingreso_patio
-    }));
+    return registros
+      .filter((r) => r.ubicacion_texto !== 'Salida')
+      .map((r) => {
+        const corrida = corridaPorSerie.get(r.serie) || {};
+        const movsBus = movsPorSerie.get(r.serie) || [];
+        const abierto = movsBus.find((m) => !m.completado) || null;
+        const completados = movsBus.filter((m) => m.completado);
+
+        const requiredAreas = Object.entries(NEED_FIELD_TO_AREA)
+          .filter(([campo]) => corrida[campo])
+          .map(([, area]) => area);
+
+        return {
+          id_autobus: r.id,
+          busId: r.serie,
+          busType: corrida.tipo_nombre || '',
+          departureTime: corrida.hora_salida ? corrida.hora_salida.substring(0, 5) : '--:--',
+          requiredAreas,
+          completedAreas: completados.map((m) => AREA_API_TO_LOCAL[m.area_nombre] || m.area_nombre),
+          currentArea: abierto ? AREA_API_TO_LOCAL[abierto.area_nombre] || abierto.area_nombre : 'Espera',
+          progressPercentage:
+            requiredAreas.length === 0 ? 100 : Math.round((completados.length / requiredAreas.length) * 100),
+          isPriority: esPrioridad(corrida.hora_salida),
+          estadoServicio: 'Pendiente', // ver TODO en usePatioBloc.js: no hay campo persistido para esto
+          historialTiempos: construirHistorial(movsBus),
+          ingresoPatio: r.hora_registro,
+          movimientoAbiertoId: abierto ? abierto.id : null,
+        };
+      });
   },
 
-  iniciarServicio: async (bus) => {
-    const horaActual = new Date().toLocaleTimeString('es-MX', { hour12: false, hour: '2-digit', minute:'2-digit' });
-    const nuevoHistorial = { ...bus.historialTiempos };
-    
-    nuevoHistorial[bus.currentArea] = { 
-      ...nuevoHistorial[bus.currentArea], 
-      inicio: horaActual 
-    };
-
-    const { data, error } = await supabase
-      .from('autobus')
-      .update({ estado_servicio: 'En Proceso', historial_tiempos: nuevoHistorial })
-      .eq('id_autobus', bus.id_autobus);
-
-    if (error) throw new Error(error.message);
-    return data;
-  },
+  // No hay un campo "servicio iniciado" persistido en el esquema actual de records/movements.
+  // usePatioBloc.js maneja esa transición Pendiente -> En Proceso solo en el cliente.
+  iniciarServicio: async () => {},
 
   moverAutobus: async (bus, nuevaArea) => {
-    let completadas = [...(bus.completedAreas || [])];
-    if (bus.requiredAreas.includes(bus.currentArea) && !completadas.includes(bus.currentArea)) {
-      completadas.push(bus.currentArea);
-    }
-    const totalRequeridas = bus.requiredAreas.length;
-    const nuevoPorcentaje = totalRequeridas === 0 ? 100 : Math.round((completadas.length / totalRequeridas) * 100);
-
-    const horaActual = new Date().toLocaleTimeString('es-MX', { hour12: false, hour: '2-digit', minute:'2-digit' });
-    const nuevoHistorial = { ...bus.historialTiempos };
-    if (!nuevoHistorial[bus.currentArea]) nuevoHistorial[bus.currentArea] = {};
-    nuevoHistorial[bus.currentArea].fin = horaActual;
-
-    const updates = { 
-      estado_actual: nuevaArea, 
-      areas_completadas: completadas,
-      porcentaje_avance: nuevoPorcentaje,
-      estado_servicio: 'Pendiente', 
-      historial_tiempos: nuevoHistorial,
-      tiempo_en_area: 0 
-    };
-
-    if (nuevaArea === 'Salida') updates.hora_salida_patio = new Date().toISOString();
-
-    const { data, error } = await supabase.from('autobus').update(updates).eq('id_autobus', bus.id_autobus);
-    if (error) throw new Error(error.message);
-
-    // Cerramos el registro anterior en la bitácora
-    await supabase.from('bitacora_movimiento')
-      .update({ hora_salida: new Date().toISOString() })
-      .eq('id_autobus', bus.id_autobus)
-      .is('hora_salida', null); 
-
-    // Abrimos un nuevo registro en la bitácora usando maybeSingle()
-    if (nuevaArea !== 'Salida') {
-      const { data: areaData } = await supabase.from('area').select('id_area').eq('nombre_area', nuevaArea).maybeSingle();
-      if (areaData) {
-        await supabase.from('bitacora_movimiento').insert([{
-          id_autobus: bus.id_autobus,
-          id_area: areaData.id_area,
-          hora_entrada: new Date().toISOString()
-        }]);
-      }
+    if (bus.movimientoAbiertoId) {
+      await apiFetch(`/movimientos/${bus.movimientoAbiertoId}/completar`, { method: 'PUT' });
     }
 
-    return data;
-  }
+    if (nuevaArea === 'Salida') {
+      await apiFetch(`/registros/${bus.busId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ubicacion_texto: 'Salida', avance: 100 }),
+      });
+      return;
+    }
+
+    if (nuevaArea === 'Espera') {
+      return; // sin movimiento abierto, obtenerAutobusesActivos ya lo resuelve como 'Espera'
+    }
+
+    const areaApi = AREA_LOCAL_TO_API[nuevaArea];
+    if (!areaApi) throw new Error(`Área desconocida: ${nuevaArea}`);
+
+    await apiFetch('/movimientos', {
+      method: 'POST',
+      body: JSON.stringify({ serie: bus.busId, area_nombre: areaApi }),
+    });
+  },
 };
