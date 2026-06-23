@@ -18,9 +18,12 @@ export const UsuarioRepository = {
   // Función para Iniciar Sesión
   // ==========================================
   autenticar: async (idEmpleado, password) => {
+    if (!supabase) {
+      throw new Error('Login no configurado/funcional todavía (ver TODO en este archivo).');
+    }
     try {
       // 1. Limpiamos el ID y armamos el correo interno
-      const idLimpio = String(idEmpleado).trim(); 
+      const idLimpio = String(idEmpleado).trim();
       const emailInterno = `${idLimpio}@ado.local`;
       
       console.log("Intentando login con:", emailInterno);
