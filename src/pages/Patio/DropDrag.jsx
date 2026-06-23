@@ -3,7 +3,7 @@ import TarjetaInfo from './TarjetaInfo.jsx';
 import mockDB from './CamionArea.json';
 import './DropDrag.css';
 import Registro from '../Registro/Registro.jsx';
-import ConfAvanz from '../ConfAvanz/ConfAvaz.jsx';
+import ConfAvaz from '../ConfAvanz/ConfAvaz.jsx';
 
 import { MdDashboard, MdAssignmentTurnedIn, MdSwapHoriz, MdHistory, MdBarChart, MdSettings, MdExitToApp } from "react-icons/md";
 import { TbWash, TbWashDryDip } from "react-icons/tb";
@@ -50,9 +50,33 @@ export default function DropDrag() {
     e.preventDefault();
   };
 
-  const alSoltar = (e, nuevaAreaId) => {
+ const alSoltar = (e, nuevaAreaId) => { //Aqui se implementa la validacion para OPERADOR
     e.preventDefault();
     const idCamion = e.dataTransfer.getData('text/plain');
+
+    const camionQueSeMueve = camiones.find(c => c.id === idCamion);
+    if (!camionQueSeMueve) return;
+    
+    const areaActual = camionQueSeMueve.area;
+
+    if (areaActual === nuevaAreaId) return;
+
+    const reglasFlujo = {
+      "Desfogue": ["Diesel", "Ad-Blue"], // De desfogue solo pueden ir a lavar o al taller
+      "Diesel": ["Ad-Blue"],
+      "Ad-Blue": ["Lavado Interior","Lavado Exterior","Taller"],
+      "Lavado Exterior": ["Lavado Interior","Taller"], // Tienen que pasar por interior obligatoriamente
+      "Lavado Interior": ["Lavado Exterior", "Taller"],
+      "Taller": ["Lavado Exterior", "Lavado Interior"],
+      "Descanso": ["Desfogue"] // Vuelven a empezar un nuevo viaje
+    };
+
+    const movimientosPermitidos = reglasFlujo[areaActual] || [];
+
+    if (!movimientosPermitidos.includes(nuevaAreaId)) {
+      alert(`Movimiento no autorizado.\nUn autobús en "${areaActual}" solo puede avanzar a: ${movimientosPermitidos.join(" o ")}.`);
+      return;
+    }
 
     const infoAreaDestino = areasConfig.find(a => a.id === nuevaAreaId);
     const limiteMaximoArea = infoAreaDestino ? infoAreaDestino.capacidad : 4;
