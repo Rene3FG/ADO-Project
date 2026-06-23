@@ -1,8 +1,8 @@
 import '@fontsource/inter';
-import DropDrag from "./pages/patio/DropDrag.jsx"; 
+import Login from "./pages/patio/DropDrag.jsx"; 
 
 function App() {
-  return <DropDrag />;
+  return <Login />;
 }
 
 export default App;
