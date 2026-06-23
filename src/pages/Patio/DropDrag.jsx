@@ -27,6 +27,9 @@ const areaIcons = {
 export default function DropDrag() {
   const [pestanaActiva, setPestanaActiva] = useState('patio');
   const [camiones, setCamiones] = useState(mockDB.camiones); //SetCamiones es el gatillo 
+  const agregarCamion = (nuevoCamion) => {
+  setCamiones((prev) => [...prev, nuevoCamion]);
+ };
   const [alertas, setAlertas] = useState([]);
   const areasConfig = mockDB.areas; //Las áreas no cambian
 
@@ -130,7 +133,7 @@ export default function DropDrag() {
           </div>
         );
       case 'registrar':
-        return <Registro />;
+       return <Registro agregarCamion={agregarCamion} />;
       case 'historial':
         return <div className="pantalla-vacia"><h2>Pantalla de Historial</h2></div>;
       case 'reportes':
