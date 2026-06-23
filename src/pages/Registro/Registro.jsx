@@ -110,10 +110,12 @@ export default function Registro({ agregarCamion }) {
                   }
                 >
                   <option value="">Seleccione</option>
-                  <option value="Foraneo">Foráneo</option>
-                  <option value="Local">Local</option>
-                  <option value="GL">GL</option>
-                  <option value="Premium">Premium</option>
+                  <option value="Foraneo">ADO</option>
+                  <option value="Local">OCC</option>
+                  <option value="GL">AU</option>
+                  <option value="Premium">LUJO</option>
+                  <option value="Premium">SUR</option>
+                  <option value="Premium">TXO</option>
                 </select>
               </div>
 
