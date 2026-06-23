@@ -136,7 +136,7 @@ export default function DropDrag() {
       case 'reportes':
         return <div className="pantalla-vacia"><h2>Pantalla de Reportes</h2></div>;
       case 'configuracion':
-        return <ConfAvanz />;
+        return <ConfAvaz/>;
       default:
         return <div className="pantalla-vacia"><h2>Selecciona una opción</h2></div>;
     }
