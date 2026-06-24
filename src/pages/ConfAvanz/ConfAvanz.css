@@ -2,6 +2,7 @@
 .config-panel {
   max-width: 650px;
   margin: 40px auto 0 auto;
+  text-align: center;
 }
 
 .config-grid {
@@ -15,10 +16,13 @@
   background-color: #11131e;
   border: 1px solid #1e2235;
   border-radius: 10px;
-  padding: 18px 24px;
+  padding: 24px 20px; 
   display: flex;
-  align-items: center;
-  gap: 20px;
+  flex-direction: column; 
+  align-items: center;    
+  justify-content: center;
+  text-align: center;     
+  gap: 12px;              
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -26,23 +30,23 @@
 .config-option-card:hover {
   border-color: #e21c24; 
   background-color: #161927;
-  transform: translateX(4px); 
+  transform: translateY(-4px);
 }
 
 .config-option-icon {
-  font-size: 26px;
+  font-size: 32px; 
   color: #e21c24; 
   background-color: rgba(226, 28, 36, 0.08);
-  padding: 10px;
-  border-radius: 8px;
+  padding: 14px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .config-option-text h3 {
-  margin: 0 0 4px 0;
-  font-size: 15px;
+  margin: 0 0 6px 0;
+  font-size: 16px;
   font-weight: 600;
   color: #ffffff;
 }
@@ -52,4 +56,173 @@
   font-size: 13px;
   color: #64748b;
   line-height: 1.4;
+}
+
+/* Zona de Eliminacion  */
+.config-header-flex {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.btn-back {
+  background: transparent;
+  border: 1px solid #1e2235;
+  color: #94a3b8;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-back:hover {
+  background: #1e2235;
+  color: #ffffff;
+}
+
+.area-form {
+  background-color: #11131e;
+  border: 1px solid #1e2235;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+}
+
+.input-group-row {
+  display: flex;
+  gap: 12px;
+}
+
+.input-group-row input {
+  background: #161927;
+  border: 1px solid #1e2235;
+  color: white;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.input-group-row input[type="text"] {
+  flex: 2; /* Toma más espacio */
+}
+
+.input-group-row input[type="number"] {
+  flex: 1; /* Toma menos espacio */
+}
+
+.area-list-container h3 {
+  color: #ffffff;
+  font-size: 16px;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #1e2235;
+  padding-bottom: 10px;
+}
+
+.area-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.area-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #161927;
+  border: 1px solid #1e2235;
+  padding: 12px 20px;
+  border-radius: 8px;
+}
+
+.area-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.area-info strong {
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.area-info span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.btn-delete {
+  background: rgba(226, 28, 36, 0.1);
+  color: #e21c24;
+  border: 1px solid transparent;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-delete:hover {
+  background: #e21c24;
+  color: white;
+  transform: scale(1.05);
+}
+
+/* Reubicación de camiones */
+.reubicacion-form {
+  background-color: #11131e;
+  border: 1px solid #1e2235;
+  padding: 30px;
+  border-radius: 12px;
+  text-align: left; 
+}
+
+.form-group-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group-vertical label {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.reubicacion-form select {
+  background-color: #161927;
+  border: 1px solid #1e2235;
+  color: #ffffff;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+}
+
+.reubicacion-form select option {
+  background-color: #11131e;
+  color: #ffffff;
+}
+
+.reubicacion-form select:focus {
+  border-color: #e21c24;
+}
+
+.btn-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+  padding: 14px;
 }

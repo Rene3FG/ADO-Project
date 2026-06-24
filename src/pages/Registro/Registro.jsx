@@ -51,7 +51,7 @@ export default function Registro() {
 
         {paso === 1 && (
           <>
-            <h2 style={{ color: '#5B177F' }}>Nuevo Registro</h2>
+            <h2 style={{ color: '#ff0000' }}>Nuevo Registro</h2>
 
             <div className="button-group">
               <button
@@ -66,7 +66,7 @@ export default function Registro() {
 
         {paso === 2 && (
           <>
-            <h2 style={{ color: '#5B177F' }}>Datos del Autobús</h2>
+            <h2 style={{ color: '#ff0000' }}>Datos del Autobús</h2>
 
             <div className="form-grid">
 
@@ -165,7 +165,7 @@ export default function Registro() {
                     })
                   }
                 />
-              </div>
+              </div>                  
 
             </div>
 
