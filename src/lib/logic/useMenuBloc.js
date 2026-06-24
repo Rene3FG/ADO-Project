@@ -1,6 +1,5 @@
 // src/lib/logic/useMenuBloc.js
 import { useState } from 'react';
-import { UsuarioRepository } from '../data/repositories/UsuarioRepository';
 
 export const useMenuBloc = () => {
   const [menuAbierto, setMenuAbierto] = useState(false);
@@ -8,14 +7,10 @@ export const useMenuBloc = () => {
   const alternarMenu = () => setMenuAbierto(!menuAbierto);
   const cerrarMenu = () => setMenuAbierto(false);
 
-  // Nueva función para salir de la app
-  const cerrarSesion = async () => {
-    try {
-      await UsuarioRepository.cerrarSesion();
-      window.location.reload(); // Recarga la página para limpiar el estado y volver al Login
-    } catch (error) {
-      console.error("Error al salir:", error);
-    }
+  // No hay sesión de servidor que invalidar (no hay JWT/token todavía):
+  // recargar basta para limpiar el estado en memoria y volver al Login.
+  const cerrarSesion = () => {
+    window.location.reload();
   };
 
   return {
