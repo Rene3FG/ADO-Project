@@ -28,7 +28,7 @@ export default function DropDrag() {
   const [pestanaActiva, setPestanaActiva] = useState('patio');
   const [camiones, setCamiones] = useState(mockDB.camiones); //SetCamiones es el gatillo 
   const [alertas, setAlertas] = useState([]);
-  const areasConfig = mockDB.areas; //Las áreas no cambian
+  const [areasConfig, setAreasConfig] = useState(mockDB.areas); //Las áreas si van a cambiar
 
   const crearAlerta = (alertaNueva) => {
   setAlertas((prev) => [...prev, alertaNueva]);
@@ -62,12 +62,12 @@ export default function DropDrag() {
     if (areaActual === nuevaAreaId) return;
 
     const reglasFlujo = {
-      "Desfogue": ["Diesel", "Ad-Blue"], // De desfogue solo pueden ir a lavar o al taller
-      "Diesel": ["Ad-Blue"],
-      "Ad-Blue": ["Lavado Interior","Lavado Exterior","Taller"],
-      "Lavado Exterior": ["Lavado Interior","Taller"], // Tienen que pasar por interior obligatoriamente
-      "Lavado Interior": ["Lavado Exterior", "Taller"],
-      "Taller": ["Lavado Exterior", "Lavado Interior"],
+      "Desfogue": ["Diesel", "Ad-Blue","Descanso"], // De desfogue solo pueden ir a lavar o al taller
+      "Diesel": ["Ad-Blue","Descanso"],
+      "Ad-Blue": ["Lavado Interior","Lavado Exterior","Taller","Descanso"],
+      "Lavado Exterior": ["Lavado Interior","Taller","Descanso"], // Tienen que pasar por interior obligatoriamente
+      "Lavado Interior": ["Lavado Exterior", "Taller","Descanso"],
+      "Taller": ["Lavado Exterior", "Lavado Interior","Descanso"],
       "Descanso": ["Desfogue"] // Vuelven a empezar un nuevo viaje
     };
 
@@ -160,7 +160,14 @@ export default function DropDrag() {
       case 'reportes':
         return <div className="pantalla-vacia"><h2>Pantalla de Reportes</h2></div>;
       case 'configuracion':
-        return <ConfAvaz/>;
+        return (
+          <ConfAvaz //Lista de camiones
+            areasConfig={areasConfig} 
+            setAreasConfig={setAreasConfig} 
+            camiones={camiones} 
+            setCamiones={setCamiones}
+          />
+        );
       default:
         return <div className="pantalla-vacia"><h2>Selecciona una opción</h2></div>;
     }
