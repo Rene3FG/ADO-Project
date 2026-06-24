@@ -1,5 +1,6 @@
 import os
 import json
+import bcrypt
 from datetime import datetime, date
 from typing import Optional
 from contextlib import contextmanager
@@ -72,6 +73,10 @@ class MovimientoUpdate(BaseModel):
 class ArchivarTurnoRequest(BaseModel):
     turno:      int
     usuario_id: int
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
 
 # ── App FastAPI + CORS ────────────────────────────────────────────
@@ -485,6 +490,35 @@ def archivar_turno(body: ArchivarTurnoRequest):
         "turno": body.turno,
         "registros_archivados": len(registros),
         "movimientos_archivados": len(movimientos),
+    }
+
+
+# ── Login (`/login`) ───────────────────────────────────────────────
+# Verifica contra users/roles, esquema del equipo Diseño/Formularios
+# (ver "TABLAS DE OTRO DOMINIO" en schema.sql). Esta API solo lee esas
+# tablas, no las crea ni las modifica.
+
+@app.post("/login", summary="Verifica credenciales contra users/roles")
+def login(body: LoginRequest):
+    with db() as conn:
+        row = conn.execute(text(
+            "SELECT u.id, u.username, u.first_name, u.last_name,"
+            " u.password_hash, u.is_active, r.name AS rol"
+            " FROM users u JOIN roles r ON u.role_id = r.id"
+            " WHERE u.username = :username"
+        ), {"username": body.username}).fetchone()
+
+    credenciales_invalidas = HTTPException(401, "Usuario o contraseña incorrectos")
+    if not row or not row.is_active or not row.password_hash:
+        raise credenciales_invalidas
+    if not bcrypt.checkpw(body.password.encode(), row.password_hash.encode()):
+        raise credenciales_invalidas
+
+    return {
+        "id": row.id,
+        "username": row.username,
+        "nombre": f"{row.first_name} {row.last_name}".strip(),
+        "rol": row.rol,
     }
 
 
