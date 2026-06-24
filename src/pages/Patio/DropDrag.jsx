@@ -31,6 +31,7 @@ export default function DropDrag() {
   setCamiones((prev) => [...prev, nuevoCamion]);
  };
   const [alertas, setAlertas] = useState([]);
+  const [historial, setHistorial] = useState([]);
   const areasConfig = mockDB.areas; //Las áreas no cambian
 
   const crearAlerta = (alertaNueva) => {
@@ -41,6 +42,29 @@ export default function DropDrag() {
       prev.filter((alerta) => alerta !== alertaNueva)
     );
   }, 5000);
+  };
+
+  const sacarCamion = (idCamion) => {
+  const camion = camiones.find(c => c.id === idCamion);
+
+  if (!camion) return;
+
+  const ahora = new Date();
+
+  const registroSalida = {
+    id: Date.now(),
+    unidad: camion.codigo,
+    areaFinal: camion.area,
+    fecha: ahora.toLocaleDateString('es-MX'),
+    hora: ahora.toLocaleTimeString('es-MX'),
+    mensaje: `La unidad ${camion.codigo} salió de la terminal ADO`
+  };
+
+  setHistorial(prev => [registroSalida, ...prev]);
+
+  setCamiones(prev =>
+    prev.filter(c => c.id !== idCamion)
+  );
   };
 
   const [camionSeleccionado, setCamionSeleccionado] = useState(null);
@@ -64,13 +88,13 @@ export default function DropDrag() {
 
     if (areaActual === nuevaAreaId) return;
 
-    const reglasFlujo = {
-      "Desfogue": ["Diesel", "Ad-Blue"], // De desfogue solo pueden ir a lavar o al taller
-      "Diesel": ["Ad-Blue"],
-      "Ad-Blue": ["Lavado Interior","Lavado Exterior","Taller"],
-      "Lavado Exterior": ["Lavado Interior","Taller"], // Tienen que pasar por interior obligatoriamente
-      "Lavado Interior": ["Lavado Exterior", "Taller"],
-      "Taller": ["Lavado Exterior", "Lavado Interior"],
+  const reglasFlujo = {
+      "Desfogue": ["Diesel", "Ad-Blue","Descanso"], // De desfogue solo pueden ir a lavar o al taller
+      "Diesel": ["Ad-Blue","Descanso"],
+      "Ad-Blue": ["Lavado Interior","Lavado Exterior","Taller","Descanso"],
+      "Lavado Exterior": ["Lavado Interior","Taller","Descanso"], // Tienen que pasar por interior obligatoriamente
+      "Lavado Interior": ["Lavado Exterior", "Taller","Descanso"],
+      "Taller": ["Lavado Exterior", "Lavado Interior","Descanso"],
       "Descanso": ["Desfogue"] // Vuelven a empezar un nuevo viaje
     };
 
@@ -137,17 +161,26 @@ export default function DropDrag() {
                       camiones
                         .filter((camion) => camion.area === nombreArea)
                         .map((camion) => (
-                          <div 
-                            key={camion.id} 
-                            onDoubleClick={() => setCamionSeleccionado(camion)}
-                            title="Doble clic para ver detalles del Registro"
-                          >
-                           <TarjetaInfo 
-                          camion={camion} 
-                          alIniciarArrastre={alIniciarArrastre}
-                         crearAlerta={crearAlerta}
-                          />
-                          </div>
+                        <div
+                       key={camion.id}
+                       onDoubleClick={() => setCamionSeleccionado(camion)}
+                        title="Doble clic para ver detalles del Registro"
+                      >
+                   <TarjetaInfo
+                       camion={camion}
+                       alIniciarArrastre={alIniciarArrastre}
+                       crearAlerta={crearAlerta}
+                   />
+
+                  {nombreArea === "Descanso" && (
+                    <button
+                   className="btn-salida"
+                    onClick={() => sacarCamion(camion.id)}
+                   >
+                 Dar salida
+                </button>
+                )}
+                </div>
                         ))
                     )}
                   </div>
@@ -158,8 +191,25 @@ export default function DropDrag() {
         );
       case 'registrar':
        return <Registro agregarCamion={agregarCamion} />;
-      case 'historial':
-        return <div className="pantalla-vacia"><h2>Pantalla de Historial</h2></div>;
+     case 'historial':
+      return (
+       <div className="pantalla-vacia">
+      <h2>Historial de Salidas</h2>
+
+      {historial.length === 0 ? (
+        <p>No hay registros de salida.</p>
+      ) : (
+        historial.map((registro, index) => (
+          <div key={index}>
+            <p>{registro.mensaje}</p>
+            <small>
+              {registro.fecha} - {registro.hora}
+            </small>
+          </div>
+        ))
+      )}
+    </div>
+    );
       case 'reportes':
         return <div className="pantalla-vacia"><h2>Pantalla de Reportes</h2></div>;
       case 'configuracion':

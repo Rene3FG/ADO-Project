@@ -3,9 +3,9 @@
     { "id": "Desfogue", "capacidad": 4 }, 
     { "id": "Diesel", "capacidad": 4 },
     { "id": "Ad-Blue", "capacidad": 4 },
-    { "id": "Lavado Exterior", "capacidad": 4 },
-    { "id": "Lavado Interior", "capacidad": 4 },
     { "id": "Taller", "capacidad": 4 },
+    { "id": "Lavado Interior", "capacidad": 4 },
+    { "id": "Lavado Exterior", "capacidad": 4 },
     { "id": "Descanso", "capacidad": 4 }
   ],
   "camiones": [
