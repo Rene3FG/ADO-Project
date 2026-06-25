@@ -1,0 +1,236 @@
+.reportes-panel {
+  width: 100%;
+  max-width: 950px;
+  margin: 0 auto;
+}
+
+.reportes-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: #ffffff;
+}
+
+.reportes-header p {
+  color: #64748b;
+  margin: 0 0 25px 0;
+  font-size: 14px;
+}
+
+/* =========================================
+   TARJETAS DE INDICADORES (KPIs)
+   ========================================= */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 25px;
+}
+
+.kpi-card {
+  background-color: #11131e;
+  border: 1px solid #1e2235;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.kpi-card:hover {
+  transform: translateY(-3px);
+  border-color: #475569;
+}
+
+/* Colores dinámicos para los íconos de los KPIs */
+.kpi-icon {
+  font-size: 24px;
+  color: #38bdf8; /* Azul claro para totales */
+  background: rgba(56, 189, 248, 0.08);
+  padding: 10px;
+  border-radius: 10px;
+  display: flex;
+}
+
+.kpi-card.completado .kpi-icon {
+  color: #10b981; /* Verde esmeralda para completados */
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.kpi-card.proceso .kpi-icon {
+  color: #e21c24; /* Rojo ADO para los que están en patio */
+  background: rgba(226, 28, 36, 0.08);
+}
+
+.kpi-card.proceso:hover {
+  border-color: #e21c24;
+}
+
+.kpi-info h3 {
+  margin: 0;
+  font-size: 22px;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.kpi-info p {
+  margin: 2px 0 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* =========================================
+   TABLA DE REPORTES
+   ========================================= */
+.table-container-rep {
+  background-color: #11131e;
+  border: 1px solid #1e2235;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+}
+
+.reportes-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+
+.reportes-table th {
+  background-color: #161927;
+  color: #94a3b8;
+  font-weight: 600;
+  padding: 16px 20px;
+  border-bottom: 1px solid #1e2235;
+}
+
+.reportes-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(30, 34, 53, 0.5);
+  color: #f1f5f9;
+}
+
+.reportes-table tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.02); /* Efecto hover sutil */
+}
+
+/* =========================================
+   ELEMENTOS INTERNOS DE LA TABLA
+   ========================================= */
+.badge-bus-rep {
+  background-color: #161927;
+  border: 1px solid #1e2235;
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.driver-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.driver-icon {
+  color: #64748b;
+  font-size: 16px;
+}
+
+.time-in {
+  color: #10b981;
+  font-family: monospace; /* Fuente de reloj/código */
+}
+
+.time-out {
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+.time-out.text-anim {
+  color: #eab308; /* Amarillo si sigue en proceso */
+  font-style: italic;
+}
+
+/* ESTATUS (Píldoras de colores) */
+.status-badge {
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.status-badge.listo {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.status-badge.proceso {
+  background-color: rgba(226, 28, 36, 0.1);
+  color: #e21c24; /* Rojo ADO */
+  border: 1px solid rgba(226, 28, 36, 0.2);
+}
+
+/* Estado cuando no hay datos */
+.no-reportes {
+  text-align: center;
+  padding: 60px 20px;
+  color: #64748b;
+  background-color: #11131e;
+  border: 1px dashed #1e2235;
+  border-radius: 12px;
+  font-size: 15px;
+}
+
+.badge-amarillo {
+  background-color: rgba(255, 193, 7, 0.15); 
+  color: #ffc107; 
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  border: 1px solid #ffc107;
+}
+
+/* Estatus: EN PATIO (Verde) */
+.badge-verde {
+  background-color: rgba(40, 167, 69, 0.15); 
+  color: #28a745; 
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  border: 1px solid #28a745;
+  display: inline-block;
+  text-align: center;
+  min-width: 100px; /* Para que todas las cajitas midan lo mismo */
+}
+
+/* Estatus: COMPLETADO (Rojo) */
+.badge-rojo {
+  background-color: rgba(220, 53, 69, 0.15); 
+  color: #dc3545; 
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  border: 1px solid #dc3545;
+  display: inline-block;
+  text-align: center;
+  min-width: 100px;
+}
+
+/* Estatus: EN DESCANSO (Amarillo - por si lo quieres dejar del mismo tamaño) */
+.badge-amarillo {
+  background-color: rgba(255, 193, 7, 0.15); 
+  color: #ffc107; 
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  border: 1px solid #ffc107;
+  display: inline-block;
+  text-align: center;
+  min-width: 100px;
+}
