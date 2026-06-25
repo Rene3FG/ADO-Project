@@ -1,6 +1,6 @@
 // Cliente fetch para la SCA API (antes este archivo era supabaseClient.js).
 // Ver TODO en useAuthBloc.js: el login no pasa por aquí todavía.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://ado-project.onrender.com';
 
 export async function apiFetch(path, options = {}) {
   const res = await fetch(`${API_URL}${path}`, {
