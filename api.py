@@ -78,6 +78,15 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+class UsuarioCreate(BaseModel):
+    username:         str
+    password:         str
+    first_name:       str
+    last_name:        str
+    rol:              str
+    shift_start_time: Optional[str] = None
+    shift_end_time:   Optional[str] = None
+
 class AreaCreate(BaseModel):
     nombre: str
     capacidad: Optional[int] = 4
@@ -543,10 +552,53 @@ def archivar_turno(body: ArchivarTurnoRequest):
     }
 
 
-# ── Login (`/login`) ───────────────────────────────────────────────
-# Verifica contra users/roles, esquema del equipo Diseño/Formularios
-# (ver "TABLAS DE OTRO DOMINIO" en schema.sql). Esta API solo lee esas
-# tablas, no las crea ni las modifica.
+# ── Login y usuarios (`/login`, `/usuarios`, `/roles`) ─────────────
+# users/roles son esquema del equipo Diseño/Formularios (ver "TABLAS DE
+# OTRO DOMINIO" en schema.sql). Desde 2026-06-25 el alta de usuarios
+# (POST /usuarios) también la maneja esta API — decisión explícita del
+# equipo de Excel para no bloquear Configuración Avanzada, avisada a
+# Diseño/Formularios para que no dupliquen el flujo.
+
+@app.get("/roles", summary="Lista de roles de usuario")
+def get_roles():
+    with db() as conn:
+        rows = conn.execute(text("SELECT id, name FROM roles ORDER BY id")).fetchall()
+    return rows_to_list(rows)
+
+@app.post("/usuarios", status_code=201, summary="Crea un usuario (operador/supervisor/admin)")
+def create_usuario(body: UsuarioCreate):
+    with db() as conn:
+        existing = conn.execute(text(
+            "SELECT id FROM users WHERE username = :u"
+        ), {"u": body.username}).fetchone()
+        if existing:
+            raise HTTPException(409, f"El usuario '{body.username}' ya existe")
+
+        rol_row = conn.execute(text(
+            "SELECT id FROM roles WHERE name = :n"
+        ), {"n": body.rol}).fetchone()
+        if not rol_row:
+            raise HTTPException(400, f"Rol '{body.rol}' no válido. Consulta GET /roles.")
+
+        password_hash = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
+
+        row = conn.execute(text(
+            "INSERT INTO users"
+            " (role_id, username, password_hash, first_name, last_name, shift_start_time, shift_end_time)"
+            " VALUES (:role_id, :username, :password_hash, :first_name, :last_name, :shift_start_time, :shift_end_time)"
+            " RETURNING id"
+        ), {
+            "role_id": rol_row[0], "username": body.username, "password_hash": password_hash,
+            "first_name": body.first_name, "last_name": body.last_name,
+            "shift_start_time": body.shift_start_time, "shift_end_time": body.shift_end_time,
+        }).fetchone()
+
+    return {
+        "id": row[0],
+        "username": body.username,
+        "nombre": f"{body.first_name} {body.last_name}".strip(),
+        "rol": body.rol,
+    }
 
 @app.post("/login", summary="Verifica credenciales contra users/roles")
 def login(body: LoginRequest):
