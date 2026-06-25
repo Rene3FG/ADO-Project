@@ -31,8 +31,8 @@ export default function DropDrag() {
   setCamiones((prev) => [...prev, nuevoCamion]);
  };
   const [alertas, setAlertas] = useState([]);
+  const [areasConfig, setAreasConfig] = useState(mockDB.areas); //Las áreas si van a cambiar
   const [historial, setHistorial] = useState([]);
-  const areasConfig = mockDB.areas; //Las áreas no cambian
 
   const crearAlerta = (alertaNueva) => {
   setAlertas((prev) => [...prev, alertaNueva]);
@@ -92,7 +92,7 @@ export default function DropDrag() {
 
     if (areaActual === nuevaAreaId) return;
 
-  const reglasFlujo = {
+    const reglasFlujo = {
       "Desfogue": ["Diesel", "Ad-Blue","Descanso"], // De desfogue solo pueden ir a lavar o al taller
       "Diesel": ["Ad-Blue","Descanso"],
       "Ad-Blue": ["Lavado Interior","Lavado Exterior","Taller","Descanso"],
@@ -234,7 +234,14 @@ export default function DropDrag() {
       case 'reportes':
         return <div className="pantalla-vacia"><h2>Pantalla de Reportes</h2></div>;
       case 'configuracion':
-        return <ConfAvaz/>;
+        return (
+          <ConfAvaz //Lista de camiones
+            areasConfig={areasConfig} 
+            setAreasConfig={setAreasConfig} 
+            camiones={camiones} 
+            setCamiones={setCamiones}
+          />
+        );
       default:
         return <div className="pantalla-vacia"><h2>Selecciona una opción</h2></div>;
     }
