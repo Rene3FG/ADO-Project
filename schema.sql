@@ -137,8 +137,8 @@ CREATE TABLE times (
     serial_number    INTEGER NOT NULL UNIQUE,
     entry_time       TIME,
     is_completed     BOOLEAN     DEFAULT false,
-    exit_time_num    NUMERIC(10,6),
-    entry_time_num   NUMERIC(10,6),
+    exit_time_num    NUMERIC(15,6),   -- serial completo Excel fecha+hora (ej. 46194.46...)
+    entry_time_num   NUMERIC(15,6),   -- NUMERIC(10,6) era demasiado pequeño (migration_004)
     duration_days    NUMERIC(8,4)
     -- sheets_row, is_dirty, last_modified_by, last_modified_at, sheets_synced_at:
     -- ADITIVO — pendiente de aplicar, ver migration_002_sync_tracking.sql
