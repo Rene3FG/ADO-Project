@@ -36,6 +36,19 @@ export default function DropDrag() {
 
   const crearAlerta = (alertaNueva) => {
   setAlertas((prev) => [...prev, alertaNueva]);
+  const ahora = new Date();
+
+setHistorial(prev => [
+  {
+    id: Date.now(),
+    tipo: "alerta",
+    unidad: alertaNueva.autobus,
+    fecha: ahora.toLocaleDateString('es-MX'),
+    hora: ahora.toLocaleTimeString('es-MX'),
+    mensaje: `Alerta: la unidad ${alertaNueva.autobus} excedió el tiempo permitido en ${alertaNueva.area}`
+  },
+  ...prev
+  ]);
 
   setTimeout(() => {
     setAlertas((prev) =>
@@ -125,6 +138,26 @@ export default function DropDrag() {
       }
       return { ...camion };
     });
+
+    const camionMovido = camiones.find(
+  c => c.id === idCamion
+  );
+
+if (camionMovido) {
+  const ahora = new Date();
+
+  setHistorial(prev => [
+    {
+      id: Date.now(),
+      tipo: "movimiento",
+      unidad: camionMovido.codigo,
+      fecha: ahora.toLocaleDateString('es-MX'),
+      hora: ahora.toLocaleTimeString('es-MX'),
+      mensaje: `La unidad ${camionMovido.codigo} fue movida de ${camionMovido.area} a ${nuevaAreaId}`
+    },
+    ...prev
+  ]);
+  }
 
     setCamiones(camionesActualizados);
   };
