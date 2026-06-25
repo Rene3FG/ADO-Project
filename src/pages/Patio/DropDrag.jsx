@@ -67,6 +67,10 @@ export default function DropDrag() {
   );
   };
 
+  const agregarHistorial = (registro) => {
+  setHistorial(prev => [registro, ...prev]);
+  };
+
   const [camionSeleccionado, setCamionSeleccionado] = useState(null);
 
   const alIniciarArrastre = (e, idCamion) => {
@@ -190,26 +194,43 @@ export default function DropDrag() {
           </div>
         );
       case 'registrar':
-       return <Registro agregarCamion={agregarCamion} />;
-     case 'historial':
       return (
-       <div className="pantalla-vacia">
-      <h2>Historial de Salidas</h2>
+     <Registro
+      agregarCamion={agregarCamion}
+      agregarHistorial={agregarHistorial}
+      />
+     );
+     case 'historial':
+  return (
+    <div className="historial-container">
+      <h2>Historial de Movimientos</h2>
 
       {historial.length === 0 ? (
-        <p>No hay registros de salida.</p>
+        <p>No hay registros disponibles.</p>
       ) : (
-        historial.map((registro, index) => (
-          <div key={index}>
-            <p>{registro.mensaje}</p>
-            <small>
-              {registro.fecha} - {registro.hora}
-            </small>
-          </div>
-        ))
+        <div className="historial-grid">
+          {historial.map((registro) => (
+            <div
+              key={registro.id}
+              className="historial-card"
+            >
+              <div className="historial-card__mensaje">
+                {registro.mensaje}
+              </div>
+
+              <div className="historial-card__info">
+                <span>Unidad: {registro.unidad}</span>
+              </div>
+
+              <div className="historial-card__fecha">
+                {registro.fecha} · {registro.hora}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
-    );
+  );
       case 'reportes':
         return <div className="pantalla-vacia"><h2>Pantalla de Reportes</h2></div>;
       case 'configuracion':

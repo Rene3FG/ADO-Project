@@ -109,15 +109,23 @@
 }
 
 .main-content__header h1 {
-  font-size: 24px;
-  margin: 0 0 4px 0;
-  font-weight: 600;
+  font-size: 32px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 6px;
+  letter-spacing: 0.5px;
 }
 
 .main-content__header p {
-  color: #64748b;
-  margin: 0 0 24px 0;
-  font-size: 14px;
+  color: #94a3b8;
+  font-size: 15px;
+  margin: 0;
+}
+
+.main-content__header {
+  margin-bottom: 30px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid #e21c24;
 }
 
 .drag-board {
@@ -347,6 +355,90 @@
   font-weight: 600;
 }
 
+/* HISTORIAL */
+
+.historial-container h2 {
+  font-size: 24px;
+  color: #ffffff;
+  font-weight: 700;
+  margin-bottom: 20px;
+  border-left: 4px solid #e21c24;
+  padding-left: 12px;
+}
+
+.historial-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.historial-card {
+  background-color: #1c1f30;
+  border: 1px solid #2a2f4a;
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: 0.2s ease;
+}
+
+.historial-card:hover {
+  border-color: #3b4268;
+  transform: translateY(-2px);
+}
+
+.historial-card__mensaje {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.historial-card__info {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.historial-card__fecha {
+  color: #64748b;
+  font-size: 11px;
+  border-top: 1px solid #2a2f4a;
+  padding-top: 8px;
+}
+
+.btn-salida {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+
+  background: linear-gradient(
+    135deg,
+    #e21c24,
+    #b51218
+  );
+
+  color: white;
+  border: none;
+  border-radius: 8px;
+
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  box-shadow: 0 4px 10px rgba(226, 28, 36, 0.25);
+}
+
+.btn-salida:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(226, 28, 36, 0.35);
+}
+
+.btn-salida:active {
+  transform: scale(0.97);
+}
 
 /*MEDIA QUERY */
 @media(max-width: 768px) { 
@@ -402,5 +494,6 @@
     margin-top: 0;  
     justify-self: start; 
   } 
+
    
 }

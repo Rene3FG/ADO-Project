@@ -1,7 +1,10 @@
 import { useState } from "react";
 import "./Resgistro.css"; 
 
-export default function Registro({ agregarCamion }) { 
+export default function Registro({
+  agregarCamion,
+  agregarHistorial
+ }) { 
   const [paso, setPaso] = useState(1);
 
   const [camion, setCamion] = useState({
@@ -27,6 +30,17 @@ export default function Registro({ agregarCamion }) {
   };
 
   agregarCamion(nuevoCamion);
+  
+  const ahora = new Date();
+
+ agregarHistorial({
+  id: Date.now(),
+  unidad: camion.numero,
+  areaFinal: camion.area,
+  fecha: ahora.toLocaleDateString('es-MX'),
+  hora: ahora.toLocaleTimeString('es-MX'),
+  mensaje: `Se registró la unidad ${camion.numero} en el área ${camion.area}`
+ });
 
   alert("Autobús registrado correctamente");
 
