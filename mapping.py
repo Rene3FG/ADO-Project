@@ -260,6 +260,7 @@ PULL_ORDER = [
 
 
 PUSH_ORDER = [
+    ("PLANEACION",      PLANEACION),
     ("DIESEL",          DIESEL),
     ("ADDBLUE",         ADDBLUE),
     ("TALLER",          TALLER),

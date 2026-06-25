@@ -91,6 +91,12 @@ class AreaCreate(BaseModel):
     nombre: str
     capacidad: Optional[int] = 4
 
+class TiemposUpdate(BaseModel):
+    hora_entrada:     Optional[str]   = None  # "HH:MM:SS"
+    hora_entrada_num: Optional[float] = None  # serial Excel
+    hora_salida_num:  Optional[float] = None  # serial Excel
+    completado:       Optional[bool]  = None
+
 
 # ── App FastAPI + CORS ────────────────────────────────────────────
 
@@ -490,6 +496,49 @@ def get_tiempos():
             " FROM times ORDER BY entry_time"
         )).fetchall()
     return rows_to_list(rows)
+
+TIEMPOS_FIELD_DB = {
+    "hora_entrada":     "entry_time",
+    "hora_entrada_num": "entry_time_num",
+    "hora_salida_num":  "exit_time_num",
+    "completado":       "is_completed",
+}
+
+@app.put("/tiempos/{serie}", summary="Actualiza tiempos de servicio de un camión")
+def update_tiempos(serie: int, body: TiemposUpdate):
+    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    if not updates:
+        raise HTTPException(400, "No hay campos para actualizar")
+
+    with db() as conn:
+        existing = conn.execute(text(
+            "SELECT id, entry_time_num, exit_time_num FROM times WHERE serial_number = :s"
+        ), {"s": serie}).fetchone()
+
+        db_fields = {TIEMPOS_FIELD_DB[k]: v for k, v in updates.items()}
+
+        en = updates.get("hora_entrada_num", existing.entry_time_num if existing else None)
+        ex = updates.get("hora_salida_num",  existing.exit_time_num  if existing else None)
+        if en and ex:
+            db_fields["duration_days"] = ex - en
+
+        if existing:
+            set_clauses = ", ".join(f"{k}=:{k}" for k in db_fields)
+            conn.execute(text(
+                f"UPDATE times SET {set_clauses},"
+                " is_dirty=true, last_modified_by='app', last_modified_at=:ts"
+                " WHERE serial_number=:s"
+            ), {**db_fields, "s": serie, "ts": datetime.now()})
+        else:
+            campos    = ", ".join(["serial_number"] + list(db_fields.keys()))
+            vals_sql  = ", ".join([":serie"]         + [f":{k}" for k in db_fields.keys()])
+            conn.execute(text(
+                f"INSERT INTO times ({campos}, is_dirty, last_modified_by, last_modified_at)"
+                f" VALUES ({vals_sql}, true, 'app', :ts)"
+            ), {**db_fields, "serie": serie, "ts": datetime.now()})
+
+    return {"ok": True, "serie": serie}
+
 
 @app.get("/kpis", summary="Último snapshot de KPIs")
 def get_kpis():

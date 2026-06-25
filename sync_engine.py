@@ -294,6 +294,8 @@ def _push_hoja(nombre: str, config: dict):
         _push_central(config)
     elif nombre == "TIEMPOS":
         _push_tiempos(config)
+    elif nombre == "PLANEACION":
+        _push_planeacion(config)
 
 
 def _push_area(config):
@@ -379,6 +381,7 @@ def _push_tiempos(config):
         ).fetchall()
 
         for row in rows:
+            fila = row.sheets_row
             valores = [
                 row.serial_number,
                 row.entry_time.strftime("%H:%M:%S") if row.entry_time else "",
@@ -386,10 +389,61 @@ def _push_tiempos(config):
                 row.exit_time_num or "",
                 row.entry_time_num or "",
             ]
-            if row.sheets_row:
-                sheets.write_row(config["sheet"], row.sheets_row, valores)
+            if fila:
+                sheets.write_row(config["sheet"], fila, valores)
+            else:
+                fila = sheets.append_row(config["sheet"], valores)
+                conn.execute(
+                    text("UPDATE times SET sheets_row=:r WHERE id=:id"),
+                    {"r": fila, "id": row.id}
+                )
             mark_synced(conn, "times", row.id)
+            logger.info(f"[PUSH] TIEMPOS serie={row.serial_number} fila={fila}")
 
+
+
+def _push_planeacion(config):
+    with engine.begin() as conn:
+        from datetime import date
+        corridas = conn.execute(
+            text("""
+                SELECT t.id, t.serial_number, t.scheduled_time, t.departure_time,
+                       t.needs_reception, t.needs_drainage, t.needs_diesel,
+                       t.needs_adblue, t.needs_ext_wash, t.needs_int_wash,
+                       t.needs_workshop, t.sheets_row, bt.name AS tipo_nombre
+                FROM trips t JOIN bus_types bt ON bt.id = t.type_id
+                WHERE t.date = :f AND t.is_dirty = true AND t.last_modified_by = 'app'
+            """),
+            {"f": date.today()}
+        ).fetchall()
+
+        for c in corridas:
+            fila = c.sheets_row
+            valores = [
+                _time_to_excel_serial(c.scheduled_time) or "",
+                c.serial_number,
+                c.tipo_nombre,
+                c.needs_reception or 0,
+                c.needs_drainage or 0,
+                c.needs_diesel or 0,
+                c.needs_adblue or 0,
+                c.needs_ext_wash or 0,
+                c.needs_int_wash or 0,
+                c.needs_workshop or 0,
+                _time_to_excel_serial(c.departure_time) or "",
+            ]
+
+            if fila:
+                sheets.write_row(config["sheet"], fila, valores)
+            else:
+                fila = sheets.append_row(config["sheet"], valores)
+                conn.execute(
+                    text("UPDATE trips SET sheets_row=:r WHERE id=:id"),
+                    {"r": fila, "id": c.id}
+                )
+
+            mark_synced(conn, "trips", c.id)
+            logger.info(f"[PUSH] PLANEACION serie={c.serial_number} fila={fila}")
 
 
 # CICLO PRINCIPAL
