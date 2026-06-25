@@ -20,7 +20,28 @@ export const UsuarioRepository = {
     return { usuario };
   },
 
-  // El CRUD de usuarios (obtenerTodos/guardarUsuario/eliminarUsuario) se quitó de aquí:
-  // apuntaba a la tabla vieja 'usuario'/'rol' en español, que ya no existe.
-  // useUsuariosBloc.js queda deshabilitado hasta coordinar con Formularios.
+  // ==========================================
+  // Alta de usuarios (Configuración Avanzada → Agregar usuario)
+  // ==========================================
+  listarRoles: () => apiFetch('/roles'),
+
+  crear: ({ username, password, nombre, rol }) => {
+    const [first_name, ...resto] = nombre.trim().split(' ');
+    return apiFetch('/usuarios', {
+      method: 'POST',
+      body: JSON.stringify({
+        username,
+        password,
+        first_name,
+        last_name: resto.join(' ') || first_name,
+        rol,
+      }),
+    });
+  },
+
+  // El resto del CRUD viejo (obtenerTodos/editar/eliminar, con area_asignada)
+  // se quitó de aquí: apuntaba a la tabla vieja 'usuario'/'rol' en español,
+  // que ya no existe. useUsuariosBloc.js (mobile) queda deshabilitado — esa
+  // pantalla necesita además GET/PUT/DELETE /usuarios y resolver qué hacer
+  // con "área asignada", que no existe como columna en la tabla real `users`.
 };

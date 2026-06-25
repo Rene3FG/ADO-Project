@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MdAddLocation, MdPersonAdd, MdDirectionsBus, MdDelete, MdArrowBack, MdCompareArrows } from "react-icons/md";
 import { AreaRepository } from "../../lib/data/repositories/AreaRepository";
 import { AutobusRepository } from "../../lib/data/repositories/AutobusRepository";
+import { UsuarioRepository } from "../../lib/data/repositories/UsuarioRepository";
 import "./ConfAvanz.css";
 
 export default function ConfAvanz({ areasConfig, camiones, onAreasChange, onCamionesChange }) {
-  // Para controlar qué sub-pantalla ver ('menu', 'areas', 'mover')
+  // Para controlar qué sub-pantalla ver ('menu', 'areas', 'mover', 'usuario')
   const [vistaActual, setVistaActual] = useState('menu');
 
   const [nuevaAreaNombre, setNuevaAreaNombre] = useState('');
@@ -15,6 +16,31 @@ export default function ConfAvanz({ areasConfig, camiones, onAreasChange, onCami
   const [camionSeleccionadoId, setCamionSeleccionadoId] = useState('');
   const [areaDestinoId, setAreaDestinoId] = useState('');
   const [reubicando, setReubicando] = useState(false);
+
+  const [roles, setRoles] = useState([]);
+  const [nuevoUsuario, setNuevoUsuario] = useState({ username: '', nombre: '', password: '', rol: '' });
+  const [guardandoUsuario, setGuardandoUsuario] = useState(false);
+
+  useEffect(() => {
+    if (vistaActual !== 'usuario' || roles.length > 0) return;
+    UsuarioRepository.listarRoles()
+      .then((data) => setRoles(data))
+      .catch((error) => console.error('No se pudieron cargar los roles:', error));
+  }, [vistaActual, roles.length]);
+
+  const agregarUsuario = async (e) => {
+    e.preventDefault();
+    setGuardandoUsuario(true);
+    try {
+      await UsuarioRepository.crear(nuevoUsuario);
+      alert(`Usuario "${nuevoUsuario.username}" creado correctamente.`);
+      setNuevoUsuario({ username: '', nombre: '', password: '', rol: '' });
+    } catch (error) {
+      alert(`No se pudo crear el usuario: ${error.message}`);
+    } finally {
+      setGuardandoUsuario(false);
+    }
+  };
 
   // Áreas reales administrables (excluye "Espera", que es un bucket del
   // cliente sin fila propia en la API — ver AreaRepository).
@@ -183,6 +209,67 @@ export default function ConfAvanz({ areasConfig, camiones, onAreasChange, onCami
     );
   }
 
+  if (vistaActual === 'usuario') {
+    return (
+      <div className="config-panel">
+        <div className="config-header-flex">
+          <button className="btn-back" onClick={() => setVistaActual('menu')}><MdArrowBack /> Volver</button>
+          <h2>Agregar Usuario</h2>
+        </div>
+
+        <form className="reubicacion-form" onSubmit={agregarUsuario}>
+          <div className="form-group-vertical">
+            <label>Usuario (login)</label>
+            <input
+              type="text"
+              value={nuevoUsuario.username}
+              onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, username: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="form-group-vertical" style={{ marginTop: '15px' }}>
+            <label>Nombre completo</label>
+            <input
+              type="text"
+              value={nuevoUsuario.nombre}
+              onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, nombre: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="form-group-vertical" style={{ marginTop: '15px' }}>
+            <label>Contraseña</label>
+            <input
+              type="password"
+              value={nuevoUsuario.password}
+              onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, password: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="form-group-vertical" style={{ marginTop: '15px' }}>
+            <label>Rol</label>
+            <select
+              value={nuevoUsuario.rol}
+              onChange={(e) => setNuevoUsuario({ ...nuevoUsuario, rol: e.target.value })}
+              required
+            >
+              <option value="">-- Seleccionar Rol --</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.name}>{r.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <button type="submit" className="btn-primary btn-block" style={{ marginTop: '20px' }} disabled={guardandoUsuario}>
+            <MdPersonAdd /> {guardandoUsuario ? 'Creando...' : 'Crear Usuario'}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   // Menu Principal
   return (
     <div className="config-panel">
@@ -199,7 +286,7 @@ export default function ConfAvanz({ areasConfig, camiones, onAreasChange, onCami
           </div>
         </div>
 
-        <div className="config-option-card" onClick={() => alert('Próximamente: Módulo de Usuarios')}>
+        <div className="config-option-card" onClick={() => setVistaActual('usuario')}>
           <div className="config-option-icon"><MdPersonAdd /></div>
           <div className="config-option-text">
             <h3>Agregar usuario</h3>
