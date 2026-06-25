@@ -133,8 +133,10 @@ export const AutobusRepository = {
       return; // sin movimiento abierto, obtenerAutobusesActivos ya lo resuelve como 'Espera'
     }
 
-    const areaApi = AREA_LOCAL_TO_API[nuevaArea];
-    if (!areaApi) throw new Error(`Área desconocida: ${nuevaArea}`);
+    // Áreas creadas desde el Gestor de Áreas no están en el mapa fijo de
+    // las 7 áreas originales del Sheet — su nombre local ya es el nombre
+    // real en la API (ver AreaRepository.listar), de ahí el fallback.
+    const areaApi = AREA_LOCAL_TO_API[nuevaArea] || nuevaArea;
 
     await apiFetch('/movimientos', {
       method: 'POST',

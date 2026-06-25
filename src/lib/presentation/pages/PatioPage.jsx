@@ -1,5 +1,5 @@
 // src/lib/presentation/pages/PatioPage.jsx
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useMenuBloc } from '../../logic/useMenuBloc';
 import { usePatioBloc } from '../../logic/usePatioBloc';
 import { RegistroUnidadPage } from './RegistroUnidadPage';
@@ -8,6 +8,7 @@ import { UsuariosPage } from './UsuariosPage';
 import { HistorialPage } from './HistorialPage';
 import { ReportesPage } from './ReportesPage';
 import { AREAS_PATIO } from '../../areasConfig';
+import { AreaRepository } from '../../data/repositories/AreaRepository';
 import "../../../App.css";
 
 export const PatioPage = ({ usuario }) => {
@@ -29,7 +30,23 @@ export const PatioPage = ({ usuario }) => {
   const esAdmin = !usuario.areaAsignada || usuario.areaAsignada === 'General';
   const WORKFLOW_ORDER = ['Desfogue', 'Diesel', 'Ad-blue', 'Taller', 'Lavado Interior', 'Lavado Exterior'];
 
-  const definicionAreas = AREAS_PATIO;
+  const [definicionAreas, setDefinicionAreas] = useState(AREAS_PATIO);
+
+  const cargarAreas = useCallback(async () => {
+    try {
+      const areaEspera = AREAS_PATIO.find((a) => a.id === 'Espera');
+      const areas = await AreaRepository.listar();
+      setDefinicionAreas(areaEspera ? [...areas, areaEspera] : areas);
+    } catch (error) {
+      console.error('No se pudieron cargar las áreas:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    cargarAreas();
+    const intervalo = setInterval(cargarAreas, 30000);
+    return () => clearInterval(intervalo);
+  }, [cargarAreas]);
 
   const obtenerSugerencia = (bus) => {
     const completadas = bus.completedAreas || [];

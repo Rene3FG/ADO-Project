@@ -1,7 +1,8 @@
-// Definición compartida de áreas del patio (capacidades) usada por ambas
-// vistas (PatioPage.jsx en mobile, DropDrag.jsx en desktop). La API no
-// expone capacidad por área (no existe esa columna en `area`), así que se
-// define aquí del lado del cliente, igual que ya lo hacía Backup.
+// Definición compartida de áreas del patio usada por ambas vistas (PatioPage.jsx
+// en mobile, DropDrag.jsx en desktop). Desde la migración 003, GET /areas ya
+// expone capacidad real (ver AreaRepository) — este arreglo ahora solo sirve
+// como (a) valor inicial mientras carga el primer fetch y (b) fuente de los
+// iconos, que la API no expone.
 export const AREAS_PATIO = [
   { id: 'Desfogue', nombre: 'Desfogue', capacidad: 4, icono: '💨' },
   { id: 'Diesel', nombre: 'Diesel', capacidad: 3, icono: '⛽' },
@@ -11,3 +12,7 @@ export const AREAS_PATIO = [
   { id: 'Taller', nombre: 'Taller', capacidad: 2, icono: '🛠️' },
   { id: 'Espera', nombre: 'Área de Espera', capacidad: 6, icono: '🚏' },
 ];
+
+export const ICONO_AREA_DEFAULT = '📍';
+
+export const ICONOS_AREA = Object.fromEntries(AREAS_PATIO.map((a) => [a.id, a.icono]));

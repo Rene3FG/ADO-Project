@@ -4,9 +4,28 @@ import './DropDrag.css';
 import Registro from '../Registro/Registro.jsx';
 import ConfAvanz from '../ConfAvanz/ConfAvaz.jsx';
 import { AutobusRepository } from '../../lib/data/repositories/AutobusRepository';
+import { AreaRepository } from '../../lib/data/repositories/AreaRepository';
 import { AREAS_PATIO } from '../../lib/areasConfig';
 import { HistorialPage } from '../../lib/presentation/pages/HistorialPage';
 import { ReportesPage } from '../../lib/presentation/pages/ReportesPage';
+
+// "Espera" no es un área real en la API (es el bucket de "sin movimiento
+// abierto" que ya resuelve AutobusRepository.obtenerAutobusesActivos), así
+// que se mantiene fija y se agrega siempre al final de las áreas reales.
+const AREA_ESPERA = AREAS_PATIO.find((a) => a.id === 'Espera');
+
+// Transiciones legales entre áreas del flujo operativo de un camión. Un área
+// sin entrada aquí (ej. una área custom creada desde Gestor de Áreas) no
+// tiene restricción de flujo.
+const REGLAS_FLUJO = {
+  Desfogue: ['Diesel', 'Ad-blue', 'Espera'],
+  Diesel: ['Ad-blue', 'Espera'],
+  'Ad-blue': ['Lavado Interior', 'Lavado Exterior', 'Taller', 'Espera'],
+  'Lavado Exterior': ['Lavado Interior', 'Taller', 'Espera'],
+  'Lavado Interior': ['Lavado Exterior', 'Taller', 'Espera'],
+  Taller: ['Lavado Exterior', 'Lavado Interior', 'Espera'],
+  Espera: ['Desfogue'],
+};
 
 import { MdDashboard, MdAssignmentTurnedIn, MdSwapHoriz, MdHistory, MdBarChart, MdSettings, MdExitToApp } from "react-icons/md";
 import { TbWash, TbWashDryDip } from "react-icons/tb";
@@ -32,7 +51,7 @@ export default function DropDrag() {
   const [camiones, setCamiones] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [alertas, setAlertas] = useState([]);
-  const areasConfig = AREAS_PATIO;
+  const [areasConfig, setAreasConfig] = useState(AREAS_PATIO);
 
   const cargarCamiones = useCallback(async () => {
     setCargando(true);
@@ -46,11 +65,26 @@ export default function DropDrag() {
     }
   }, []);
 
+  const cargarAreas = useCallback(async () => {
+    try {
+      const areas = await AreaRepository.listar();
+      setAreasConfig(AREA_ESPERA ? [...areas, AREA_ESPERA] : areas);
+    } catch (error) {
+      console.error('No se pudieron cargar las áreas:', error);
+    }
+  }, []);
+
   useEffect(() => {
     cargarCamiones();
     const intervalo = setInterval(cargarCamiones, 30000); // refresca cada 30 seg
     return () => clearInterval(intervalo);
   }, [cargarCamiones]);
+
+  useEffect(() => {
+    cargarAreas();
+    const intervalo = setInterval(cargarAreas, 30000);
+    return () => clearInterval(intervalo);
+  }, [cargarAreas]);
 
   const crearAlerta = (alertaNueva) => {
   setAlertas((prev) => [...prev, alertaNueva]);
@@ -77,6 +111,12 @@ export default function DropDrag() {
     const idCamion = e.dataTransfer.getData('text/plain');
     const bus = camiones.find((c) => String(c.busId) === idCamion);
     if (!bus || bus.currentArea === nuevaAreaId) return;
+
+    const movimientosPermitidos = REGLAS_FLUJO[bus.currentArea];
+    if (movimientosPermitidos && !movimientosPermitidos.includes(nuevaAreaId)) {
+      alert(`Movimiento no autorizado.\nUn autobús en "${bus.currentArea}" solo puede avanzar a: ${movimientosPermitidos.join(" o ")}.`);
+      return;
+    }
 
     const infoAreaDestino = areasConfig.find(a => a.id === nuevaAreaId);
     const limiteMaximoArea = infoAreaDestino ? infoAreaDestino.capacidad : 4;
@@ -159,7 +199,14 @@ export default function DropDrag() {
       case 'reportes':
         return <ReportesPage />;
       case 'configuracion':
-        return <ConfAvanz />;
+        return (
+          <ConfAvanz
+            areasConfig={areasConfig}
+            camiones={camiones}
+            onAreasChange={cargarAreas}
+            onCamionesChange={cargarCamiones}
+          />
+        );
       default:
         return <div className="pantalla-vacia"><h2>Selecciona una opción</h2></div>;
     }
