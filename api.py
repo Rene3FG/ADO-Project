@@ -78,6 +78,10 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+class AreaCreate(BaseModel):
+    nombre: str
+    capacidad: Optional[int] = 4
+
 
 # ── App FastAPI + CORS ────────────────────────────────────────────
 
@@ -324,7 +328,16 @@ def get_movimientos(
 
     with db() as conn:
         rows = conn.execute(text(q), params).fetchall()
-    return rows_to_list(rows)
+
+    # a.name es el nombre real en Postgres (ej. "WORKSHOP"); GET /areas ya
+    # traduce esto al nombre estilo-Sheet (ej. "TALLER") que el resto de la
+    # API y el frontend esperan — aquí se aplica la misma traducción para
+    # que ambos endpoints describan las áreas de forma consistente.
+    reverse_area = {v: k for k, v in AREA_NOMBRE_DB.items()}
+    result = rows_to_list(rows)
+    for r in result:
+        r["area_nombre"] = reverse_area.get(r["area_nombre"], r["area_nombre"])
+    return result
 
 @app.post("/movimientos", status_code=201, summary="Registra entrada de camión a un área")
 def create_movimiento(body: MovimientoCreate):
@@ -412,8 +425,45 @@ def completar_movimiento(mov_id: int):
 def get_areas():
     reverse_area = {v: k for k, v in AREA_NOMBRE_DB.items()}
     with db() as conn:
-        rows = conn.execute(text("SELECT id, name FROM area ORDER BY name")).fetchall()
-    return [{"id": r.id, "nombre": reverse_area.get(r.name, r.name)} for r in rows]
+        rows = conn.execute(text("SELECT id, name, capacity FROM area ORDER BY name")).fetchall()
+    return [
+        {"id": r.id, "nombre": reverse_area.get(r.name, r.name), "capacidad": r.capacity}
+        for r in rows
+    ]
+
+@app.post("/areas", status_code=201, summary="Crea una nueva área de servicio (admin)")
+def create_area(body: AreaCreate):
+    with db() as conn:
+        existing = conn.execute(text(
+            "SELECT id FROM area WHERE name = :n"
+        ), {"n": body.nombre}).fetchone()
+        if existing:
+            raise HTTPException(409, f"El área '{body.nombre}' ya existe")
+
+        row = conn.execute(text(
+            "INSERT INTO area (name, capacity) VALUES (:n, :c) RETURNING id"
+        ), {"n": body.nombre, "c": body.capacidad}).fetchone()
+
+    return {"id": row[0], "nombre": body.nombre, "capacidad": body.capacidad}
+
+@app.delete("/areas/{area_id}", summary="Elimina un área de servicio (admin)")
+def delete_area(area_id: int):
+    with db() as conn:
+        if not conn.execute(text(
+            "SELECT id FROM area WHERE id = :id"
+        ), {"id": area_id}).fetchone():
+            raise HTTPException(404, f"Área id={area_id} no encontrada")
+
+        en_uso = conn.execute(text(
+            "SELECT 1 FROM movements WHERE area_id = :id"
+            " UNION ALL SELECT 1 FROM area_checklists WHERE area_id = :id LIMIT 1"
+        ), {"id": area_id}).fetchone()
+        if en_uso:
+            raise HTTPException(409, "El área tiene movimientos o checklists asociados, no se puede eliminar")
+
+        conn.execute(text("DELETE FROM area WHERE id = :id"), {"id": area_id})
+
+    return {"ok": True, "id": area_id}
 
 @app.get("/tipos-camion", summary="Lista de tipos de camión")
 def get_tipos():
