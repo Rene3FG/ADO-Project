@@ -4,6 +4,7 @@ import mockDB from './CamionArea.json';
 import './DropDrag.css';
 import Registro from '../Registro/Registro.jsx';
 import ConfAvaz from '../ConfAvanz/ConfAvaz.jsx';
+import Reportes from '../Reportes/Reportes.jsx';
 
 import { MdDashboard, MdAssignmentTurnedIn, MdSwapHoriz, MdHistory, MdBarChart, MdSettings, MdExitToApp } from "react-icons/md";
 import { TbWash, TbWashDryDip } from "react-icons/tb";
@@ -30,6 +31,18 @@ export default function DropDrag() {
   const agregarCamion = (nuevoCamion) => {
   setCamiones((prev) => [...prev, nuevoCamion]);
  };
+
+//  const [datosReportes, setDatosReportes] = useState([
+//     {
+//       id: "rep-1",
+//       codigo: "ADO-1020",
+//       conductor: "Carlos Gómez",
+//       horaEntrada: "10:15:30 AM",
+//       horaSalida: "11:45:22 AM",
+//       estado: "Completado"
+//     }
+//   ]);
+
   const [alertas, setAlertas] = useState([]);
   const [areasConfig, setAreasConfig] = useState(mockDB.areas); //Las áreas si van a cambiar
   const [historial, setHistorial] = useState([]);
@@ -58,26 +71,33 @@ setHistorial(prev => [
   };
 
   const sacarCamion = (idCamion) => {
-  const camion = camiones.find(c => c.id === idCamion);
+    const camion = camiones.find(c => c.id === idCamion);
 
-  if (!camion) return;
+    if (!camion) return;
 
-  const ahora = new Date();
+    const ahora = new Date();
+    const horaSalidaTexto = ahora.toLocaleTimeString('es-MX');
 
-  const registroSalida = {
-    id: Date.now(),
-    unidad: camion.codigo,
-    areaFinal: camion.area,
-    fecha: ahora.toLocaleDateString('es-MX'),
-    hora: ahora.toLocaleTimeString('es-MX'),
-    mensaje: `La unidad ${camion.codigo} salió de la terminal ADO`
-  };
+    const registroSalida = {
+      id: Date.now(),
+      unidad: camion.codigo,
+      areaFinal: camion.area,
+      fecha: ahora.toLocaleDateString('es-MX'),
+      hora: horaSalidaTexto,
+      mensaje: `La unidad ${camion.codigo} salió de la terminal ADO`
+    };
 
-  setHistorial(prev => [registroSalida, ...prev]);
+    setHistorial(prev => [registroSalida, ...prev]);
 
-  setCamiones(prev =>
-    prev.filter(c => c.id !== idCamion)
-  );
+    // CORREGIDO: En lugar de usar .filter() para eliminarlo, 
+    // mapeamos el arreglo y cambiamos su área a "Fuera" guardando su hora de salida
+    setCamiones(prev =>
+      prev.map(c => 
+        c.id === idCamion 
+          ? { ...c, area: "Fuera", horaSalidaTerminal: horaSalidaTexto } 
+          : c
+      )
+    );
   };
 
   const agregarHistorial = (registro) => {
@@ -160,6 +180,49 @@ if (camionMovido) {
   }
 
     setCamiones(camionesActualizados);
+  };
+
+  // 🌟 NUEVO: Función que cruza los camiones con el historial para generar el reporte
+  // 🌟 NUEVO: Función que cruza los camiones con el historial para generar el reporte
+  const generarDatosDeReporte = () => {
+    return camiones.map((camion) => {
+      const movimientosDelCamion = historial.filter(
+        (mov) => mov.unidad === camion.codigo
+      );
+
+      const horaEntrada = movimientosDelCamion.length > 0 
+        ? movimientosDelCamion[movimientosDelCamion.length - 1].hora 
+        : "Recién registrado";
+
+      // Limpiamos espacios extra en el nombre del área por si acaso
+      const areaActual = camion.area ? camion.area.trim() : "";
+
+      let horaSalida = "En proceso...";
+      if (areaActual === "Fuera" && camion.horaSalidaTerminal) {
+        horaSalida = camion.horaSalidaTerminal;
+      }
+
+      // 4. Determinar el Estado Actual (Ajustado a "En flujo")
+      let estadoActual = "En flujo"; 
+      
+      if (areaActual === "Fuera") {
+        estadoActual = "Completado"; 
+      } else if (areaActual === "Descanso") {
+        estadoActual = "En descanso"; 
+      }
+
+      // 5. Armamos la fila mandando la propiedad de varias formas para evitar que Reportes.jsx se confunda
+      return {
+        id: camion.id, 
+        codigo: camion.codigo,
+        conductor: camion.conductor,
+        horaEntrada: horaEntrada,
+        horaSalida: horaSalida,
+        estado: estadoActual,   // Por si Reportes.jsx lee 'estado'
+        status: estadoActual,   // Por si Reportes.jsx lee 'status'
+        estatus: estadoActual   // Por si Reportes.jsx lee 'estatus'
+      };
+    });
   };
 
    const renderizarContenido = () => {
@@ -265,7 +328,8 @@ if (camionMovido) {
     </div>
   );
       case 'reportes':
-        return <div className="pantalla-vacia"><h2>Pantalla de Reportes</h2></div>;
+        return <Reportes datos={generarDatosDeReporte()} />;
+
       case 'configuracion':
         return (
           <ConfAvaz //Lista de camiones
