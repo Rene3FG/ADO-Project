@@ -23,11 +23,11 @@ export const LoginPage = ({ onLoginSuccess }) => {
           <div className="input-group">
             <label htmlFor="idEmpleado">ID de Empleado</label>
             <input
-              type="number"
+              type="text"
               id="idEmpleado"
               value={idEmpleado}
               onChange={(e) => setIdEmpleado(e.target.value)}
-              placeholder="Ej. 12345"
+              placeholder="ID de empleado"
               required
               disabled={cargando}
             />
