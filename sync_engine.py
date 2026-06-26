@@ -332,22 +332,19 @@ def _push_area(config):
 
 
 def _push_central(config):
-    """Re-escribe el estado del CENTRAL desde PostgreSQL"""
+    """Pushea registros dirty (last_modified_by='app') al sheet CENTRAL."""
     with engine.begin() as conn:
         from datetime import date
         registros = conn.execute(
             text("""
-                SELECT r.*, t.name as tipo_nombre
-                FROM records r JOIN bus_types t ON t.id=r.type_id
+                SELECT r.*
+                FROM records r
                 WHERE r.date=:f AND r.is_dirty=true AND r.last_modified_by='app'
             """),
             {"f": date.today()}
         ).fetchall()
 
         for reg in registros:
-            if not reg.sheets_row:
-                continue
-
             checklist = conn.execute(
                 text("""
                     SELECT a.name, ca.is_checked, ca.quantity
@@ -370,8 +367,16 @@ def _push_central(config):
                 bool_num("DESFOGUE") + bool_num("LAVADO EXTERIOR") + bool_num("LAVADO INTERIOR") +
                 [reg.location_text or "", reg.time_remaining or "", reg.progress or 0]
             )
-            sheets.write_row(config["sheet"], reg.sheets_row, valores)
+            if reg.sheets_row:
+                sheets.write_row(config["sheet"], reg.sheets_row, valores)
+            else:
+                fila = sheets.append_row(config["sheet"], valores)
+                conn.execute(
+                    text("UPDATE records SET sheets_row=:r WHERE id=:id"),
+                    {"r": fila, "id": reg.id}
+                )
             mark_synced(conn, "records", reg.id)
+            logger.info(f"[PUSH] CENTRAL serie={reg.serial_number} fila={reg.sheets_row or 'append'}")
 
 
 def _push_tiempos(config):
