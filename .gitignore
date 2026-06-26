@@ -23,8 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 
-# Python (sync engine)
+# Archivos locales de entorno
 .env
+.env.local
+.env.*.local
+
+# Python (sync engine)
 credentials/
 __pycache__/
 *.pyc

@@ -1,5 +1,342 @@
-#root {
-  width: 100%;
-  min-height: 100vh;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
+/* Vista desktop (Patio drag&drop): layout propio a pantalla completa, sin scroll del body */
+.desktop-shell {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #0b0d14;
+}
+
+:root {
+  --ado-red: #ce0037;
+  --ado-purple: #6b21a8;
+  --bg-light: #f8fafc;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --border-color: #e2e8f0;
+  
+  --slot-free-bg: #f0fdf4;
+  --slot-free-text: #166534;
+  --slot-free-border: #bbf7d0;
+  --slot-occ-bg: #dc2626;
+  --slot-occ-text: #ffffff;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-light);
+  color: var(--text-main);
+}
+
+/* ================== LAYOUT PRINCIPAL ================== */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* ================== BARRA LATERAL ================== */
+.sidebar {
+  width: 260px;
+  background: white;
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.sidebar-logo {
+  padding: 20px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-logo h1 {
+  color: var(--ado-red);
+  font-weight: 900;
+  font-style: italic;
+  margin: 0;
+  font-size: 2.2rem;
+  letter-spacing: -1px;
+}
+
+.sidebar-menu {
+  padding: 20px 15px;
+  list-style: none;
+  margin: 0;
+}
+
+.sidebar-menu li a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 15px;
+  text-decoration: none;
+  color: var(--text-muted);
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 5px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.sidebar-menu li a:hover {
+  background: var(--bg-light);
+}
+
+.sidebar-menu li a.active {
+  background: var(--ado-purple);
+  color: white;
+  box-shadow: 0 4px 6px rgba(107, 33, 168, 0.2);
+}
+
+/* ================== CABECERA (TOPBAR) ================== */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.topbar {
+  background: white;
+  border-bottom: 1px solid var(--border-color);
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Botón hamburguesa oculto en PC */
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-main);
+  cursor: pointer;
+  padding: 0;
+}
+
+.topbar-title {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: right;
+}
+
+.user-profile .name { font-weight: 800; font-size: 0.9rem; margin: 0; }
+.user-profile .role { color: var(--ado-purple); font-size: 0.75rem; margin: 0; font-weight: 600; }
+
+/* ================== ÁREA DE DASHBOARD ================== */
+.dashboard-container {
+  padding: 30px;
+}
+
+.dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+}
+
+/* Forzar color oscuro para evitar el texto fantasma */
+.dash-header h2 { margin: 0; font-weight: 800; font-size: 1.4rem; color: var(--text-main); }
+.dash-header p { margin: 5px 0 0; color: var(--text-muted); font-size: 0.9rem; }
+
+.leyenda {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  flex-wrap: wrap; /* Permite que la leyenda baje si no cabe */
+}
+
+.leyenda-item { display: flex; align-items: center; gap: 5px; }
+.caja-color { width: 15px; height: 15px; border-radius: 4px; }
+.caja-libre { background: var(--slot-free-bg); border: 1px solid var(--slot-free-border); }
+.caja-ocupada { background: var(--slot-occ-bg); }
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: 3fr 1fr;
+  gap: 25px;
+}
+
+.areas-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+.area-card {
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.area-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.area-header h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--ado-purple);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.area-header span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.slots-container {
+  display: flex;
+  gap: 10px;
+}
+
+.slot {
+  flex: 1;
+  text-align: center;
+  padding: 12px 5px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.slot.occ { background: var(--slot-occ-bg); color: var(--slot-occ-text); box-shadow: 0 4px 6px rgba(220, 38, 38, 0.2); }
+.slot.process { background: #f59e0b; color: black; box-shadow: 0 4px 6px rgba(245, 158, 11, 0.2); }
+.slot.free { background: var(--slot-free-bg); color: var(--slot-free-text); border: 1px solid var(--slot-free-border); }
+
+.slot-time {
+  font-size: 0.7rem;
+  font-weight: 600;
+  opacity: 0.9;
+  margin-top: 4px;
+}
+
+.widget-panel { display: flex; flex-direction: column; gap: 20px; }
+.widget-card { background: white; border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+.widget-title { margin: 0 0 15px 0; font-size: 1rem; font-weight: 800; color: var(--text-main); }
+
+.btn-registrar-header {
+  background: var(--ado-purple);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  white-space: nowrap; /* Evita que el texto del botón se rompa en dos líneas */
+}
+
+.btn-registrar-header:hover { opacity: 0.9; }
+
+/* ==========================================
+   ADAPTABILIDAD MÓVIL (Smartphones)
+   ========================================== */
+@media (max-width: 768px) {
+  /* Mostrar botón hamburguesa */
+  .hamburger-btn {
+    display: block;
+  }
+
+  /* Ocultar nombre y rol en móvil para dar espacio */
+  .user-profile .name, .user-profile .role {
+    display: none;
+  }
+
+  /* El menú lateral se esconde a la izquierda */
+  .sidebar {
+    position: fixed;
+    left: -100%;
+    top: 0;
+    z-index: 2000;
+    transition: left 0.3s ease-in-out;
+    box-shadow: 10px 0 15px rgba(0,0,0,0.5);
+  }
+  
+  /* Clase que se activa con el botón para mostrar el menú */
+  .sidebar.abierto {
+    left: 0;
+  }
+
+  /* Capa oscura de fondo para cerrar el menú en móvil */
+  .overlay-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    z-index: 1999;
+  }
+
+  .dash-grid {
+    grid-template-columns: 1fr; 
+    gap: 15px;
+  }
+
+  .areas-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-container {
+    padding: 15px !important; 
+  }
+
+  /* Acomodo de la cabecera del patio en móviles */
+  .dash-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+  
+  /* El contenedor de los botones y leyenda en móvil */
+  .dash-header > div:last-child {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .btn-registrar-header {
+    width: 100%; /* Botón grande y fácil de tocar en celular */
+    padding: 15px;
+  }
+}

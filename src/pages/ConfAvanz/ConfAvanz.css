@@ -1,0 +1,292 @@
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--background);
+  color: var(--text-primary);
+}
+
+:root {
+  --primary: #e21c24; /* Rojo ADO */
+  --primary-dark: #b8151c; /* Rojo oscuro para el hover de botones */
+  --background: #0b0d14; /* Fondo principal de la app */
+  --card-bg: #11131e; /* Fondo de tarjetas */
+  --input-bg: #161927; /* Fondo de inputs y elementos internos */
+  --border: #1e2235; /* Borde oscuro */
+  --text-primary: #ffffff; /* Texto blanco principal */
+  --text-secondary: #64748b; /* Texto gris secundario */
+}
+
+.config-panel {
+  max-width: 650px;
+  margin: 40px auto 0 auto;
+  text-align: center;
+}
+
+.config-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.config-option-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.config-option-card:hover {
+  border-color: var(--primary);
+  background-color: var(--input-bg);
+  transform: translateY(-4px);
+}
+
+.config-option-icon {
+  font-size: 32px;
+  color: var(--primary);
+  background-color: rgba(226, 28, 36, 0.08);
+  padding: 14px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.config-option-text h3 {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.config-option-text p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* Gestor de Áreas */
+
+.config-header-flex {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.btn-back {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-back:hover {
+  background: var(--border);
+  color: var(--text-primary);
+}
+
+.area-form {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+}
+
+.input-group-row {
+  display: flex;
+  gap: 12px;
+}
+
+.input-group-row input {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.input-group-row input[type="text"] {
+  flex: 2;
+}
+
+.input-group-row input[type="number"] {
+  flex: 1;
+}
+
+.area-list-container h3 {
+  color: var(--text-primary);
+  font-size: 16px;
+  margin-bottom: 15px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+
+.area-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.area-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--input-bg);
+  border: 1px solid var(--border);
+  padding: 12px 20px;
+  border-radius: 8px;
+}
+
+.area-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.area-info strong {
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.area-info span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.btn-delete {
+  background: rgba(226, 28, 36, 0.1);
+  color: var(--primary);
+  border: 1px solid transparent;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-delete:hover {
+  background: var(--primary);
+  color: white;
+  transform: scale(1.05);
+}
+
+.btn-delete:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Reubicación forzada */
+
+.reubicacion-form {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  padding: 30px;
+  border-radius: 12px;
+  text-align: left;
+}
+
+.form-group-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group-vertical label {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.reubicacion-form select {
+  background-color: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+}
+
+.reubicacion-form select option {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.reubicacion-form select:focus {
+  border-color: var(--primary);
+}
+
+.btn-block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+  padding: 14px;
+  width: 100%;
+}
+
+/* Botones */
+
+.btn-primary,
+.btn-success {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 12px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover,
+.btn-success:hover {
+  background: var(--primary-dark);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 12px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-primary);
+}
