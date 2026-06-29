@@ -33,6 +33,8 @@ export default function DropDrag() {
     setCamiones((prev) => [...prev, nuevoCamion]);
   };
 
+  const [movimientoPendiente, setMovimientoPendiente] = useState(null);
+
   const [alertas, setAlertas] = useState([]);
   const [areasConfig, setAreasConfig] = useState(mockDB.areas); //Las áreas si van a cambiar
   const [historial, setHistorial] = useState([]);
@@ -88,6 +90,43 @@ setHistorial(prev => [
     );
   };
 
+  const mandarADescanso = (idCamion) => {
+    const camion = camiones.find(c => c.id === idCamion);
+    if (!camion) return;
+
+    // 1. Validamos que el área de Descanso no esté llena
+    const infoDescanso = areasConfig.find(a => a.id === "Descanso");
+    const limiteDescanso = infoDescanso ? infoDescanso.capacidad : 4;
+    const camionesEnDescanso = camiones.filter(c => c.area === "Descanso").length;
+
+    if (camionesEnDescanso >= limiteDescanso) {
+      alert(`No hay espacio. El área de Descanso está llena (${limiteDescanso}/${limiteDescanso}).`);
+      return;
+    }
+
+    const ahora = new Date();
+
+    setHistorial(prev => [
+      {
+        id: Date.now(),
+        tipo: "movimiento",
+        unidad: camion.codigo,
+        fecha: ahora.toLocaleDateString('es-MX'),
+        hora: ahora.toLocaleTimeString('es-MX'),
+        mensaje: `La unidad ${camion.codigo} terminó su ruta y pasó a Descanso`
+      },
+      ...prev
+    ]);
+
+    setCamiones(prev =>
+      prev.map(c => 
+        c.id === idCamion 
+          ? { ...c, area: "Descanso", finalizado: true } 
+          : c
+      )
+    );
+  };
+
   const agregarHistorial = (registro) => {
   setHistorial(prev => [registro, ...prev]);
   };
@@ -100,6 +139,45 @@ setHistorial(prev => [
     e.preventDefault();
   };
 
+  // Esta función mueve el camión de verdad (ya sea por el camino feliz o forzado por el usuario)
+  const ejecutarMovimiento = (idCamion, nuevaAreaId) => {
+    // 1. Validar límite de capacidad primero (esto sí es un bloqueo estricto)
+    const infoAreaDestino = areasConfig.find(a => a.id === nuevaAreaId);
+    const limiteMaximoArea = infoAreaDestino ? infoAreaDestino.capacidad : 4;
+    const camionesEnAreaDestino = camiones.filter(c => c.area === nuevaAreaId).length;
+
+    if (camionesEnAreaDestino >= limiteMaximoArea) {
+      alert(`Bloqueo: El área de ${nuevaAreaId} está llena (${limiteMaximoArea} lugares).`);
+      return;
+    }
+
+    // 2. Mover el camión
+    const camionesActualizados = camiones.map((camion) => {
+      if (camion.id === idCamion) {
+        return { ...camion, area: nuevaAreaId };
+      }
+      return { ...camion };
+    });
+
+    const camionMovido = camiones.find(c => c.id === idCamion);
+    if (camionMovido) {
+      const ahora = new Date();
+      setHistorial(prev => [
+        {
+          id: Date.now(),
+          tipo: "movimiento",
+          unidad: camionMovido.codigo,
+          fecha: ahora.toLocaleDateString('es-MX'),
+          hora: ahora.toLocaleTimeString('es-MX'),
+          mensaje: `La unidad ${camionMovido.codigo} fue movida a ${nuevaAreaId}`
+        },
+        ...prev
+      ]);
+    }
+
+    setCamiones(camionesActualizados);
+  };
+
  const alSoltar = (e, nuevaAreaId) => { 
     e.preventDefault();
     const idCamion = e.dataTransfer.getData('text/plain');
@@ -110,24 +188,23 @@ setHistorial(prev => [
     const areaActual = camionQueSeMueve.area;
     if (areaActual === nuevaAreaId) return;
 
+    let advertenciaFlujo = null;
+
+    // Evaluamos si está rompiendo las reglas
     if (camionQueSeMueve.ruta && camionQueSeMueve.ruta.length > 0) {
-      
       if (camionQueSeMueve.finalizado) {
         if (nuevaAreaId !== "Descanso") {
-          alert(`Movimiento incorrecto.\nLa unidad ${camionQueSeMueve.codigo} ya completó su ciclo. Solo puede moverse a "Descanso" para esperar su salida.`);
-          return;
+          advertenciaFlujo = `La unidad ${camionQueSeMueve.codigo} ya completó su ciclo. ¿Seguro que deseas moverla a "${nuevaAreaId}" en lugar de enviarla a Descanso?`;
         }
       } else {
         const indiceActual = camionQueSeMueve.ruta.indexOf(areaActual);
         const siguienteAreaEsperada = camionQueSeMueve.ruta[indiceActual + 1];
-
         if (nuevaAreaId !== siguienteAreaEsperada) {
-          alert(`Movimiento incorrecto.\nEl autobús ${camionQueSeMueve.codigo} tiene asignado ir a: "${siguienteAreaEsperada || 'Completar ciclo'}".`);
-          return;
+          advertenciaFlujo = `La unidad ${camionQueSeMueve.codigo} tiene asignado ir a "${siguienteAreaEsperada || 'Completar ciclo'}". ¿Deseas forzar su desvío a "${nuevaAreaId}"?`;
         }
       }
     } else {
-      // Si es un camión de prueba sin ruta, usamos las reglas
+      // Reglas para camiones sin ruta
       const reglasFlujo = {
         "Desfogue": ["Diesel", "Ad-Blue","Descanso"], 
         "Diesel": ["Ad-Blue","Descanso"],
@@ -140,49 +217,22 @@ setHistorial(prev => [
 
       const movimientosPermitidos = reglasFlujo[areaActual] || [];
       if (!movimientosPermitidos.includes(nuevaAreaId)) {
-        alert(`Movimiento no autorizado.\nUn autobús en "${areaActual}" solo puede avanzar a: ${movimientosPermitidos.join(" o ")}.`);
-        return;
+        advertenciaFlujo = `Movimiento inusual. Un autobús en "${areaActual}" normalmente va a: ${movimientosPermitidos.join(" o ")}. ¿Forzar traslado a "${nuevaAreaId}"?`;
       }
     }
 
-    const infoAreaDestino = areasConfig.find(a => a.id === nuevaAreaId);
-    const limiteMaximoArea = infoAreaDestino ? infoAreaDestino.capacidad : 4;
-
-    const camionesEnAreaDestino = camiones.filter(c => c.area === nuevaAreaId).length;
-
-    if (camionesEnAreaDestino >= limiteMaximoArea) {
-      alert(`El área de ${nuevaAreaId} ya alcanzó su límite máximo de ${limiteMaximoArea} lugares.`);
+    // Si hay una advertencia, abrimos el modal y PAUSAMOS la acción
+    if (advertenciaFlujo) {
+      setMovimientoPendiente({
+        idCamion: idCamion,
+        nuevaAreaId: nuevaAreaId,
+        mensaje: advertenciaFlujo
+      });
       return;
     }
 
-    const camionesActualizados = camiones.map((camion) => {
-      if (camion.id === idCamion) {
-        return { ...camion, area: nuevaAreaId };
-      }
-      return { ...camion };
-    });
-
-    const camionMovido = camiones.find(
-  c => c.id === idCamion
-  );
-
-if (camionMovido) {
-  const ahora = new Date();
-
-  setHistorial(prev => [
-    {
-      id: Date.now(),
-      tipo: "movimiento",
-      unidad: camionMovido.codigo,
-      fecha: ahora.toLocaleDateString('es-MX'),
-      hora: ahora.toLocaleTimeString('es-MX'),
-      mensaje: `La unidad ${camionMovido.codigo} fue movida de ${camionMovido.area} a ${nuevaAreaId}`
-    },
-    ...prev
-  ]);
-  }
-
-    setCamiones(camionesActualizados);
+    // Si todo es correcto y sigue su ruta, lo movemos directamente
+    ejecutarMovimiento(idCamion, nuevaAreaId);
   };
   
   const generarDatosDeReporte = () => {
@@ -254,33 +304,33 @@ if (camionMovido) {
     return 0;
   };
 
-const finalizarRecorrido = (idCamion) => {
-    const camion = camiones.find(c => c.id === idCamion);
-    if (!camion) return;
+// const finalizarRecorrido = (idCamion) => {
+//     const camion = camiones.find(c => c.id === idCamion);
+//     if (!camion) return;
 
-    const ahora = new Date();
-    const horaSalidaTexto = ahora.toLocaleTimeString('es-MX');
+//     const ahora = new Date();
+//     const horaSalidaTexto = ahora.toLocaleTimeString('es-MX');
 
-    setHistorial(prev => [
-      {
-        id: Date.now(),
-        tipo: "completado",
-        unidad: camion.codigo,
-        fecha: ahora.toLocaleDateString('es-MX'),
-        hora: horaSalidaTexto,
-        mensaje: `La unidad ${camion.codigo} completó su ruta en ${camion.area}`
-      },
-      ...prev
-    ]);
+//     setHistorial(prev => [
+//       {
+//         id: Date.now(),
+//         tipo: "completado",
+//         unidad: camion.codigo,
+//         fecha: ahora.toLocaleDateString('es-MX'),
+//         hora: horaSalidaTexto,
+//         mensaje: `La unidad ${camion.codigo} completó su ruta en ${camion.area}`
+//       },
+//       ...prev
+//     ]);
 
-    setCamiones(prev =>
-      prev.map(c => 
-        c.id === idCamion 
-          ? { ...c, finalizado: true, horaSalidaTerminal: horaSalidaTexto } 
-          : c
-      )
-    );
-  };
+//     setCamiones(prev =>
+//       prev.map(c => 
+//         c.id === idCamion 
+//           ? { ...c, finalizado: true, horaSalidaTerminal: horaSalidaTexto } 
+//           : c
+//       )
+//     );
+//   };
 
    const renderizarContenido = () => {
     switch (pestanaActiva) {
@@ -331,38 +381,72 @@ const finalizarRecorrido = (idCamion) => {
   progreso={obtenerProgresoCamion(camion)}
 />
 
-{ (camion.ruta && camion.ruta.length > 0) ? (
-  <>
-    {camion.area === camion.ruta[camion.ruta.length - 1] && !camion.finalizado && (
-      <button
-        className="btn-salida"
-        onClick={() => finalizarRecorrido(camion.id)}
-      >
-        Finalizar Área
-      </button>
-    )}
-
-    {camion.finalizado && camion.area === "Descanso" && (
-      <button
-        className="btn-salida"
-        style={{ backgroundColor: '#10b981' }}
-        onClick={() => sacarCamion(camion.id)} 
-      >
-        Dar Salida
-      </button>
-    )}
-  </>
-) : (
-  // Fallback
-  nombreArea === "Descanso" && !camion.finalizado && (
-    <button
-      className="btn-salida"
-      onClick={() => finalizarRecorrido(camion.id)}
+{/*BOTONES DUALES */}
+{camion.ruta && camion.ruta[camion.ruta.length - 1] === nombreArea && nombreArea !== "Descanso" && !camion.finalizado && (
+  <div className="botones-accion-final">
+    <button 
+      className="btn-final btn-descanso" 
+      onClick={() => mandarADescanso(camion.id)}
     >
-      Finalizar recorrido
+      Descanso
     </button>
-  )
+    <button 
+      className="btn-final btn-salida" 
+      onClick={() => sacarCamion(camion.id)}
+    >
+      Salida
+    </button>
+  </div>
 )}
+
+{nombreArea === "Descanso" && (
+  <div className="botones-accion-final">
+    <button 
+      className="btn-final btn-salida" 
+      onClick={() => sacarCamion(camion.id)}
+    >
+      Salida de Terminal
+    </button>
+  </div>
+)}
+
+{/*MODAL DE ADVERTENCIA DE DESVÍO */}
+      {movimientoPendiente && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-card" style={{ maxWidth: '450px', textAlign: 'center' }}>
+            
+            <div style={{ backgroundColor: '#f59e0b', padding: '15px', borderRadius: '8px 8px 0 0' }}>
+              <h2 style={{ margin: 0, color: '#1a2235', fontSize: '20px' }}>⚠️ Desvío de Ruta Detectado</h2>
+            </div>
+            
+            <div className="modal-card__body" style={{ padding: '25px 20px' }}>
+              <p style={{ fontSize: '16px', color: '#e5e7eb', marginBottom: '25px', lineHeight: '1.5' }}>
+                {movimientoPendiente.mensaje}
+              </p>
+              
+              <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+                <button 
+                  className="btn-secondary"
+                  onClick={() => setMovimientoPendiente(null)}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  className="btn-primary" 
+                  style={{ backgroundColor: '#f59e0b', color: '#1a2235', fontWeight: 'bold' }}
+                  onClick={() => {
+                    ejecutarMovimiento(movimientoPendiente.idCamion, movimientoPendiente.nuevaAreaId);
+                    setMovimientoPendiente(null); // Cerramos el modal tras confirmar
+                  }}
+                >
+                  Sí, forzar movimiento
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
                 </div>
                         ))
                     )}
