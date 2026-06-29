@@ -4,7 +4,7 @@ import "./Resgistro.css";
 export default function Registro({
   agregarCamion,
   agregarHistorial
- }) { 
+}) { 
   const [paso, setPaso] = useState(1);
 
   const [camion, setCamion] = useState({
@@ -15,47 +15,66 @@ export default function Registro({
     conductor: "", 
     origen: "",   
     destino: "", 
+    areasRuta: [] // <-- Guardamos la lista de áreas seleccionadas
   });
 
-  const registrarCamion = () => {
-
-  const nuevoCamion = {
-    id: Date.now().toString(),
-    codigo: camion.numero,
-    tipo: camion.tipoUnidad,
-    area: camion.area,
-    conductor: camion.conductor,
-    origen: camion.origen,
-    destino: camion.destino
+  // Función para añadir/quitar áreas manteniendo el orden y definiendo el área inicial
+  const alternarAreaEnRuta = (nombreArea) => {
+    let nuevaRuta = [...camion.areasRuta];
+    if (nuevaRuta.includes(nombreArea)) {
+      nuevaRuta = nuevaRuta.filter(a => a !== nombreArea);
+    } else {
+      nuevaRuta.push(nombreArea);
+    }
+    setCamion({
+      ...camion,
+      areasRuta: nuevaRuta,
+      area: nuevaRuta.length > 0 ? nuevaRuta[0] : "" 
+    });
   };
 
-  agregarCamion(nuevoCamion);
-  
-  const ahora = new Date();
+  const registrarCamion = () => {
+    const nuevoCamion = {
+      id: Date.now().toString(),
+      codigo: camion.numero,
+      tipo: camion.tipoUnidad,
+      // 👇 Aquí está la corrección: debemos usar camion.areasRuta
+      area: camion.areasRuta[0] || "", 
+      conductor: camion.conductor,
+      origen: camion.origen,
+      destino: camion.destino,
+      // 👇 Aquí también
+      ruta: camion.areasRuta 
+    };
 
- agregarHistorial({
-  id: Date.now(),
-  unidad: camion.numero,
-  areaFinal: camion.area,
-  fecha: ahora.toLocaleDateString('es-MX'),
-  hora: ahora.toLocaleTimeString('es-MX'),
-  mensaje: `Se registró la unidad ${camion.numero} en el área ${camion.area}`
- });
+    agregarCamion(nuevoCamion);
+    
+    const ahora = new Date();
 
-  alert("Autobús registrado correctamente");
+    agregarHistorial({
+      id: Date.now(),
+      unidad: camion.numero,
+      areaFinal: camion.area,
+      fecha: ahora.toLocaleDateString('es-MX'),
+      hora: ahora.toLocaleTimeString('es-MX'),
+      mensaje: `Se registró la unidad ${camion.numero} en el área ${camion.area}`
+    });
 
-  setCamion({
-    numero: "",
-    tipoUnidad: "",
-    observaciones: "",
-    area: "",
-    conductor: "",
-    origen: "",
-    destino: "",
-  });
+    alert("Autobús registrado correctamente");
 
-  setPaso(1);
-};
+    setCamion({
+      numero: "",
+      tipoUnidad: "",
+      observaciones: "",
+      area: "",
+      conductor: "",
+      origen: "",
+      destino: "",
+      areasRuta: []
+    });
+
+    setPaso(1);
+  };
 
   return (
     <div className="registro-page">
@@ -148,7 +167,6 @@ export default function Registro({
                 />
               </div>
 
-              {/* --- NUEVO CAMPO: ORIGEN --- */}
               <div className="input-group">
                 <label>Terminal de Origen</label>
                 <input
@@ -216,49 +234,49 @@ export default function Registro({
 
         {paso === 3 && (
           <>
-            <h2 style={{ color: '#5B177F' }}>Seleccionar Área Inicial</h2>
+            <h2 style={{ color: '#5B177F' }}>Seleccionar las Áreas de Ruta</h2>
 
             <div className="area-grid">
               <div
-                className={`area-card ${camion.area === "Desfogue" ? "selected" : ""}`}
-                onClick={() => setCamion({ ...camion, area: "Desfogue" })}
+                className={`area-card ${camion.areasRuta.includes("Desfogue") ? "selected" : ""}`}
+                onClick={() => alternarAreaEnRuta("Desfogue")}
               >
-                Desfogue
+                Desfogue {camion.areasRuta.includes("Desfogue") && `(#${camion.areasRuta.indexOf("Desfogue")})`}
               </div>
 
               <div
-                className={`area-card ${camion.area === "Diesel" ? "selected" : ""}`}
-                onClick={() => setCamion({ ...camion, area: "Diesel" })}
+                className={`area-card ${camion.areasRuta.includes("Diesel") ? "selected" : ""}`}
+                onClick={() => alternarAreaEnRuta("Diesel")}
               >
-                Diesel
+                Diesel {camion.areasRuta.includes("Diesel") && `(#${camion.areasRuta.indexOf("Diesel") + 1})`}
               </div>
 
               <div
-                className={`area-card ${camion.area === "Ad-Blue" ? "selected" : ""}`}
-                onClick={() => setCamion({ ...camion, area: "Ad-Blue" })}
+                className={`area-card ${camion.areasRuta.includes("Ad-Blue") ? "selected" : ""}`}
+                onClick={() => alternarAreaEnRuta("Ad-Blue")}
               >
-                AdBlue
+                AdBlue {camion.areasRuta.includes("Ad-Blue") && `(#${camion.areasRuta.indexOf("Ad-Blue") + 1})`}
               </div>
 
               <div
-                className={`area-card ${camion.area === "Taller" ? "selected" : ""}`}
-                onClick={() => setCamion({ ...camion, area: "Taller" })}
+                className={`area-card ${camion.areasRuta.includes("Taller") ? "selected" : ""}`}
+                onClick={() => alternarAreaEnRuta("Taller")}
               >
-                Taller
+                Taller {camion.areasRuta.includes("Taller") && `(#${camion.areasRuta.indexOf("Taller") + 1})`}
               </div>
 
               <div
-                className={`area-card ${camion.area === "Lavado Interior" ? "selected" : ""}`}
-                onClick={() => setCamion({ ...camion, area: "Lavado Interior" })}
+                className={`area-card ${camion.areasRuta.includes("Lavado Interior") ? "selected" : ""}`}
+                onClick={() => alternarAreaEnRuta("Lavado Interior")}
               >
-                Lavado Interior
+                Lavado Interior {camion.areasRuta.includes("Lavado Interior") && `(#${camion.areasRuta.indexOf("Lavado Interior") + 1})`}
               </div>
 
               <div
-                className={`area-card ${camion.area === "Lavado Exterior" ? "selected" : ""}`}
-                onClick={() => setCamion({ ...camion, area: "Lavado Exterior" })}
+                className={`area-card ${camion.areasRuta.includes("Lavado Exterior") ? "selected" : ""}`}
+                onClick={() => alternarAreaEnRuta("Lavado Exterior")}
               >
-                Lavado Exterior
+                Lavado Exterior {camion.areasRuta.includes("Lavado Exterior") && `(#${camion.areasRuta.indexOf("Lavado Exterior") + 1})`}
               </div>
             </div>
 
@@ -299,6 +317,9 @@ export default function Registro({
               </p>
               <p>
                 <strong>Área Inicial Asignada:</strong> {camion.area || "Ninguna"}
+              </p>
+              <p>
+                <strong>Ruta Planificada:</strong> {camion.areasRuta.length > 0 ? camion.areasRuta.join(" ➔ ") : "Ninguna"}
               </p>
               <p>
                 <strong>Observaciones:</strong> {camion.observaciones || "Sin observaciones"}

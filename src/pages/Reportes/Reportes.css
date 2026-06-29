@@ -234,3 +234,52 @@
   text-align: center;
   min-width: 100px;
 }
+
+.progress-bar-bg {
+  background-color: #e9ecef;
+  border-radius: 6px;
+  height: 14px;
+  width: 100%;
+}
+.progress-bar-fill {
+  background-color: #d32f2f; /* Rojo ADO */
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.tabla-reportes {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #151a26; /* Fondo oscuro de tu panel */
+  color: #fff;
+}
+
+.progreso-celda-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end; /* Lo alinea a la derecha como en tu foto */
+  padding-right: 15px;
+}
+
+.barra-progreso-fondo {
+  background-color: #222b3c;
+  border-radius: 4px;
+  width: 60px;
+  height: 6px;
+  overflow: hidden;
+}
+
+.barra-progreso-relleno {
+  background: linear-gradient(90deg, #3b82f6, #10b981); /* Degradado azul a verde */
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.porcentaje-texto {
+  font-weight: bold;
+  font-size: 14px;
+  min-width: 35px;
+  text-align: right;
+}

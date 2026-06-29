@@ -7,7 +7,8 @@ const memoriaTiempos = {};
 export default function TarjetaInfo({
   camion,
   alIniciarArrastre,
-  crearAlerta
+  crearAlerta,
+  progreso
 }) {
   const [segundos, setSegundos] = useState(0);
   const alertaGenerada = useRef(false);
@@ -71,25 +72,33 @@ export default function TarjetaInfo({
   }
 
   return (
-    <div
-      className="bus-card"
+    <div 
+      className="tarjeta-camion"
       draggable
       onDragStart={(e) => alIniciarArrastre(e, camion.id)}
     >
-      <div className="bus-card__header">
-        <div className={`semaforo semaforo--${colorSemaforo}`}></div>
-
-        <div className="bus-card__eco">
-          {camion.codigo}
-        </div>
+      {/* 1. Semáforo y Código del Autobús */}
+      <div className="tarjeta-header">
+        <span className={`estado-semaforo ${colorSemaforo}`}></span>
+        <span className="codigo-unidad">{camion.codigo}</span>
       </div>
 
-      <div className="bus-card__type">
+      {/* 2. Tipo de Autobús */}
+      <div className="tipo-unidad">
         {camion.tipo}
       </div>
 
-      <div className="bus-card__status">
+      {/* 3. Cronómetro (Con tu color dinámico) */}
+      <div className={`tiempo-area ${colorSemaforo}`}>
         Tiempo en área: {formatearTiempo(segundos)}
+      </div>
+
+      {/* 4. Barra de Progreso */}
+      <div className="tarjeta-progreso-mini-bg">
+        <div 
+          className="tarjeta-progreso-mini-fill" 
+          style={{ width: `${progreso}%` }}
+        ></div>
       </div>
     </div>
   );

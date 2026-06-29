@@ -64,6 +64,7 @@ export default function Reportes({ datos }) {
                 <th>Hora Entrada al Flujo</th>
                 <th>Hora Salida / Liberación</th>
                 <th>Estatus</th>
+                <th>Progreso</th>
               </tr>
             </thead>
             <tbody>
@@ -91,6 +92,22 @@ export default function Reportes({ datos }) {
                        'EN PATIO'}
                     </span>
                   </td>
+                  <td>
+  <div className="tabla-progreso-bg">
+    <div className="tabla-progreso-fill" style={{ width: `${item.progreso}%` }}></div>
+  </div>
+</td>
+<td>
+                  <div className="progreso-celda-container">
+                    <div className="barra-progreso-fondo">
+                      <div 
+                        className="barra-progreso-relleno" 
+                        style={{ width: `${item.progreso}%` }}
+                      ></div>
+                    </div>
+                    <span className="porcentaje-texto">{item.progreso}%</span>
+                  </div>
+                </td>
                 </tr>
               ))}
             </tbody>

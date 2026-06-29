@@ -27,21 +27,11 @@ const areaIcons = {
 
 export default function DropDrag() {
   const [pestanaActiva, setPestanaActiva] = useState('patio');
-  const [camiones, setCamiones] = useState(mockDB.camiones); //SetCamiones es el gatillo 
+  const [camiones, setCamiones] = useState(mockDB.camiones);
+  const [camionSeleccionado, setCamionSeleccionado] = useState(null);
   const agregarCamion = (nuevoCamion) => {
-  setCamiones((prev) => [...prev, nuevoCamion]);
- };
-
-//  const [datosReportes, setDatosReportes] = useState([
-//     {
-//       id: "rep-1",
-//       codigo: "ADO-1020",
-//       conductor: "Carlos Gómez",
-//       horaEntrada: "10:15:30 AM",
-//       horaSalida: "11:45:22 AM",
-//       estado: "Completado"
-//     }
-//   ]);
+    setCamiones((prev) => [...prev, nuevoCamion]);
+  };
 
   const [alertas, setAlertas] = useState([]);
   const [areasConfig, setAreasConfig] = useState(mockDB.areas); //Las áreas si van a cambiar
@@ -104,8 +94,6 @@ setHistorial(prev => [
   setHistorial(prev => [registro, ...prev]);
   };
 
-  const [camionSeleccionado, setCamionSeleccionado] = useState(null);
-
   const alIniciarArrastre = (e, idCamion) => {
     e.dataTransfer.setData('text/plain', idCamion);
   };
@@ -114,7 +102,7 @@ setHistorial(prev => [
     e.preventDefault();
   };
 
- const alSoltar = (e, nuevaAreaId) => { //Aqui se implementa la validacion para OPERADOR
+ const alSoltar = (e, nuevaAreaId) => { 
     e.preventDefault();
     const idCamion = e.dataTransfer.getData('text/plain');
 
@@ -122,24 +110,35 @@ setHistorial(prev => [
     if (!camionQueSeMueve) return;
     
     const areaActual = camionQueSeMueve.area;
-
     if (areaActual === nuevaAreaId) return;
 
-    const reglasFlujo = {
-      "Desfogue": ["Diesel", "Ad-Blue","Descanso"], // De desfogue solo pueden ir a lavar o al taller
-      "Diesel": ["Ad-Blue","Descanso"],
-      "Ad-Blue": ["Lavado Interior","Lavado Exterior","Taller","Descanso"],
-      "Lavado Exterior": ["Lavado Interior","Taller","Descanso"], // Tienen que pasar por interior obligatoriamente
-      "Lavado Interior": ["Lavado Exterior", "Taller","Descanso"],
-      "Taller": ["Lavado Exterior", "Lavado Interior","Descanso"],
-      "Descanso": ["Desfogue"] // Vuelven a empezar un nuevo viaje
-    };
+    // 🌟 NUEVO: Validación estricta usando la ruta asignada en el Registro
+    if (camionQueSeMueve.ruta && camionQueSeMueve.ruta.length > 0) {
+      const indiceActual = camionQueSeMueve.ruta.indexOf(areaActual);
+      const siguienteAreaEsperada = camionQueSeMueve.ruta[indiceActual + 1];
 
-    const movimientosPermitidos = reglasFlujo[areaActual] || [];
+      // Si intenta saltarse pasos o ir a un área que no le toca
+      if (nuevaAreaId !== siguienteAreaEsperada) {
+        alert(`Movimiento incorrecto.\nEl autobús ${camionQueSeMueve.codigo} tiene asignado ir a: "${siguienteAreaEsperada || 'Completar ciclo'}".`);
+        return;
+      }
+    } else {
+      // Si es un camión de prueba sin ruta, usamos las reglas genéricas que tenías
+      const reglasFlujo = {
+        "Desfogue": ["Diesel", "Ad-Blue","Descanso"], 
+        "Diesel": ["Ad-Blue","Descanso"],
+        "Ad-Blue": ["Lavado Interior","Lavado Exterior","Taller","Descanso"],
+        "Lavado Exterior": ["Lavado Interior","Taller","Descanso"], 
+        "Lavado Interior": ["Lavado Exterior", "Taller","Descanso"],
+        "Taller": ["Lavado Exterior", "Lavado Interior","Descanso"],
+        "Descanso": ["Desfogue"] 
+      };
 
-    if (!movimientosPermitidos.includes(nuevaAreaId)) {
-      alert(`Movimiento no autorizado.\nUn autobús en "${areaActual}" solo puede avanzar a: ${movimientosPermitidos.join(" o ")}.`);
-      return;
+      const movimientosPermitidos = reglasFlujo[areaActual] || [];
+      if (!movimientosPermitidos.includes(nuevaAreaId)) {
+        alert(`Movimiento no autorizado.\nUn autobús en "${areaActual}" solo puede avanzar a: ${movimientosPermitidos.join(" o ")}.`);
+        return;
+      }
     }
 
     const infoAreaDestino = areasConfig.find(a => a.id === nuevaAreaId);
@@ -181,9 +180,7 @@ if (camionMovido) {
 
     setCamiones(camionesActualizados);
   };
-
-  // 🌟 NUEVO: Función que cruza los camiones con el historial para generar el reporte
-  // 🌟 NUEVO: Función que cruza los camiones con el historial para generar el reporte
+  
   const generarDatosDeReporte = () => {
     return camiones.map((camion) => {
       const movimientosDelCamion = historial.filter(
@@ -194,7 +191,6 @@ if (camionMovido) {
         ? movimientosDelCamion[movimientosDelCamion.length - 1].hora 
         : "Recién registrado";
 
-      // Limpiamos espacios extra en el nombre del área por si acaso
       const areaActual = camion.area ? camion.area.trim() : "";
 
       let horaSalida = "En proceso...";
@@ -202,27 +198,93 @@ if (camionMovido) {
         horaSalida = camion.horaSalidaTerminal;
       }
 
-      // 4. Determinar el Estado Actual (Ajustado a "En flujo")
       let estadoActual = "En flujo"; 
-      
       if (areaActual === "Fuera") {
         estadoActual = "Completado"; 
       } else if (areaActual === "Descanso") {
         estadoActual = "En descanso"; 
       }
 
-      // 5. Armamos la fila mandando la propiedad de varias formas para evitar que Reportes.jsx se confunda
+      // 📊 CÁLCULO DINÁMICO DEL PROGRESS BAR
+      let porcentajeProgreso = 0;
+      
+      if (areaActual === "Fuera") {
+        porcentajeProgreso = 100; // Si ya salió, completó el 100%
+      } else {
+        // Encontramos la posición del área actual en la configuración de la terminal
+        const indiceArea = areasConfig.findIndex(a => a.id === areaActual);
+        
+        if (indiceArea !== -1 && areasConfig.length > 0) {
+          // Dividimos el 100% entre el total de áreas y multiplicamos por la posición actual (+1 para no empezar en 0%)
+          porcentajeProgreso = Math.round(((indiceArea + 1) / areasConfig.length) * 100);
+        }
+      }
+
       return {
         id: camion.id, 
         codigo: camion.codigo,
         conductor: camion.conductor,
         horaEntrada: horaEntrada,
         horaSalida: horaSalida,
-        estado: estadoActual,   // Por si Reportes.jsx lee 'estado'
-        status: estadoActual,   // Por si Reportes.jsx lee 'status'
-        estatus: estadoActual   // Por si Reportes.jsx lee 'estatus'
+        estado: estadoActual,   
+        status: estadoActual,   
+        estatus: estadoActual,
+        progreso: porcentajeProgreso // 👈 Enviamos el porcentaje calculado al reporte
       };
     });
+  };
+
+  const obtenerProgresoCamion = (camion) => {
+    if (!camion) return 0;
+    
+    // Si ya se presionó el botón de finalizar, la barra va al 100%
+    if (camion.finalizado || camion.area === "Fuera") return 100;
+
+    // Cálculo dinámico empezando en 0%
+    if (camion.ruta && camion.ruta.length > 0) {
+      const indiceArea = camion.ruta.indexOf(camion.area);
+      if (indiceArea !== -1) {
+        // Fórmula: (posición actual / total de paradas) * 100
+        return Math.round((indiceArea / camion.ruta.length) * 100);
+      }
+    } else {
+      // Fallback para camiones sin ruta configurada
+      const indiceArea = areasConfig.findIndex(a => a.id === camion.area);
+      if (indiceArea !== -1 && areasConfig.length > 0) {
+        return Math.round((indiceArea / areasConfig.length) * 100);
+      }
+    }
+    return 0;
+  };
+
+const finalizarRecorrido = (idCamion) => {
+    const camion = camiones.find(c => c.id === idCamion);
+    if (!camion) return;
+
+    const ahora = new Date();
+    const horaSalidaTexto = ahora.toLocaleTimeString('es-MX');
+
+    // 1. Guardamos en el historial
+    setHistorial(prev => [
+      {
+        id: Date.now(),
+        tipo: "completado",
+        unidad: camion.codigo,
+        fecha: ahora.toLocaleDateString('es-MX'),
+        hora: horaSalidaTexto,
+        mensaje: `La unidad ${camion.codigo} completó su ruta en ${camion.area}`
+      },
+      ...prev
+    ]);
+
+    // 2. Marcamos el camión como finalizado, pero SIN sacarlo de su área actual
+    setCamiones(prev =>
+      prev.map(c => 
+        c.id === idCamion 
+          ? { ...c, finalizado: true, horaSalidaTerminal: horaSalidaTexto } 
+          : c
+      )
+    );
   };
 
    const renderizarContenido = () => {
@@ -234,6 +296,7 @@ if (camionMovido) {
               const nombreArea = areaInfo.id;
               const capacidadMaxima = areaInfo.capacidad;
               const camionesActuales = camiones.filter((c) => c.area === nombreArea).length;
+              
 
               return (
                 <div
@@ -267,19 +330,33 @@ if (camionMovido) {
                         title="Doble clic para ver detalles del Registro"
                       >
                    <TarjetaInfo
-                       camion={camion}
-                       alIniciarArrastre={alIniciarArrastre}
-                       crearAlerta={crearAlerta}
-                   />
+  camion={camion}
+  alIniciarArrastre={alIniciarArrastre}
+  crearAlerta={crearAlerta}
+  progreso={obtenerProgresoCamion(camion)} /* 👈 Agrega esta línea */
+/>
 
-                  {nombreArea === "Descanso" && (
-                    <button
-                   className="btn-salida"
-                    onClick={() => sacarCamion(camion.id)}
-                   >
-                 Dar salida
-                </button>
-                )}
+                  {/* 🌟 NUEVA LÓGICA: BOTÓN DINÁMICO DE SALIDA */}
+{ (camion.ruta && camion.ruta.length > 0) ? (
+  // Aparece en la última parada, solo si NO ha sido finalizado
+  camion.area === camion.ruta[camion.ruta.length - 1] && !camion.finalizado && (
+    <button
+      className="btn-salida"
+      onClick={() => finalizarRecorrido(camion.id)}
+    >
+      Finalizar recorrido
+    </button>
+  )
+) : (
+  nombreArea === "Descanso" && !camion.finalizado && (
+    <button
+      className="btn-salida"
+      onClick={() => finalizarRecorrido(camion.id)}
+    >
+      Finalizar recorrido
+    </button>
+  )
+)}
                 </div>
                         ))
                     )}
@@ -290,12 +367,12 @@ if (camionMovido) {
           </div>
         );
       case 'registrar':
-      return (
-     <Registro
+  return (
+    <Registro
       agregarCamion={agregarCamion}
       agregarHistorial={agregarHistorial}
-      />
-     );
+    />
+  );
      case 'historial':
   return (
     <div className="historial-container">
