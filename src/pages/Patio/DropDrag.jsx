@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import TarjetaInfo from './TarjetaInfo.jsx';
-import mockDB from './CamionArea.json';
 import './DropDrag.css';
 import Registro from '../Registro/Registro.jsx';
 import ConfAvaz from '../ConfAvanz/ConfAvaz.jsx';
 import Reportes from '../Reportes/Reportes.jsx';
+import camionesService from '../../services/camionesService.js';
+import areasService from '../../services/areasService.js';
+import historialService from '../../services/historialService.js';
 
 import { MdDashboard, MdAssignmentTurnedIn, MdSwapHoriz, MdHistory, MdBarChart, MdSettings, MdExitToApp } from "react-icons/md";
 import { TbWash, TbWashDryDip } from "react-icons/tb";
@@ -27,50 +29,77 @@ const areaIcons = {
 
 export default function DropDrag() {
   const [pestanaActiva, setPestanaActiva] = useState('patio');
-  const [camiones, setCamiones] = useState(mockDB.camiones); //SetCamiones es el gatillo 
-  const agregarCamion = (nuevoCamion) => {
-  setCamiones((prev) => [...prev, nuevoCamion]);
- };
-
-//  const [datosReportes, setDatosReportes] = useState([
-//     {
-//       id: "rep-1",
-//       codigo: "ADO-1020",
-//       conductor: "Carlos Gómez",
-//       horaEntrada: "10:15:30 AM",
-//       horaSalida: "11:45:22 AM",
-//       estado: "Completado"
-//     }
-//   ]);
-
-  const [alertas, setAlertas] = useState([]);
-  const [areasConfig, setAreasConfig] = useState(mockDB.areas); //Las áreas si van a cambiar
+  const [camiones, setCamiones] = useState([]);
+  const [areasConfig, setAreasConfig] = useState([]);
   const [historial, setHistorial] = useState([]);
+  const [alertas, setAlertas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const crearAlerta = (alertaNueva) => {
-  setAlertas((prev) => [...prev, alertaNueva]);
-  const ahora = new Date();
+  // Cargar datos iniciales desde la API
+  useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        
+        const [camionesDatos, areasDatos] = await Promise.all([
+          camionesService.getAllCamiones(),
+          areasService.getAllAreas()
+        ]);
 
-setHistorial(prev => [
-  {
-    id: Date.now(),
-    tipo: "alerta",
-    unidad: alertaNueva.autobus,
-    fecha: ahora.toLocaleDateString('es-MX'),
-    hora: ahora.toLocaleTimeString('es-MX'),
-    mensaje: `Alerta: la unidad ${alertaNueva.autobus} excedió el tiempo permitido en ${alertaNueva.area}`
-  },
-  ...prev
-  ]);
+        setCamiones(Array.isArray(camionesDatos) ? camionesDatos : []);
+        setAreasConfig(Array.isArray(areasDatos) ? areasDatos : []);
+      } catch (err) {
+        console.error("Error cargando datos:", err);
+        setError("Error al cargar los datos. Usando datos locales.");
+        // Fallback a datos locales si falla la API
+        import('./CamionArea.json').then(mockDB => {
+          setCamiones(mockDB.default.camiones);
+          setAreasConfig(mockDB.default.areas);
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  setTimeout(() => {
-    setAlertas((prev) =>
-      prev.filter((alerta) => alerta !== alertaNueva)
-    );
-  }, 5000);
+    cargarDatos();
+  }, []);
+
+  const agregarCamion = (nuevoCamion) => {
+    setCamiones((prev) => [...prev, nuevoCamion]);
   };
 
-  const sacarCamion = (idCamion) => {
+  const crearAlerta = async (alertaNueva) => {
+    setAlertas((prev) => [...prev, alertaNueva]);
+    const ahora = new Date();
+
+    const registroAlerta = {
+      id: Date.now(),
+      tipo: "alerta",
+      unidad: alertaNueva.autobus,
+      fecha: ahora.toLocaleDateString('es-MX'),
+      hora: ahora.toLocaleTimeString('es-MX'),
+      mensaje: `Alerta: la unidad ${alertaNueva.autobus} excedió el tiempo permitido en ${alertaNueva.area}`
+    };
+
+    setHistorial(prev => [registroAlerta, ...prev]);
+
+    // Log alerta en API
+    try {
+      await historialService.logAlerta(registroAlerta);
+    } catch (err) {
+      console.error("Error logging alerta:", err);
+    }
+
+    setTimeout(() => {
+      setAlertas((prev) =>
+        prev.filter((alerta) => alerta !== alertaNueva)
+      );
+    }, 5000);
+  };
+
+  const sacarCamion = async (idCamion) => {
     const camion = camiones.find(c => c.id === idCamion);
 
     if (!camion) return;
@@ -89,8 +118,14 @@ setHistorial(prev => [
 
     setHistorial(prev => [registroSalida, ...prev]);
 
-    // CORREGIDO: En lugar de usar .filter() para eliminarlo, 
-    // mapeamos el arreglo y cambiamos su área a "Fuera" guardando su hora de salida
+    // Actualizar en API
+    try {
+      await camionesService.sacarCamion(idCamion);
+      await historialService.logSalida(registroSalida);
+    } catch (err) {
+      console.error("Error updating camion en API:", err);
+    }
+
     setCamiones(prev =>
       prev.map(c => 
         c.id === idCamion 
@@ -101,10 +136,8 @@ setHistorial(prev => [
   };
 
   const agregarHistorial = (registro) => {
-  setHistorial(prev => [registro, ...prev]);
+    setHistorial(prev => [registro, ...prev]);
   };
-
-  const [camionSeleccionado, setCamionSeleccionado] = useState(null);
 
   const alIniciarArrastre = (e, idCamion) => {
     e.dataTransfer.setData('text/plain', idCamion);
@@ -114,32 +147,47 @@ setHistorial(prev => [
     e.preventDefault();
   };
 
- const alSoltar = (e, nuevaAreaId) => { //Aqui se implementa la validacion para OPERADOR
+  const alSoltar = async (e, nuevaAreaId) => {
     e.preventDefault();
     const idCamion = e.dataTransfer.getData('text/plain');
 
     const camionQueSeMueve = camiones.find(c => c.id === idCamion);
     if (!camionQueSeMueve) return;
-    
-    const areaActual = camionQueSeMueve.area;
 
+    const areaActual = camionQueSeMueve.area;
     if (areaActual === nuevaAreaId) return;
 
-    const reglasFlujo = {
-      "Desfogue": ["Diesel", "Ad-Blue","Descanso"], // De desfogue solo pueden ir a lavar o al taller
-      "Diesel": ["Ad-Blue","Descanso"],
-      "Ad-Blue": ["Lavado Interior","Lavado Exterior","Taller","Descanso"],
-      "Lavado Exterior": ["Lavado Interior","Taller","Descanso"], // Tienen que pasar por interior obligatoriamente
-      "Lavado Interior": ["Lavado Exterior", "Taller","Descanso"],
-      "Taller": ["Lavado Exterior", "Lavado Interior","Descanso"],
-      "Descanso": ["Desfogue"] // Vuelven a empezar un nuevo viaje
-    };
+    if (camionQueSeMueve.ruta && camionQueSeMueve.ruta.length > 0) {
+      if (camionQueSeMueve.finalizado) {
+        if (nuevaAreaId !== "Descanso") {
+          alert(`Movimiento incorrecto.\nLa unidad ${camionQueSeMueve.codigo} ya completó su ciclo. Solo puede moverse a "Descanso" para esperar su salida.`);
+          return;
+        }
+      } else {
+        const indiceActual = camionQueSeMueve.ruta.indexOf(areaActual);
+        const siguienteAreaEsperada = camionQueSeMueve.ruta[indiceActual + 1];
 
-    const movimientosPermitidos = reglasFlujo[areaActual] || [];
+        if (nuevaAreaId !== siguienteAreaEsperada) {
+          alert(`Movimiento incorrecto.\nEl autobús ${camionQueSeMueve.codigo} tiene asignado ir a: "${siguienteAreaEsperada || 'Completar ciclo'}".`);
+          return;
+        }
+      }
+    } else {
+      const reglasFlujo = {
+        "Desfogue": ["Diesel", "Ad-Blue", "Descanso"],
+        "Diesel": ["Ad-Blue", "Descanso"],
+        "Ad-Blue": ["Lavado Interior", "Lavado Exterior", "Taller", "Descanso"],
+        "Lavado Exterior": ["Lavado Interior", "Taller", "Descanso"],
+        "Lavado Interior": ["Lavado Exterior", "Taller", "Descanso"],
+        "Taller": ["Lavado Exterior", "Lavado Interior", "Descanso"],
+        "Descanso": ["Desfogue"]
+      };
 
-    if (!movimientosPermitidos.includes(nuevaAreaId)) {
-      alert(`Movimiento no autorizado.\nUn autobús en "${areaActual}" solo puede avanzar a: ${movimientosPermitidos.join(" o ")}.`);
-      return;
+      const movimientosPermitidos = reglasFlujo[areaActual] || [];
+      if (!movimientosPermitidos.includes(nuevaAreaId)) {
+        alert(`Movimiento no autorizado.\nUn autobús en "${areaActual}" solo puede avanzar a: ${movimientosPermitidos.join(" o ")}.`);
+        return;
+      }
     }
 
     const infoAreaDestino = areasConfig.find(a => a.id === nuevaAreaId);
@@ -159,42 +207,44 @@ setHistorial(prev => [
       return { ...camion };
     });
 
-    const camionMovido = camiones.find(
-  c => c.id === idCamion
-  );
+    const camionMovido = camiones.find(c => c.id === idCamion);
 
-if (camionMovido) {
-  const ahora = new Date();
+    if (camionMovido) {
+      const ahora = new Date();
 
-  setHistorial(prev => [
-    {
-      id: Date.now(),
-      tipo: "movimiento",
-      unidad: camionMovido.codigo,
-      fecha: ahora.toLocaleDateString('es-MX'),
-      hora: ahora.toLocaleTimeString('es-MX'),
-      mensaje: `La unidad ${camionMovido.codigo} fue movida de ${camionMovido.area} a ${nuevaAreaId}`
-    },
-    ...prev
-  ]);
-  }
+      const registroMovimiento = {
+        id: Date.now(),
+        tipo: "movimiento",
+        unidad: camionMovido.codigo,
+        fecha: ahora.toLocaleDateString('es-MX'),
+        hora: ahora.toLocaleTimeString('es-MX'),
+        mensaje: `La unidad ${camionMovido.codigo} fue movida de ${camionMovido.area} a ${nuevaAreaId}`
+      };
+
+      setHistorial(prev => [registroMovimiento, ...prev]);
+
+      // Registrar movimiento en API
+      try {
+        await camionesService.moveCamionToArea(idCamion, nuevaAreaId);
+        await historialService.logMovimiento(registroMovimiento);
+      } catch (err) {
+        console.error("Error updating camion movement en API:", err);
+      }
+    }
 
     setCamiones(camionesActualizados);
   };
 
-  // 🌟 NUEVO: Función que cruza los camiones con el historial para generar el reporte
-  // 🌟 NUEVO: Función que cruza los camiones con el historial para generar el reporte
   const generarDatosDeReporte = () => {
     return camiones.map((camion) => {
       const movimientosDelCamion = historial.filter(
         (mov) => mov.unidad === camion.codigo
       );
 
-      const horaEntrada = movimientosDelCamion.length > 0 
-        ? movimientosDelCamion[movimientosDelCamion.length - 1].hora 
+      const horaEntrada = movimientosDelCamion.length > 0
+        ? movimientosDelCamion[movimientosDelCamion.length - 1].hora
         : "Recién registrado";
 
-      // Limpiamos espacios extra en el nombre del área por si acaso
       const areaActual = camion.area ? camion.area.trim() : "";
 
       let horaSalida = "En proceso...";
@@ -202,30 +252,96 @@ if (camionMovido) {
         horaSalida = camion.horaSalidaTerminal;
       }
 
-      // 4. Determinar el Estado Actual (Ajustado a "En flujo")
-      let estadoActual = "En flujo"; 
-      
+      let estadoActual = "En flujo";
       if (areaActual === "Fuera") {
-        estadoActual = "Completado"; 
+        estadoActual = "Completado";
       } else if (areaActual === "Descanso") {
-        estadoActual = "En descanso"; 
+        estadoActual = "En descanso";
       }
 
-      // 5. Armamos la fila mandando la propiedad de varias formas para evitar que Reportes.jsx se confunda
+      let porcentajeProgreso = 0;
+
+      if (areaActual === "Fuera") {
+      } else {
+        const indiceArea = areasConfig.findIndex(a => a.id === areaActual);
+
+        if (indiceArea !== -1 && areasConfig.length > 0) {
+          porcentajeProgreso = Math.round(((indiceArea + 1) / areasConfig.length) * 100);
+        }
+      }
+
       return {
-        id: camion.id, 
+        id: camion.id,
         codigo: camion.codigo,
         conductor: camion.conductor,
         horaEntrada: horaEntrada,
         horaSalida: horaSalida,
-        estado: estadoActual,   // Por si Reportes.jsx lee 'estado'
-        status: estadoActual,   // Por si Reportes.jsx lee 'status'
-        estatus: estadoActual   // Por si Reportes.jsx lee 'estatus'
+        estado: estadoActual,
+        status: estadoActual,
+        estatus: estadoActual,
+        progreso: porcentajeProgreso
       };
     });
   };
 
-   const renderizarContenido = () => {
+  const obtenerProgresoCamion = (camion) => {
+    if (!camion) return 0;
+
+    if (camion.finalizado || camion.area === "Fuera") return 100;
+
+    if (camion.ruta && camion.ruta.length > 0) {
+      const indiceArea = camion.ruta.indexOf(camion.area);
+      if (indiceArea !== -1) {
+        return Math.round((indiceArea / camion.ruta.length) * 100);
+      }
+    } else {
+      const indiceArea = areasConfig.findIndex(a => a.id === camion.area);
+      if (indiceArea !== -1 && areasConfig.length > 0) {
+        return Math.round((indiceArea / areasConfig.length) * 100);
+      }
+    }
+    return 0;
+  };
+
+  const finalizarRecorrido = async (idCamion) => {
+    const camion = camiones.find(c => c.id === idCamion);
+    if (!camion) return;
+
+    const ahora = new Date();
+    const horaSalidaTexto = ahora.toLocaleTimeString('es-MX');
+
+    const registroCompletado = {
+      id: Date.now(),
+      tipo: "completado",
+      unidad: camion.codigo,
+      fecha: ahora.toLocaleDateString('es-MX'),
+      hora: horaSalidaTexto,
+      mensaje: `La unidad ${camion.codigo} completó su ruta en ${camion.area}`
+    };
+
+    setHistorial(prev => [
+      registroCompletado,
+      ...prev
+    ]);
+
+    // Actualizar en API
+    try {
+      await camionesService.finalizarCamion(idCamion);
+      await historialService.logCompletado(registroCompletado);
+    } catch (err) {
+      console.error("Error finalizing camion:", err);
+    }
+
+    setCamiones(prev =>
+      prev.map(c =>
+        c.id === idCamion
+          ? { ...c, finalizado: true, horaSalidaTerminal: horaSalidaTexto }
+          : c
+      )
+    );
+  };
+
+  const renderizarContenido = () => {
     switch (pestanaActiva) {
       case 'patio':
         return (
@@ -261,26 +377,49 @@ if (camionMovido) {
                       camiones
                         .filter((camion) => camion.area === nombreArea)
                         .map((camion) => (
-                        <div
-                       key={camion.id}
-                       onDoubleClick={() => setCamionSeleccionado(camion)}
-                        title="Doble clic para ver detalles del Registro"
-                      >
-                   <TarjetaInfo
-                       camion={camion}
-                       alIniciarArrastre={alIniciarArrastre}
-                       crearAlerta={crearAlerta}
-                   />
+                          <div
+                            key={camion.id}
+                            title="Doble clic para ver detalles del Registro"
+                          >
+                            <TarjetaInfo
+                              camion={camion}
+                              alIniciarArrastre={alIniciarArrastre}
+                              crearAlerta={crearAlerta}
+                              progreso={obtenerProgresoCamion(camion)}
+                            />
 
-                  {nombreArea === "Descanso" && (
-                    <button
-                   className="btn-salida"
-                    onClick={() => sacarCamion(camion.id)}
-                   >
-                 Dar salida
-                </button>
-                )}
-                </div>
+                            {(camion.ruta && camion.ruta.length > 0) ? (
+                              <>
+                                {camion.area === camion.ruta[camion.ruta.length - 1] && !camion.finalizado && (
+                                  <button
+                                    className="btn-salida"
+                                    onClick={() => finalizarRecorrido(camion.id)}
+                                  >
+                                    Finalizar Área
+                                  </button>
+                                )}
+
+                                {camion.finalizado && camion.area === "Descanso" && (
+                                  <button
+                                    className="btn-salida"
+                                    style={{ backgroundColor: '#10b981' }}
+                                    onClick={() => sacarCamion(camion.id)}
+                                  >
+                                    Dar Salida
+                                  </button>
+                                )}
+                              </>
+                            ) : (
+                              nombreArea === "Descanso" && !camion.finalizado && (
+                                <button
+                                  className="btn-salida"
+                                  onClick={() => finalizarRecorrido(camion.id)}
+                                >
+                                  Finalizar recorrido
+                                </button>
+                              )
+                            )}
+                          </div>
                         ))
                     )}
                   </div>
@@ -290,52 +429,52 @@ if (camionMovido) {
           </div>
         );
       case 'registrar':
-      return (
-     <Registro
-      agregarCamion={agregarCamion}
-      agregarHistorial={agregarHistorial}
-      />
-     );
-     case 'historial':
-  return (
-    <div className="historial-container">
-      <h2>Historial de Movimientos</h2>
+        return (
+          <Registro
+            agregarCamion={agregarCamion}
+            agregarHistorial={agregarHistorial}
+          />
+        );
+      case 'historial':
+        return (
+          <div className="historial-container">
+            <h2>Historial de Movimientos</h2>
 
-      {historial.length === 0 ? (
-        <p>No hay registros disponibles.</p>
-      ) : (
-        <div className="historial-grid">
-          {historial.map((registro) => (
-            <div
-              key={registro.id}
-              className="historial-card"
-            >
-              <div className="historial-card__mensaje">
-                {registro.mensaje}
-              </div>
+            {historial.length === 0 ? (
+              <p>No hay registros disponibles.</p>
+            ) : (
+              <div className="historial-grid">
+                {historial.map((registro) => (
+                  <div
+                    key={registro.id}
+                    className="historial-card"
+                  >
+                    <div className="historial-card__mensaje">
+                      {registro.mensaje}
+                    </div>
 
-              <div className="historial-card__info">
-                <span>Unidad: {registro.unidad}</span>
-              </div>
+                    <div className="historial-card__info">
+                      <span>Unidad: {registro.unidad}</span>
+                    </div>
 
-              <div className="historial-card__fecha">
-                {registro.fecha} · {registro.hora}
+                    <div className="historial-card__fecha">
+                      {registro.fecha} · {registro.hora}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+            )}
+          </div>
+        );
       case 'reportes':
         return <Reportes datos={generarDatosDeReporte()} />;
 
       case 'configuracion':
         return (
-          <ConfAvaz //Lista de camiones
-            areasConfig={areasConfig} 
-            setAreasConfig={setAreasConfig} 
-            camiones={camiones} 
+          <ConfAvaz
+            areasConfig={areasConfig}
+            setAreasConfig={setAreasConfig}
+            camiones={camiones}
             setCamiones={setCamiones}
           />
         );
@@ -344,7 +483,17 @@ if (camionMovido) {
     }
   };
 
-  // SIDEBAR
+  if (loading) {
+    return (
+      <div className="layout-container">
+        <main className="main-content">
+          <div style={{ padding: '40px', textAlign: 'center' }}>
+            <p>Cargando datos del sistema...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="layout-container">
@@ -352,48 +501,48 @@ if (camionMovido) {
         <div className="sidebar__logo">
           <img
             src="/logo-ado.png"
-           alt="ADO"
-        className="sidebar__logo-img"
-      />
-     </div>
+            alt="ADO"
+            className="sidebar__logo-img"
+          />
+        </div>
 
         <nav className="sidebar__nav">
-          <button 
+          <button
             className={`sidebar__item ${pestanaActiva === 'patio' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('patio')}
           >
             <MdDashboard className="sidebar__icon" />
             <span>Patio en tiempo real</span>
           </button>
-          <button 
+          <button
             className={`sidebar__item ${pestanaActiva === 'registrar' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('registrar')}
           >
             <MdAssignmentTurnedIn className="sidebar__icon" />
             <span>Registrar camión</span>
           </button>
-          <button 
+          <button
             className={`sidebar__item ${pestanaActiva === 'historial' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('historial')}
           >
             <MdHistory className="sidebar__icon" />
             <span>Historial</span>
           </button>
-          <button 
+          <button
             className={`sidebar__item ${pestanaActiva === 'reportes' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('reportes')}
           >
             <MdBarChart className="sidebar__icon" />
             <span>Reportes</span>
           </button>
-          <button 
+          <button
             className={`sidebar__item ${pestanaActiva === 'configuracion' ? 'sidebar__item--active' : ''}`}
             onClick={() => setPestanaActiva('configuracion')}
           >
             <MdSettings className="sidebar__icon" />
             <span>Configuración Avanzada</span>
-          </button>       
-        </nav> 
+          </button>
+        </nav>
 
         <button className="sidebar__logout" onClick={() => alert('Cerrando sesión...')}>
           <MdExitToApp className="sidebar__icon" />
@@ -407,41 +556,20 @@ if (camionMovido) {
           <p>Vista general de ocupación por área</p>
         </header>
         {alertas.length > 0 && (
-         <div className="alertas-container">
-           {alertas.map((alerta, index) => (
-          <div key={index} className="alerta-toast">
-           <MdAddAlert />
-          <span>
-         El autobús {alerta.autobus} está en {alerta.area} y lleva {alerta.tiempo}
-         </span>
-        </div>
-    ))}
-  </div>
-)}
-        
+          <div className="alertas-container">
+            {alertas.map((alerta, index) => (
+              <div key={index} className="alerta-toast">
+                <MdAddAlert />
+                <span>
+                  El autobús {alerta.autobus} está en {alerta.area} y lleva {alerta.tiempo}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {renderizarContenido()}
       </main>
-
-      {/* INFORMACION DEL CAMION */}
-      {camionSeleccionado && (
-        <div className="modal-overlay" onClick={() => setCamionSeleccionado(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-card__header">
-              <h2>Ficha de Registro: {camionSeleccionado.codigo}</h2>
-              <button className="modal-card__close" onClick={() => setCamionSeleccionado(null)}>&times;</button>
-            </div>
-            <div className="modal-card__body">
-              <div className="modal-data-row"><strong>Código:</strong> <span>{camionSeleccionado.codigo}</span></div>
-              <div className="modal-data-row"><strong>Tipo de Autobús:</strong> <span>{camionSeleccionado.tipo}</span></div>
-              <div className="modal-data-row"><strong>Área Asignada:</strong> <span>{camionSeleccionado.area}</span></div>
-              
-              <div className="modal-data-row"><strong>Conductor Asignado:</strong> <span>{camionSeleccionado.conductor || 'No asignado'}</span></div>
-              <div className="modal-data-row"><strong>Origen:</strong> <span>{camionSeleccionado.origen || 'N/A'}</span></div>
-              <div className="modal-data-row"><strong>Destino:</strong> <span>{camionSeleccionado.destino || 'N/A'}</span></div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

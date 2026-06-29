@@ -1,50 +1,17 @@
 import { useState } from "react";
-import "./Resgistro.css"; 
+import camionesService from "../../services/camionesService.js";
+import historialService from "../../services/historialService.js";
+import "./Resgistro.css";
 
 export default function Registro({
   agregarCamion,
   agregarHistorial
- }) { 
+}) {
   const [paso, setPaso] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const [camion, setCamion] = useState({
-    numero: "",
-    tipoUnidad: "",
-    observaciones: "",
-    area: "",
-    conductor: "", 
-    origen: "",   
-    destino: "", 
-  });
-
-  const registrarCamion = () => {
-
-  const nuevoCamion = {
-    id: Date.now().toString(),
-    codigo: camion.numero,
-    tipo: camion.tipoUnidad,
-    area: camion.area,
-    conductor: camion.conductor,
-    origen: camion.origen,
-    destino: camion.destino
-  };
-
-  agregarCamion(nuevoCamion);
-  
-  const ahora = new Date();
-
- agregarHistorial({
-  id: Date.now(),
-  unidad: camion.numero,
-  areaFinal: camion.area,
-  fecha: ahora.toLocaleDateString('es-MX'),
-  hora: ahora.toLocaleTimeString('es-MX'),
-  mensaje: `Se registró la unidad ${camion.numero} en el área ${camion.area}`
- });
-
-  alert("Autobús registrado correctamente");
-
-  setCamion({
     numero: "",
     tipoUnidad: "",
     observaciones: "",
@@ -52,10 +19,99 @@ export default function Registro({
     conductor: "",
     origen: "",
     destino: "",
+    areasRuta: [] // Lista de las áreas seleccionadas
   });
 
-  setPaso(1);
-};
+  const alternarAreaEnRuta = (nombreArea) => {
+    let nuevaRuta = [...camion.areasRuta];
+    if (nuevaRuta.includes(nombreArea)) {
+      nuevaRuta = nuevaRuta.filter(a => a !== nombreArea);
+    } else {
+      nuevaRuta.push(nombreArea);
+    }
+    setCamion({
+      ...camion,
+      areasRuta: nuevaRuta,
+      area: nuevaRuta.length > 0 ? nuevaRuta[0] : ""
+    });
+  };
+
+  const registrarCamion = async () => {
+    setError("");
+    setLoading(true);
+
+    try {
+      // Validación básica
+      if (!camion.numero.trim()) {
+        setError("El número de autobús es requerido");
+        setLoading(false);
+        return;
+      }
+
+      if (!camion.conductor.trim()) {
+        setError("El conductor es requerido");
+        setLoading(false);
+        return;
+      }
+
+      const nuevoCamion = {
+        codigo: camion.numero,
+        tipo: camion.tipoUnidad,
+        area: camion.areasRuta[0] || "",
+        conductor: camion.conductor,
+        origen: camion.origen,
+        destino: camion.destino,
+        ruta: camion.areasRuta,
+        observaciones: camion.observaciones
+      };
+
+      // Crear camión en la API
+      const respuestaAPI = await camionesService.createCamion(nuevoCamion);
+      console.log("Camión creado en API:", respuestaAPI);
+
+      // Agregar a estado local también (para UI que lo requiera)
+      const camionConId = {
+        id: respuestaAPI.id || Date.now().toString(),
+        ...nuevoCamion
+      };
+
+      agregarCamion(camionConId);
+
+      // Registrar en historial
+      const ahora = new Date();
+      const registroHistorial = {
+        unidad: camion.numero,
+        areaFinal: camion.area,
+        fecha: ahora.toLocaleDateString('es-MX'),
+        hora: ahora.toLocaleTimeString('es-MX'),
+        mensaje: `Se registró la unidad ${camion.numero} en el área ${camion.area}`
+      };
+
+      await historialService.logRegistro(registroHistorial);
+      agregarHistorial(registroHistorial);
+
+      alert("Autobús registrado correctamente");
+
+      // Limpiar formulario
+      setCamion({
+        numero: "",
+        tipoUnidad: "",
+        observaciones: "",
+        area: "",
+        conductor: "",
+        origen: "",
+        destino: "",
+        areasRuta: []
+      });
+
+      setPaso(1);
+    } catch (err) {
+      console.error("Error registrando camión:", err);
+      setError(err.message || "Error al registrar el autobús. Intenta nuevamente.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="registro-page">
@@ -68,6 +124,8 @@ export default function Registro({
         <p className="registro-subtitle">
           Control de acceso al patio
         </p>
+
+        {error && <div className="error-message" style={{ color: '#ef4444', marginBottom: '15px', padding: '10px', borderRadius: '4px', backgroundColor: '#fee2e2' }}>{error}</div>}
 
         <div className="step-indicator">
           <div className={`step ${paso >= 1 ? "active" : ""}`}>1</div>
@@ -84,6 +142,7 @@ export default function Registro({
               <button
                 className="btn-primary"
                 onClick={() => setPaso(2)}
+                disabled={loading}
               >
                 Registrar Autobús
               </button>
@@ -109,6 +168,7 @@ export default function Registro({
                       numero: e.target.value,
                     })
                   }
+                  disabled={loading}
                 />
               </div>
 
@@ -122,6 +182,7 @@ export default function Registro({
                       tipoUnidad: e.target.value,
                     })
                   }
+                  disabled={loading}
                 >
                   <option value="">Seleccione</option>
                   <option value="Foraneo">ADO</option>
@@ -145,10 +206,10 @@ export default function Registro({
                       conductor: e.target.value,
                     })
                   }
+                  disabled={loading}
                 />
               </div>
 
-              {/* --- NUEVO CAMPO: ORIGEN --- */}
               <div className="input-group">
                 <label>Terminal de Origen</label>
                 <input
@@ -161,6 +222,7 @@ export default function Registro({
                       origen: e.target.value,
                     })
                   }
+                  disabled={loading}
                 />
               </div>
 
@@ -176,6 +238,7 @@ export default function Registro({
                       destino: e.target.value,
                     })
                   }
+                  disabled={loading}
                 />
               </div>
 
@@ -191,8 +254,9 @@ export default function Registro({
                       observaciones: e.target.value,
                     })
                   }
+                  disabled={loading}
                 />
-              </div>                  
+              </div>
 
             </div>
 
@@ -200,6 +264,7 @@ export default function Registro({
               <button
                 className="btn-secondary"
                 onClick={() => setPaso(1)}
+                disabled={loading}
               >
                 Atrás
               </button>
@@ -207,6 +272,7 @@ export default function Registro({
               <button
                 className="btn-primary"
                 onClick={() => setPaso(3)}
+                disabled={loading}
               >
                 Continuar
               </button>
@@ -216,49 +282,49 @@ export default function Registro({
 
         {paso === 3 && (
           <>
-            <h2 style={{ color: '#5B177F' }}>Seleccionar Área Inicial</h2>
+            <h2 style={{ color: '#5B177F' }}>Seleccionar las Áreas de Ruta</h2>
 
             <div className="area-grid">
               <div
-                className={`area-card ${camion.area === "Desfogue" ? "selected" : ""}`}
-                onClick={() => setCamion({ ...camion, area: "Desfogue" })}
+                className={`area-card ${camion.areasRuta.includes("Desfogue") ? "selected" : ""}`}
+                onClick={() => alternarAreaEnRuta("Desfogue")}
               >
-                Desfogue
+                Desfogue {camion.areasRuta.includes("Desfogue") && `(#${camion.areasRuta.indexOf("Desfogue") + 1})`}
               </div>
 
               <div
-                className={`area-card ${camion.area === "Diesel" ? "selected" : ""}`}
-                onClick={() => setCamion({ ...camion, area: "Diesel" })}
+                className={`area-card ${camion.areasRuta.includes("Diesel") ? "selected" : ""}`}
+                onClick={() => alternarAreaEnRuta("Diesel")}
               >
-                Diesel
+                Diesel {camion.areasRuta.includes("Diesel") && `(#${camion.areasRuta.indexOf("Diesel") + 1})`}
               </div>
 
               <div
-                className={`area-card ${camion.area === "Ad-Blue" ? "selected" : ""}`}
-                onClick={() => setCamion({ ...camion, area: "Ad-Blue" })}
+                className={`area-card ${camion.areasRuta.includes("Ad-Blue") ? "selected" : ""}`}
+                onClick={() => alternarAreaEnRuta("Ad-Blue")}
               >
-                AdBlue
+                AdBlue {camion.areasRuta.includes("Ad-Blue") && `(#${camion.areasRuta.indexOf("Ad-Blue") + 1})`}
               </div>
 
               <div
-                className={`area-card ${camion.area === "Taller" ? "selected" : ""}`}
-                onClick={() => setCamion({ ...camion, area: "Taller" })}
+                className={`area-card ${camion.areasRuta.includes("Taller") ? "selected" : ""}`}
+                onClick={() => alternarAreaEnRuta("Taller")}
               >
-                Taller
+                Taller {camion.areasRuta.includes("Taller") && `(#${camion.areasRuta.indexOf("Taller") + 1})`}
               </div>
 
               <div
-                className={`area-card ${camion.area === "Lavado Interior" ? "selected" : ""}`}
-                onClick={() => setCamion({ ...camion, area: "Lavado Interior" })}
+                className={`area-card ${camion.areasRuta.includes("Lavado Interior") ? "selected" : ""}`}
+                onClick={() => alternarAreaEnRuta("Lavado Interior")}
               >
-                Lavado Interior
+                Lavado Interior {camion.areasRuta.includes("Lavado Interior") && `(#${camion.areasRuta.indexOf("Lavado Interior") + 1})`}
               </div>
 
               <div
-                className={`area-card ${camion.area === "Lavado Exterior" ? "selected" : ""}`}
-                onClick={() => setCamion({ ...camion, area: "Lavado Exterior" })}
+                className={`area-card ${camion.areasRuta.includes("Lavado Exterior") ? "selected" : ""}`}
+                onClick={() => alternarAreaEnRuta("Lavado Exterior")}
               >
-                Lavado Exterior
+                Lavado Exterior {camion.areasRuta.includes("Lavado Exterior") && `(#${camion.areasRuta.indexOf("Lavado Exterior") + 1})`}
               </div>
             </div>
 
@@ -266,6 +332,7 @@ export default function Registro({
               <button
                 className="btn-secondary"
                 onClick={() => setPaso(2)}
+                disabled={loading}
               >
                 Atrás
               </button>
@@ -273,6 +340,7 @@ export default function Registro({
               <button
                 className="btn-primary"
                 onClick={() => setPaso(4)}
+                disabled={loading}
               >
                 Continuar
               </button>
@@ -301,6 +369,9 @@ export default function Registro({
                 <strong>Área Inicial Asignada:</strong> {camion.area || "Ninguna"}
               </p>
               <p>
+                <strong>Ruta Planificada:</strong> {camion.areasRuta.length > 0 ? camion.areasRuta.join(" ➔ ") : "Ninguna"}
+              </p>
+              <p>
                 <strong>Observaciones:</strong> {camion.observaciones || "Sin observaciones"}
               </p>
             </div>
@@ -309,6 +380,7 @@ export default function Registro({
               <button
                 className="btn-secondary"
                 onClick={() => setPaso(3)}
+                disabled={loading}
               >
                 Atrás
               </button>
@@ -316,8 +388,9 @@ export default function Registro({
               <button
                 className="btn-success"
                 onClick={registrarCamion}
+                disabled={loading}
               >
-                Confirmar Registro
+                {loading ? "Registrando..." : "Confirmar Registro"}
               </button>
             </div>
           </>
