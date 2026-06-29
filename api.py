@@ -556,6 +556,9 @@ def update_camion(camion_id: int, body: CamionUpdate):
             ), {"id": camion_id, "ts": datetime.now()})
 
         elif body.area:
+            if body.area == "Descanso":
+                # área virtual de espera — sin movimiento en DB
+                return {"ok": True, "id": camion_id}
             db_name = AREA_DISPLAY_TO_DB.get(body.area)
             if not db_name:
                 raise HTTPException(400, f"Área desconocida: '{body.area}'")
@@ -610,7 +613,7 @@ def get_historial(
     q = (
         "SELECT m.id, m.serial_number AS serie, a.name AS area_db, m.entry_time"
         " FROM movements m JOIN area a ON a.id = m.area_id"
-        " WHERE DATE(m.entry_time AT TIME ZONE 'UTC') = :f"
+        " WHERE m.entry_time::date = :f"
     )
     params: dict = {"f": target}
     if unidad:
