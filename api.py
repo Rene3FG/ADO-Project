@@ -568,10 +568,11 @@ def update_camion(camion_id: int, body: CamionUpdate):
             if not area_row:
                 raise HTTPException(404, f"Área '{body.area}' no encontrada en la DB")
 
+            now = datetime.now()
             conn.execute(text(
-                "INSERT INTO movements (area_id, serial_number, entry_time)"
-                " VALUES (:aid, :s, :t)"
-            ), {"aid": area_row.id, "s": record.serial_number, "t": datetime.now()})
+                "INSERT INTO movements (area_id, serial_number, date, entry_time)"
+                " VALUES (:aid, :s, :d, :t)"
+            ), {"aid": area_row.id, "s": record.serial_number, "d": now.date(), "t": now.time()})
 
             conn.execute(text(
                 "UPDATE records SET is_dirty=true, last_modified_by='app',"
@@ -611,9 +612,9 @@ def get_historial(
 ):
     target = fecha or str(date.today())
     q = (
-        "SELECT m.id, m.serial_number AS serie, a.name AS area_db, m.entry_time"
+        "SELECT m.id, m.serial_number AS serie, a.name AS area_db, m.entry_time, m.date"
         " FROM movements m JOIN area a ON a.id = m.area_id"
-        " WHERE m.entry_time::date = :f"
+        " WHERE m.date = :f"
     )
     params: dict = {"f": target}
     if unidad:
@@ -627,13 +628,14 @@ def get_historial(
     result = []
     for r in rows:
         area_display = AREA_DB_TO_DISPLAY.get(r.area_db, r.area_db)
-        ts = r.entry_time
+        t = r.entry_time  # puede ser TIME o TIMESTAMP
+        d = r.date        # DATE
         result.append({
             "id": r.id,
             "tipo": "movimiento",
             "unidad": str(r.serie),
-            "fecha": ts.strftime("%d/%m/%Y") if ts else "",
-            "hora": ts.strftime("%H:%M:%S") if ts else "",
+            "fecha": d.strftime("%d/%m/%Y") if d else "",
+            "hora": t.strftime("%H:%M:%S") if t else "",
             "mensaje": f"La unidad {r.serie} entró a {area_display}",
         })
     return result
