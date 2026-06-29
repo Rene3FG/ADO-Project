@@ -82,12 +82,14 @@ export default function Reportes({ datos }) {
                   </td>
                   <td>
                     <span className={
-                      item.estado === 'Completado' ? 'badge-rojo' : 
-                      item.estado === 'En descanso' ? 'badge-amarillo' : 
+                      item.estado === 'Completado'  ? 'badge-rojo' :
+                      item.estado === 'Finalizado'  ? 'badge-amarillo' :
+                      item.estado === 'En descanso' ? 'badge-amarillo' :
                       'badge-verde'
                     }>
-                      {item.estado === 'Completado' ? 'COMPLETADO' : 
-                       item.estado === 'En descanso' ? 'EN DESCANSO' : 
+                      {item.estado === 'Completado'  ? 'COMPLETADO' :
+                       item.estado === 'Finalizado'  ? 'FINALIZADO' :
+                       item.estado === 'En descanso' ? 'EN DESCANSO' :
                        'EN PATIO'}
                     </span>
                   </td>
