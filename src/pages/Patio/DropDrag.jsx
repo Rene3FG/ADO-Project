@@ -48,28 +48,30 @@ export default function DropDrag() {
   // Cargar datos iniciales desde la API
   useEffect(() => {
     const cargarDatos = async () => {
-      try {
-        setLoading(true);
-        setError("");
+      setLoading(true);
+      setError("");
 
-        const [camionesDatos, areasDatos] = await Promise.all([
-          camionesService.getAllCamiones(),
-          areasService.getAllAreas()
-        ]);
+      const mockDB = (await import('./CamionArea.json')).default;
 
-        setCamiones(Array.isArray(camionesDatos) ? camionesDatos : []);
-        setAreasConfig(Array.isArray(areasDatos) ? areasDatos : []);
-      } catch (err) {
-        console.error("Error cargando datos:", err);
-        setError("Error al cargar los datos. Usando datos locales.");
-        // Fallback a datos locales si falla la API
-        import('./CamionArea.json').then(mockDB => {
-          setCamiones(mockDB.default.camiones);
-          setAreasConfig(mockDB.default.areas);
-        });
-      } finally {
-        setLoading(false);
-      }
+      const [resC, resA] = await Promise.allSettled([
+        camionesService.getAllCamiones(),
+        areasService.getAllAreas(),
+      ]);
+
+      const camionesData = resC.status === 'fulfilled' && Array.isArray(resC.value)
+        ? resC.value
+        : mockDB.camiones;
+
+      const areasData = resA.status === 'fulfilled' && Array.isArray(resA.value)
+        ? resA.value
+        : mockDB.areas;
+
+      if (resC.status === 'rejected') console.warn('Camiones API no disponible, usando mock:', resC.reason?.message);
+      if (resA.status === 'rejected') console.warn('Areas API no disponible, usando mock:', resA.reason?.message);
+
+      setCamiones(camionesData);
+      setAreasConfig(areasData);
+      setLoading(false);
     };
 
     cargarDatos();

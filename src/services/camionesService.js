@@ -12,7 +12,7 @@ class CamionesService {
    */
   async getAllCamiones() {
     try {
-      const response = await apiClient.get('/api/camiones');
+      const response = await apiClient.get('/camiones');
       return response.data || response;
     } catch (error) {
       console.error('Error fetching camiones:', error);
@@ -27,7 +27,7 @@ class CamionesService {
    */
   async getCamionById(id) {
     try {
-      const response = await apiClient.get(`/api/camiones/${id}`);
+      const response = await apiClient.get(`/camiones/${id}`);
       return response.data || response;
     } catch (error) {
       console.error(`Error fetching camion ${id}:`, error);
@@ -42,7 +42,7 @@ class CamionesService {
    */
   async createCamion(camion) {
     try {
-      const response = await apiClient.post('/api/camiones', camion);
+      const response = await apiClient.post('/camiones', camion);
       return response.data || response;
     } catch (error) {
       console.error('Error creating camion:', error);
@@ -58,7 +58,7 @@ class CamionesService {
    */
   async updateCamion(id, updates) {
     try {
-      const response = await apiClient.put(`/api/camiones/${id}`, updates);
+      const response = await apiClient.put(`/camiones/${id}`, updates);
       return response.data || response;
     } catch (error) {
       console.error(`Error updating camion ${id}:`, error);
@@ -74,7 +74,7 @@ class CamionesService {
    */
   async moveCamionToArea(id, areaId) {
     try {
-      const response = await apiClient.put(`/api/camiones/${id}`, {
+      const response = await apiClient.put(`/camiones/${id}`, {
         area: areaId,
       });
       return response.data || response;
@@ -91,7 +91,7 @@ class CamionesService {
    */
   async finalizarCamion(id) {
     try {
-      const response = await apiClient.put(`/api/camiones/${id}`, {
+      const response = await apiClient.put(`/camiones/${id}`, {
         finalizado: true,
       });
       return response.data || response;
@@ -108,7 +108,7 @@ class CamionesService {
    */
   async sacarCamion(id) {
     try {
-      const response = await apiClient.put(`/api/camiones/${id}`, {
+      const response = await apiClient.put(`/camiones/${id}`, {
         area: 'Fuera',
       });
       return response.data || response;
@@ -126,7 +126,7 @@ class CamionesService {
    */
   async reubicacionForzada(id, areaId) {
     try {
-      const response = await apiClient.put(`/api/camiones/${id}/reubicacion`, {
+      const response = await apiClient.put(`/camiones/${id}/reubicacion`, {
         area: areaId,
       });
       return response.data || response;
@@ -143,7 +143,7 @@ class CamionesService {
    */
   async deleteCamion(id) {
     try {
-      const response = await apiClient.delete(`/api/camiones/${id}`);
+      const response = await apiClient.delete(`/camiones/${id}`);
       return response;
     } catch (error) {
       console.error(`Error deleting camion ${id}:`, error);

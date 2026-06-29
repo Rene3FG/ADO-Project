@@ -33,14 +33,14 @@ function Login() {
 
       // Update auth context
       login({
-        id: numeroEmpleado,
-        nombre: response.usuario?.nombre || numeroEmpleado,
-        email: response.usuario?.email
+        id: response.id,
+        nombre: response.nombre || numeroEmpleado,
+        rol: response.rol,
       });
 
       // Show success message
       setToast({
-        message: `Bienvenido ${response.usuario?.nombre || numeroEmpleado}`,
+        message: `Bienvenido ${response.nombre || numeroEmpleado}`,
         type: 'success'
       });
 

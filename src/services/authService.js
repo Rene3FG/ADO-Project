@@ -14,14 +14,14 @@ class AuthService {
    */
   async login(empleado, contrasena) {
     try {
-      const response = await apiClient.post('/api/auth/login', {
-        empleado,
-        contrasena,
+      const response = await apiClient.post('/login', {
+        username: empleado,
+        password: contrasena,
       });
 
-      if (response.token) {
-        apiClient.setToken(response.token);
-      }
+      // nuestra API devuelve { id, username, nombre, rol } sin JWT;
+      // usamos el username como token de identidad en localStorage
+      apiClient.setToken(response.username || String(response.id));
 
       return response;
     } catch (error) {

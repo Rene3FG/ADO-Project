@@ -14,7 +14,7 @@ class HistorialService {
   async getHistorial(filters = {}) {
     try {
       const queryString = new URLSearchParams(filters).toString();
-      const endpoint = queryString ? `/api/historial?${queryString}` : '/api/historial';
+      const endpoint = queryString ? `/historial?${queryString}` : '/historial';
       const response = await apiClient.get(endpoint);
       return response.data || response;
     } catch (error) {
@@ -30,7 +30,7 @@ class HistorialService {
    */
   async getHistorialPorUnidad(unidad) {
     try {
-      const response = await apiClient.get(`/api/historial?unidad=${unidad}`);
+      const response = await apiClient.get(`/historial?unidad=${unidad}`);
       return response.data || response;
     } catch (error) {
       console.error(`Error fetching historial for unidad ${unidad}:`, error);
@@ -45,7 +45,7 @@ class HistorialService {
    */
   async logMovimiento(movimiento) {
     try {
-      const response = await apiClient.post('/api/historial', {
+      const response = await apiClient.post('/historial', {
         tipo: 'movimiento',
         ...movimiento,
       });
@@ -63,7 +63,7 @@ class HistorialService {
    */
   async logAlerta(alerta) {
     try {
-      const response = await apiClient.post('/api/historial', {
+      const response = await apiClient.post('/historial', {
         tipo: 'alerta',
         ...alerta,
       });
@@ -81,7 +81,7 @@ class HistorialService {
    */
   async logCompletado(completado) {
     try {
-      const response = await apiClient.post('/api/historial', {
+      const response = await apiClient.post('/historial', {
         tipo: 'completado',
         ...completado,
       });
@@ -99,7 +99,7 @@ class HistorialService {
    */
   async logRegistro(registro) {
     try {
-      const response = await apiClient.post('/api/historial', {
+      const response = await apiClient.post('/historial', {
         tipo: 'registro',
         ...registro,
       });
@@ -117,7 +117,7 @@ class HistorialService {
    */
   async logSalida(salida) {
     try {
-      const response = await apiClient.post('/api/historial', {
+      const response = await apiClient.post('/historial', {
         tipo: 'salida',
         ...salida,
       });
