@@ -97,6 +97,32 @@ class TiemposUpdate(BaseModel):
     hora_salida_num:  Optional[float] = None  # serial Excel
     completado:       Optional[bool]  = None
 
+class CamionUpdate(BaseModel):
+    area:       Optional[str]  = None  # nombre display: "Diesel", "Taller", "Fuera"…
+    finalizado: Optional[bool] = None
+
+class HistorialCreate(BaseModel):
+    tipo:    Optional[str] = None
+    unidad:  Optional[str] = None
+    fecha:   Optional[str] = None
+    hora:    Optional[str] = None
+    mensaje: Optional[str] = None
+
+
+# ── Mapeo de nombres área: DB ↔ frontend testing/full-integration ─
+# DB name (ej. "WORKSHOP")  →  display frontend (ej. "Taller")
+AREA_DB_TO_DISPLAY = {
+    'DIESEL':         'Diesel',
+    'ADDBLUE':        'Ad-Blue',
+    'WORKSHOP':       'Taller',
+    'DRAINAGE':       'Desfogue',
+    'EXTERIOR WASH':  'Lavado Exterior',
+    'INTERIOR WASH':  'Lavado Interior',
+    'RECEPTION':      'Descanso',
+}
+# Display frontend  →  DB name
+AREA_DISPLAY_TO_DB = {v: k for k, v in AREA_DB_TO_DISPLAY.items()}
+
 
 # ── App FastAPI + CORS ────────────────────────────────────────────
 
@@ -479,6 +505,142 @@ def delete_area(area_id: int):
         conn.execute(text("DELETE FROM area WHERE id = :id"), {"id": area_id})
 
     return {"ok": True, "id": area_id}
+
+
+# ── Camiones (`/camiones`) — vista unificada para testing/full-integration ──
+
+@app.get("/camiones", summary="Lista camiones activos hoy con área actual")
+def get_camiones(fecha: Optional[str] = Query(default=None)):
+    target = fecha or str(date.today())
+    with db() as conn:
+        rows = conn.execute(text("""
+            SELECT r.id, r.serial_number, bt.name AS tipo_nombre,
+                   (SELECT a.name FROM movements m
+                    JOIN area a ON a.id = m.area_id
+                    WHERE m.serial_number = r.serial_number
+                    ORDER BY m.id DESC LIMIT 1) AS area_db
+            FROM records r
+            LEFT JOIN bus_types bt ON bt.id = r.type_id
+            WHERE r.date = :f AND r.is_active = true
+            ORDER BY r.serial_number
+        """), {"f": target}).fetchall()
+
+    return [
+        {
+            "id": str(r.id),
+            "codigo": str(r.serial_number),
+            "tipo": r.tipo_nombre or "Desconocido",
+            "area": AREA_DB_TO_DISPLAY.get(r.area_db or "", r.area_db or "Desfogue"),
+            "conductor": None,
+            "origen": "",
+            "destino": "",
+            "ruta": [],
+        }
+        for r in rows
+    ]
+
+@app.put("/camiones/{camion_id}", summary="Mueve camión a otra área o lo saca del patio")
+def update_camion(camion_id: int, body: CamionUpdate):
+    target = str(date.today())
+    with db() as conn:
+        record = conn.execute(text(
+            "SELECT id, serial_number FROM records WHERE id=:id AND date=:f AND is_active=true"
+        ), {"id": camion_id, "f": target}).fetchone()
+        if not record:
+            raise HTTPException(404, f"Camión id={camion_id} no encontrado para hoy")
+
+        if body.area == "Fuera" or body.finalizado:
+            conn.execute(text(
+                "UPDATE records SET is_active=false, is_dirty=true,"
+                " last_modified_by='app', last_modified_at=:ts WHERE id=:id"
+            ), {"id": camion_id, "ts": datetime.now()})
+
+        elif body.area:
+            db_name = AREA_DISPLAY_TO_DB.get(body.area)
+            if not db_name:
+                raise HTTPException(400, f"Área desconocida: '{body.area}'")
+            area_row = conn.execute(text(
+                "SELECT id FROM area WHERE name=:n"
+            ), {"n": db_name}).fetchone()
+            if not area_row:
+                raise HTTPException(404, f"Área '{body.area}' no encontrada en la DB")
+
+            conn.execute(text(
+                "INSERT INTO movements (area_id, serial_number, entry_time)"
+                " VALUES (:aid, :s, :t)"
+            ), {"aid": area_row.id, "s": record.serial_number, "t": datetime.now()})
+
+            conn.execute(text(
+                "UPDATE records SET is_dirty=true, last_modified_by='app',"
+                " last_modified_at=:ts WHERE id=:id"
+            ), {"id": camion_id, "ts": datetime.now()})
+
+    return {"ok": True, "id": camion_id}
+
+@app.put("/camiones/{camion_id}/reubicacion", summary="Reubicación forzada (admin)")
+def reubicar_camion(camion_id: int, body: CamionUpdate):
+    return update_camion(camion_id, body)
+
+@app.delete("/camiones/{camion_id}", summary="Elimina camión del patio activo")
+def delete_camion(camion_id: int):
+    target = str(date.today())
+    with db() as conn:
+        record = conn.execute(text(
+            "SELECT id FROM records WHERE id=:id AND date=:f AND is_active=true"
+        ), {"id": camion_id, "f": target}).fetchone()
+        if not record:
+            raise HTTPException(404, f"Camión id={camion_id} no encontrado")
+
+        conn.execute(text(
+            "UPDATE records SET is_active=false, is_dirty=true,"
+            " last_modified_by='app', last_modified_at=:ts WHERE id=:id"
+        ), {"id": camion_id, "ts": datetime.now()})
+
+    return {"ok": True, "id": camion_id}
+
+
+# ── Historial (`/historial`) ──────────────────────────────────────
+
+@app.get("/historial", summary="Historial de movimientos del día")
+def get_historial(
+    unidad:  Optional[str] = Query(default=None),
+    fecha:   Optional[str] = Query(default=None),
+):
+    target = fecha or str(date.today())
+    q = (
+        "SELECT m.id, m.serial_number AS serie, a.name AS area_db, m.entry_time"
+        " FROM movements m JOIN area a ON a.id = m.area_id"
+        " WHERE DATE(m.entry_time AT TIME ZONE 'UTC') = :f"
+    )
+    params: dict = {"f": target}
+    if unidad:
+        q += " AND m.serial_number::text = :u"
+        params["u"] = unidad
+    q += " ORDER BY m.id DESC LIMIT 200"
+
+    with db() as conn:
+        rows = conn.execute(text(q), params).fetchall()
+
+    result = []
+    for r in rows:
+        area_display = AREA_DB_TO_DISPLAY.get(r.area_db, r.area_db)
+        ts = r.entry_time
+        result.append({
+            "id": r.id,
+            "tipo": "movimiento",
+            "unidad": str(r.serie),
+            "fecha": ts.strftime("%d/%m/%Y") if ts else "",
+            "hora": ts.strftime("%H:%M:%S") if ts else "",
+            "mensaje": f"La unidad {r.serie} entró a {area_display}",
+        })
+    return result
+
+@app.post("/historial", status_code=201, summary="Registra un evento en el historial")
+def log_historial(body: HistorialCreate):
+    # El frontend mantiene el estado local; este endpoint es el punto de entrada
+    # para que eventos de alerta/salida queden registrados en el futuro.
+    return {"ok": True, "id": int(datetime.now().timestamp() * 1000)}
+
 
 @app.get("/tipos-camion", summary="Lista de tipos de camión")
 def get_tipos():
