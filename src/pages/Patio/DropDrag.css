@@ -101,7 +101,7 @@
 /* CONTENIDO DERECHO Y TABLERO */
 .main-content {
   flex: 1;
-  padding: 30px;
+  padding: 0 30px 30px;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -124,8 +124,12 @@
 
 .main-content__header {
   margin-bottom: 30px;
-  padding-bottom: 18px;
+  padding: 30px 0 18px;
   border-bottom: 2px solid #e21c24;
+  position: sticky;
+  top: 0;
+  background-color: #0b0d14;
+  z-index: 10;
 }
 
 .drag-board {
