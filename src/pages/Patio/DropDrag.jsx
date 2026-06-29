@@ -79,8 +79,6 @@ setHistorial(prev => [
 
     setHistorial(prev => [registroSalida, ...prev]);
 
-    // CORREGIDO: En lugar de usar .filter() para eliminarlo, 
-    // mapeamos el arreglo y cambiamos su área a "Fuera" guardando su hora de salida
     setCamiones(prev =>
       prev.map(c => 
         c.id === idCamion 
@@ -112,18 +110,24 @@ setHistorial(prev => [
     const areaActual = camionQueSeMueve.area;
     if (areaActual === nuevaAreaId) return;
 
-    // 🌟 NUEVO: Validación estricta usando la ruta asignada en el Registro
     if (camionQueSeMueve.ruta && camionQueSeMueve.ruta.length > 0) {
-      const indiceActual = camionQueSeMueve.ruta.indexOf(areaActual);
-      const siguienteAreaEsperada = camionQueSeMueve.ruta[indiceActual + 1];
+      
+      if (camionQueSeMueve.finalizado) {
+        if (nuevaAreaId !== "Descanso") {
+          alert(`Movimiento incorrecto.\nLa unidad ${camionQueSeMueve.codigo} ya completó su ciclo. Solo puede moverse a "Descanso" para esperar su salida.`);
+          return;
+        }
+      } else {
+        const indiceActual = camionQueSeMueve.ruta.indexOf(areaActual);
+        const siguienteAreaEsperada = camionQueSeMueve.ruta[indiceActual + 1];
 
-      // Si intenta saltarse pasos o ir a un área que no le toca
-      if (nuevaAreaId !== siguienteAreaEsperada) {
-        alert(`Movimiento incorrecto.\nEl autobús ${camionQueSeMueve.codigo} tiene asignado ir a: "${siguienteAreaEsperada || 'Completar ciclo'}".`);
-        return;
+        if (nuevaAreaId !== siguienteAreaEsperada) {
+          alert(`Movimiento incorrecto.\nEl autobús ${camionQueSeMueve.codigo} tiene asignado ir a: "${siguienteAreaEsperada || 'Completar ciclo'}".`);
+          return;
+        }
       }
     } else {
-      // Si es un camión de prueba sin ruta, usamos las reglas genéricas que tenías
+      // Si es un camión de prueba sin ruta, usamos las reglas
       const reglasFlujo = {
         "Desfogue": ["Diesel", "Ad-Blue","Descanso"], 
         "Diesel": ["Ad-Blue","Descanso"],
@@ -205,17 +209,14 @@ if (camionMovido) {
         estadoActual = "En descanso"; 
       }
 
-      // 📊 CÁLCULO DINÁMICO DEL PROGRESS BAR
+      //Calculo de progress bar
       let porcentajeProgreso = 0;
       
       if (areaActual === "Fuera") {
-        porcentajeProgreso = 100; // Si ya salió, completó el 100%
       } else {
-        // Encontramos la posición del área actual en la configuración de la terminal
         const indiceArea = areasConfig.findIndex(a => a.id === areaActual);
         
         if (indiceArea !== -1 && areasConfig.length > 0) {
-          // Dividimos el 100% entre el total de áreas y multiplicamos por la posición actual (+1 para no empezar en 0%)
           porcentajeProgreso = Math.round(((indiceArea + 1) / areasConfig.length) * 100);
         }
       }
@@ -229,7 +230,7 @@ if (camionMovido) {
         estado: estadoActual,   
         status: estadoActual,   
         estatus: estadoActual,
-        progreso: porcentajeProgreso // 👈 Enviamos el porcentaje calculado al reporte
+        progreso: porcentajeProgreso
       };
     });
   };
@@ -237,18 +238,14 @@ if (camionMovido) {
   const obtenerProgresoCamion = (camion) => {
     if (!camion) return 0;
     
-    // Si ya se presionó el botón de finalizar, la barra va al 100%
     if (camion.finalizado || camion.area === "Fuera") return 100;
 
-    // Cálculo dinámico empezando en 0%
     if (camion.ruta && camion.ruta.length > 0) {
       const indiceArea = camion.ruta.indexOf(camion.area);
       if (indiceArea !== -1) {
-        // Fórmula: (posición actual / total de paradas) * 100
         return Math.round((indiceArea / camion.ruta.length) * 100);
       }
     } else {
-      // Fallback para camiones sin ruta configurada
       const indiceArea = areasConfig.findIndex(a => a.id === camion.area);
       if (indiceArea !== -1 && areasConfig.length > 0) {
         return Math.round((indiceArea / areasConfig.length) * 100);
@@ -264,7 +261,6 @@ const finalizarRecorrido = (idCamion) => {
     const ahora = new Date();
     const horaSalidaTexto = ahora.toLocaleTimeString('es-MX');
 
-    // 1. Guardamos en el historial
     setHistorial(prev => [
       {
         id: Date.now(),
@@ -277,7 +273,6 @@ const finalizarRecorrido = (idCamion) => {
       ...prev
     ]);
 
-    // 2. Marcamos el camión como finalizado, pero SIN sacarlo de su área actual
     setCamiones(prev =>
       prev.map(c => 
         c.id === idCamion 
@@ -333,21 +328,32 @@ const finalizarRecorrido = (idCamion) => {
   camion={camion}
   alIniciarArrastre={alIniciarArrastre}
   crearAlerta={crearAlerta}
-  progreso={obtenerProgresoCamion(camion)} /* 👈 Agrega esta línea */
+  progreso={obtenerProgresoCamion(camion)}
 />
 
-                  {/* 🌟 NUEVA LÓGICA: BOTÓN DINÁMICO DE SALIDA */}
 { (camion.ruta && camion.ruta.length > 0) ? (
-  // Aparece en la última parada, solo si NO ha sido finalizado
-  camion.area === camion.ruta[camion.ruta.length - 1] && !camion.finalizado && (
-    <button
-      className="btn-salida"
-      onClick={() => finalizarRecorrido(camion.id)}
-    >
-      Finalizar recorrido
-    </button>
-  )
+  <>
+    {camion.area === camion.ruta[camion.ruta.length - 1] && !camion.finalizado && (
+      <button
+        className="btn-salida"
+        onClick={() => finalizarRecorrido(camion.id)}
+      >
+        Finalizar Área
+      </button>
+    )}
+
+    {camion.finalizado && camion.area === "Descanso" && (
+      <button
+        className="btn-salida"
+        style={{ backgroundColor: '#10b981' }}
+        onClick={() => sacarCamion(camion.id)} 
+      >
+        Dar Salida
+      </button>
+    )}
+  </>
 ) : (
+  // Fallback
   nombreArea === "Descanso" && !camion.finalizado && (
     <button
       className="btn-salida"

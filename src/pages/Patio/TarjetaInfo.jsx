@@ -77,23 +77,23 @@ export default function TarjetaInfo({
       draggable
       onDragStart={(e) => alIniciarArrastre(e, camion.id)}
     >
-      {/* 1. Semáforo y Código del Autobús */}
+      {/*Semáforo y Código del Autobús */}
       <div className="tarjeta-header">
         <span className={`estado-semaforo ${colorSemaforo}`}></span>
         <span className="codigo-unidad">{camion.codigo}</span>
       </div>
 
-      {/* 2. Tipo de Autobús */}
+      {/*Tipo de Autobús */}
       <div className="tipo-unidad">
         {camion.tipo}
       </div>
 
-      {/* 3. Cronómetro (Con tu color dinámico) */}
+      {/* Cronómetro (Con tu color dinámico) */}
       <div className={`tiempo-area ${colorSemaforo}`}>
         Tiempo en área: {formatearTiempo(segundos)}
       </div>
 
-      {/* 4. Barra de Progreso */}
+      {/* Barra de Progreso */}
       <div className="tarjeta-progreso-mini-bg">
         <div 
           className="tarjeta-progreso-mini-fill" 

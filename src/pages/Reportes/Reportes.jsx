@@ -14,7 +14,6 @@ import { MdBarChart, MdAssignmentTurnedIn, MdTimeline, MdPeople } from "react-ic
 
 export default function Reportes({ datos }) {
 
-  // Cálculos estadísticos rápidos para los indicadores de arriba
   const totalUnidades = datos.length;
   const completados = datos.filter(d => d.horaSalida !== "En proceso...").length;
   const enProceso = totalUnidades - completados;

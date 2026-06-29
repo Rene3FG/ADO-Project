@@ -15,10 +15,9 @@ export default function Registro({
     conductor: "", 
     origen: "",   
     destino: "", 
-    areasRuta: [] // <-- Guardamos la lista de áreas seleccionadas
+    areasRuta: [] //Lista de las áreas seleccionadas
   });
 
-  // Función para añadir/quitar áreas manteniendo el orden y definiendo el área inicial
   const alternarAreaEnRuta = (nombreArea) => {
     let nuevaRuta = [...camion.areasRuta];
     if (nuevaRuta.includes(nombreArea)) {
@@ -38,12 +37,10 @@ export default function Registro({
       id: Date.now().toString(),
       codigo: camion.numero,
       tipo: camion.tipoUnidad,
-      // 👇 Aquí está la corrección: debemos usar camion.areasRuta
       area: camion.areasRuta[0] || "", 
       conductor: camion.conductor,
       origen: camion.origen,
       destino: camion.destino,
-      // 👇 Aquí también
       ruta: camion.areasRuta 
     };
 

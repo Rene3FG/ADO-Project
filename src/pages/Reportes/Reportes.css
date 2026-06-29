@@ -43,10 +43,9 @@
   border-color: #475569;
 }
 
-/* Colores dinámicos para los íconos de los KPIs */
 .kpi-icon {
   font-size: 24px;
-  color: #38bdf8; /* Azul claro para totales */
+  color: #38bdf8; 
   background: rgba(56, 189, 248, 0.08);
   padding: 10px;
   border-radius: 10px;
@@ -54,12 +53,12 @@
 }
 
 .kpi-card.completado .kpi-icon {
-  color: #10b981; /* Verde esmeralda para completados */
+  color: #10b981;
   background: rgba(16, 185, 129, 0.08);
 }
 
 .kpi-card.proceso .kpi-icon {
-  color: #e21c24; /* Rojo ADO para los que están en patio */
+  color: #e21c24;
   background: rgba(226, 28, 36, 0.08);
 }
 
@@ -113,7 +112,7 @@
 }
 
 .reportes-table tbody tr:hover {
-  background-color: rgba(255, 255, 255, 0.02); /* Efecto hover sutil */
+  background-color: rgba(255, 255, 255, 0.02);
 }
 
 /* =========================================
@@ -141,7 +140,7 @@
 
 .time-in {
   color: #10b981;
-  font-family: monospace; /* Fuente de reloj/código */
+  font-family: monospace;
 }
 
 .time-out {
@@ -150,11 +149,10 @@
 }
 
 .time-out.text-anim {
-  color: #eab308; /* Amarillo si sigue en proceso */
+  color: #eab308;
   font-style: italic;
 }
 
-/* ESTATUS (Píldoras de colores) */
 .status-badge {
   padding: 6px 10px;
   border-radius: 6px;
@@ -176,7 +174,6 @@
   border: 1px solid rgba(226, 28, 36, 0.2);
 }
 
-/* Estado cuando no hay datos */
 .no-reportes {
   text-align: center;
   padding: 60px 20px;
@@ -196,7 +193,6 @@
   border: 1px solid #ffc107;
 }
 
-/* Estatus: EN PATIO (Verde) */
 .badge-verde {
   background-color: rgba(40, 167, 69, 0.15); 
   color: #28a745; 
@@ -206,10 +202,9 @@
   border: 1px solid #28a745;
   display: inline-block;
   text-align: center;
-  min-width: 100px; /* Para que todas las cajitas midan lo mismo */
+  min-width: 100px;
 }
 
-/* Estatus: COMPLETADO (Rojo) */
 .badge-rojo {
   background-color: rgba(220, 53, 69, 0.15); 
   color: #dc3545; 
@@ -222,7 +217,6 @@
   min-width: 100px;
 }
 
-/* Estatus: EN DESCANSO (Amarillo - por si lo quieres dejar del mismo tamaño) */
 .badge-amarillo {
   background-color: rgba(255, 193, 7, 0.15); 
   color: #ffc107; 
@@ -242,7 +236,7 @@
   width: 100%;
 }
 .progress-bar-fill {
-  background-color: #d32f2f; /* Rojo ADO */
+  background-color: #d32f2f;
   height: 100%;
   border-radius: 6px;
   transition: width 0.3s ease;
@@ -251,7 +245,7 @@
 .tabla-reportes {
   width: 100%;
   border-collapse: collapse;
-  background-color: #151a26; /* Fondo oscuro de tu panel */
+  background-color: #151a26;
   color: #fff;
 }
 
@@ -259,7 +253,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  justify-content: flex-end; /* Lo alinea a la derecha como en tu foto */
+  justify-content: flex-end;
   padding-right: 15px;
 }
 
@@ -272,7 +266,7 @@
 }
 
 .barra-progreso-relleno {
-  background: linear-gradient(90deg, #3b82f6, #10b981); /* Degradado azul a verde */
+  background: linear-gradient(90deg, #3b82f6, #10b981);
   height: 100%;
   transition: width 0.3s ease;
 }
