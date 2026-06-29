@@ -45,7 +45,6 @@ export default function Reportes({ datos }) {
       ) : (
         <div className="table-container-rep">
           
-          {/* 🌟 CONTENEDOR RESPONSIVO: Agregamos overflowX para que se pueda deslizar si es muy grande */}
           <div style={{ overflowX: 'auto', width: '100%', paddingBottom: '10px' }}>
             <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'collapse', color: '#e5e7eb', textAlign: 'left' }}>
               <thead>
@@ -62,7 +61,6 @@ export default function Reportes({ datos }) {
               <tbody>
                 {datos.map((item) => {
                   
-                  // 🌟 Lógica dinámica para los colores del Estatus
                   let colorBorde = '#10b981'; // Verde por defecto (En Flujo / En Patio)
                   let colorFondo = 'rgba(16, 185, 129, 0.1)';
                   let colorTexto = '#10b981';

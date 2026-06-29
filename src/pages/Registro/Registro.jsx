@@ -7,6 +7,8 @@ export default function Registro({
 }) { 
   const [paso, setPaso] = useState(1);
 
+  const [mostrarModalExito, setMostrarModalExito] = useState(false);
+
   const [camion, setCamion] = useState({
     numero: "",
     tipoUnidad: "",
@@ -57,7 +59,7 @@ export default function Registro({
       mensaje: `Se registró la unidad ${camion.numero} en el área ${camion.area}`
     });
 
-    alert("Autobús registrado correctamente");
+    setMostrarModalExito(true);
 
     setCamion({
       numero: "",
@@ -342,6 +344,34 @@ export default function Registro({
         )}
 
       </div>
+
+      {/* MODAL DE ÉXITO */}
+{mostrarModalExito && (
+  <div className="modal-overlay" style={{ zIndex: 1000 }}>
+    <div className="modal-card" style={{ maxWidth: '400px', textAlign: 'center' }}>
+      <div style={{ backgroundColor: '#22c55e', padding: '15px', borderRadius: '8px 8px 0 0' }}>
+        <h2 style={{ margin: 0, color: 'white', fontSize: '20px' }}>✅ Registro Exitoso</h2>
+      </div>
+      
+      <div className="modal-card__body" style={{ padding: '25px 20px' }}>
+        <p style={{ fontSize: '16px', color: '#e5e7eb', marginBottom: '25px' }}>
+          La unidad <strong>{camion.numero}</strong> ha sido registrada exitosamente en el sistema.
+        </p>
+        
+        <button 
+          className="btn-primary" 
+          style={{ backgroundColor: '#22c55e', width: '100%' }}
+          onClick={() => {
+            setMostrarModalExito(false);
+            // El reseteo de campos ya ocurre en registrarCamion
+          }}
+        >
+          Ok
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

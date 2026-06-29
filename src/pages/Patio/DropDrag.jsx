@@ -221,7 +221,6 @@ setHistorial(prev => [
       }
     }
 
-    // Si hay una advertencia, abrimos el modal y PAUSAMOS la acción
     if (advertenciaFlujo) {
       setMovimientoPendiente({
         idCamion: idCamion,
@@ -231,7 +230,6 @@ setHistorial(prev => [
       return;
     }
 
-    // Si todo es correcto y sigue su ruta, lo movemos directamente
     ejecutarMovimiento(idCamion, nuevaAreaId);
   };
   
@@ -261,15 +259,22 @@ setHistorial(prev => [
 
       //Calculo de progress bar
       let porcentajeProgreso = 0;
-      
-      if (areaActual === "Fuera") {
-      } else {
-        const indiceArea = areasConfig.findIndex(a => a.id === areaActual);
-        
-        if (indiceArea !== -1 && areasConfig.length > 0) {
-          porcentajeProgreso = Math.round(((indiceArea + 1) / areasConfig.length) * 100);
-        }
-      }
+
+if (areaActual === "Fuera" || camion.finalizado) {
+  porcentajeProgreso = 100;
+} else {
+  if (camion.ruta && camion.ruta.length > 0) {
+    const indiceArea = camion.ruta.indexOf(areaActual);
+    if (indiceArea !== -1) {
+      porcentajeProgreso = Math.round(((indiceArea + 1) / camion.ruta.length) * 100);
+    }
+  } else {
+    const indiceArea = areasConfig.findIndex(a => a.id === areaActual);
+    if (indiceArea !== -1 && areasConfig.length > 0) {
+      porcentajeProgreso = Math.round(((indiceArea + 1) / areasConfig.length) * 100);
+    }
+  }
+}
 
       return {
         id: camion.id, 
@@ -286,51 +291,27 @@ setHistorial(prev => [
   };
 
   const obtenerProgresoCamion = (camion) => {
-    if (!camion) return 0;
-    
-    if (camion.finalizado || camion.area === "Fuera") return 100;
+  if (!camion) return 0;
 
-    if (camion.ruta && camion.ruta.length > 0) {
-      const indiceArea = camion.ruta.indexOf(camion.area);
-      if (indiceArea !== -1) {
-        return Math.round((indiceArea / camion.ruta.length) * 100);
-      }
-    } else {
-      const indiceArea = areasConfig.findIndex(a => a.id === camion.area);
-      if (indiceArea !== -1 && areasConfig.length > 0) {
-        return Math.round((indiceArea / areasConfig.length) * 100);
-      }
+  if (camion.area === "Fuera" || camion.finalizado === true) {
+    return 100;
+  }
+
+  if (camion.ruta && camion.ruta.length > 0) {
+    const indiceArea = camion.ruta.indexOf(camion.area);
+    if (indiceArea !== -1) {
+      return Math.round(((indiceArea + 1) / camion.ruta.length) * 100);
     }
-    return 0;
-  };
+  }
 
-// const finalizarRecorrido = (idCamion) => {
-//     const camion = camiones.find(c => c.id === idCamion);
-//     if (!camion) return;
+  const indiceArea = areasConfig.findIndex(a => a.id === camion.area);
+  if (indiceArea !== -1) {
+    return Math.round(((indiceArea + 1) / areasConfig.length) * 100);
+  }
 
-//     const ahora = new Date();
-//     const horaSalidaTexto = ahora.toLocaleTimeString('es-MX');
-
-//     setHistorial(prev => [
-//       {
-//         id: Date.now(),
-//         tipo: "completado",
-//         unidad: camion.codigo,
-//         fecha: ahora.toLocaleDateString('es-MX'),
-//         hora: horaSalidaTexto,
-//         mensaje: `La unidad ${camion.codigo} completó su ruta en ${camion.area}`
-//       },
-//       ...prev
-//     ]);
-
-//     setCamiones(prev =>
-//       prev.map(c => 
-//         c.id === idCamion 
-//           ? { ...c, finalizado: true, horaSalidaTerminal: horaSalidaTexto } 
-//           : c
-//       )
-//     );
-//   };
+  console.warn("Área desconocida para el camión:", camion.area);
+  return 0;
+};
 
    const renderizarContenido = () => {
     switch (pestanaActiva) {
