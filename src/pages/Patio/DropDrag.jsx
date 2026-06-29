@@ -53,9 +53,10 @@ export default function DropDrag() {
 
       const mockDB = (await import('./CamionArea.json')).default;
 
-      const [resC, resA] = await Promise.allSettled([
+      const [resC, resA, resH] = await Promise.allSettled([
         camionesService.getAllCamiones(),
         areasService.getAllAreas(),
+        historialService.getHistorial(),
       ]);
 
       const camionesData = resC.status === 'fulfilled' && Array.isArray(resC.value)
@@ -66,11 +67,16 @@ export default function DropDrag() {
         ? resA.value
         : mockDB.areas;
 
+      const historialData = resH.status === 'fulfilled' && Array.isArray(resH.value)
+        ? resH.value
+        : [];
+
       if (resC.status === 'rejected') console.warn('Camiones API no disponible, usando mock:', resC.reason?.message);
       if (resA.status === 'rejected') console.warn('Areas API no disponible, usando mock:', resA.reason?.message);
 
       setCamiones(camionesData);
       setAreasConfig(areasData);
+      setHistorial(historialData);
       setLoading(false);
     };
 
