@@ -35,7 +35,7 @@ class AreasService {
       if (!this._cache.find(a => a.id === 'Descanso')) {
         this._cache.push({ id: 'Descanso', dbId: null, capacidad: 99 });
       }
-      return this._cache;
+      return [...this._cache];
     } catch (error) {
       console.error('Error fetching areas:', error);
       throw error;
@@ -67,7 +67,6 @@ class AreasService {
         dbId: raw.id,
         capacidad: raw.capacidad ?? area.capacidad,
       };
-      this._cache.push(created);
       return created;
     } catch (error) {
       console.error('Error creating area:', error);

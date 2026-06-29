@@ -26,17 +26,19 @@ export default function BusDetailModal({ camion, onClose }) {
         zIndex: 1000
       }}
     >
-      <div 
-        className="modal-card" 
+      <div
+        className="modal-card"
         onClick={(e) => e.stopPropagation()}
         style={{
-          backgroundColor: 'white',
-          borderRadius: '8px',
-          padding: '30px',
+          backgroundColor: '#11131e',
+          borderRadius: '12px',
+          padding: '0',
           maxWidth: '500px',
           width: '90%',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-          animation: 'modalSlideIn 0.3s ease-out'
+          border: '1px solid #2a2f4a',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6)',
+          animation: 'modalSlideIn 0.3s ease-out',
+          overflow: 'hidden'
         }}
       >
         <style>{`
@@ -52,156 +54,55 @@ export default function BusDetailModal({ camion, onClose }) {
           }
         `}</style>
         
-        <div 
-          className="modal-card__header"
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '20px',
-            paddingBottom: '15px',
-            borderBottom: '2px solid #e5e4e7'
-          }}
-        >
-          <h2 style={{ margin: 0, color: '#08060d' }}>
+        <div className="modal-card__header">
+          <h2 className="modal-card__header h2" style={{ margin: 0 }}>
             Ficha de Registro: {camion.codigo}
           </h2>
-          <button 
-            className="modal-card__close" 
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '28px',
-              cursor: 'pointer',
-              color: '#999',
-              padding: 0,
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            &times;
-          </button>
+          <button className="modal-card__close" onClick={onClose}>&times;</button>
         </div>
 
-        <div className="modal-card__body" style={{ marginBottom: '20px' }}>
-          <div 
-            className="modal-data-row"
-            style={{
-              display: 'flex',
-              padding: '12px 0',
-              borderBottom: '1px solid #f0f0f0',
-              justifyContent: 'space-between'
-            }}
-          >
+        <div className="modal-card__body">
+          <div className="modal-data-row">
             <strong>Código:</strong>
             <span>{camion.codigo}</span>
           </div>
-
-          <div 
-            className="modal-data-row"
-            style={{
-              display: 'flex',
-              padding: '12px 0',
-              borderBottom: '1px solid #f0f0f0',
-              justifyContent: 'space-between'
-            }}
-          >
+          <div className="modal-data-row">
             <strong>Tipo de Autobús:</strong>
             <span>{camion.tipo}</span>
           </div>
-
-          <div 
-            className="modal-data-row"
-            style={{
-              display: 'flex',
-              padding: '12px 0',
-              borderBottom: '1px solid #f0f0f0',
-              justifyContent: 'space-between'
-            }}
-          >
+          <div className="modal-data-row">
             <strong>Área Actual:</strong>
             <span>{camion.area || 'Sin asignar'}</span>
           </div>
-
-          <div 
-            className="modal-data-row"
-            style={{
-              display: 'flex',
-              padding: '12px 0',
-              borderBottom: '1px solid #f0f0f0',
-              justifyContent: 'space-between'
-            }}
-          >
+          <div className="modal-data-row">
             <strong>Conductor:</strong>
             <span>{camion.conductor || 'No asignado'}</span>
           </div>
-
-          <div 
-            className="modal-data-row"
-            style={{
-              display: 'flex',
-              padding: '12px 0',
-              borderBottom: '1px solid #f0f0f0',
-              justifyContent: 'space-between'
-            }}
-          >
+          <div className="modal-data-row">
             <strong>Origen:</strong>
             <span>{camion.origen || 'N/A'}</span>
           </div>
-
-          <div 
-            className="modal-data-row"
-            style={{
-              display: 'flex',
-              padding: '12px 0',
-              justifyContent: 'space-between'
-            }}
-          >
+          <div className="modal-data-row">
             <strong>Destino:</strong>
             <span>{camion.destino || 'N/A'}</span>
           </div>
-
           {camion.ruta && camion.ruta.length > 0 && (
-            <div 
-              className="modal-data-row"
-              style={{
-                display: 'flex',
-                padding: '12px 0',
-                borderTop: '1px solid #f0f0f0',
-                marginTop: '10px',
-                paddingTop: '15px',
-                justifyContent: 'space-between'
-              }}
-            >
+            <div className="modal-data-row">
               <strong>Ruta Planificada:</strong>
               <span>{camion.ruta.join(' → ')}</span>
             </div>
           )}
         </div>
 
-        <button
-          onClick={onClose}
-          style={{
-            width: '100%',
-            padding: '10px 20px',
-            backgroundColor: '#aa3bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: '500',
-            transition: 'background-color 0.2s'
-          }}
-          onMouseOver={(e) => e.target.style.backgroundColor = '#8f2bd6'}
-          onMouseOut={(e) => e.target.style.backgroundColor = '#aa3bff'}
-        >
-          Cerrar
-        </button>
+        <div style={{ padding: '0 20px 20px' }}>
+          <button
+            onClick={onClose}
+            className="btn-salida"
+            style={{ marginTop: 0 }}
+          >
+            Cerrar
+          </button>
+        </div>
       </div>
     </div>
   );

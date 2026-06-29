@@ -95,6 +95,16 @@ export default function DropDrag() {
   };
 
   const agregarCamion = (nuevoCamion) => {
+    const areaDestino = nuevoCamion.area;
+    if (areaDestino && areaDestino !== 'Descanso') {
+      const infoArea = areasConfig.find(a => a.id === areaDestino);
+      const capacidad = infoArea ? infoArea.capacidad : 4;
+      const actual = camiones.filter(c => c.area === areaDestino).length;
+      if (actual >= capacidad) {
+        setToast({ message: `Área "${areaDestino}" llena (máx ${capacidad}). Elige otra área.`, type: 'error' });
+        return;
+      }
+    }
     setCamiones((prev) => [...prev, nuevoCamion]);
     setToast({
       message: 'Autobús agregado exitosamente',
@@ -295,6 +305,8 @@ export default function DropDrag() {
       let estadoActual = "En flujo";
       if (areaActual === "Fuera") {
         estadoActual = "Completado";
+      } else if (camion.finalizado) {
+        estadoActual = "Finalizado";
       } else if (areaActual === "Descanso") {
         estadoActual = "En descanso";
       }
@@ -455,13 +467,23 @@ export default function DropDrag() {
                                 )}
                               </>
                             ) : (
-                              nombreArea === "Descanso" && !camion.finalizado && (
-                                <button
-                                  className="btn-salida"
-                                  onClick={() => finalizarRecorrido(camion.id)}
-                                >
-                                  Finalizar recorrido
-                                </button>
+                              nombreArea === "Descanso" && (
+                                !camion.finalizado ? (
+                                  <button
+                                    className="btn-salida"
+                                    onClick={() => finalizarRecorrido(camion.id)}
+                                  >
+                                    Finalizar recorrido
+                                  </button>
+                                ) : (
+                                  <button
+                                    className="btn-salida"
+                                    style={{ backgroundColor: '#10b981' }}
+                                    onClick={() => sacarCamion(camion.id)}
+                                  >
+                                    Dar Salida
+                                  </button>
+                                )
                               )
                             )}
                           </div>
