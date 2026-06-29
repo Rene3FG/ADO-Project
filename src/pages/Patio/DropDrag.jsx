@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import TarjetaInfo from './TarjetaInfo.jsx';
 import './DropDrag.css';
 import Registro from '../Registro/Registro.jsx';
 import ConfAvaz from '../ConfAvanz/ConfAvaz.jsx';
 import Reportes from '../Reportes/Reportes.jsx';
+import BusDetailModal from '../../components/BusDetailModal.jsx';
+import Toast from '../../components/Toast.jsx';
 import camionesService from '../../services/camionesService.js';
 import areasService from '../../services/areasService.js';
 import historialService from '../../services/historialService.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 import { MdDashboard, MdAssignmentTurnedIn, MdSwapHoriz, MdHistory, MdBarChart, MdSettings, MdExitToApp } from "react-icons/md";
 import { TbWash, TbWashDryDip } from "react-icons/tb";
@@ -28,13 +32,18 @@ const areaIcons = {
 };
 
 export default function DropDrag() {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
   const [pestanaActiva, setPestanaActiva] = useState('patio');
   const [camiones, setCamiones] = useState([]);
   const [areasConfig, setAreasConfig] = useState([]);
   const [historial, setHistorial] = useState([]);
   const [alertas, setAlertas] = useState([]);
+  const [camionSeleccionado, setCamionSeleccionado] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState(null);
 
   // Cargar datos iniciales desde la API
   useEffect(() => {
@@ -42,7 +51,7 @@ export default function DropDrag() {
       try {
         setLoading(true);
         setError("");
-        
+
         const [camionesDatos, areasDatos] = await Promise.all([
           camionesService.getAllCamiones(),
           areasService.getAllAreas()
@@ -66,8 +75,23 @@ export default function DropDrag() {
     cargarDatos();
   }, []);
 
+  const handleLogout = () => {
+    logout();
+    setToast({
+      message: 'Sesión cerrada correctamente',
+      type: 'success'
+    });
+    setTimeout(() => {
+      navigate('/login');
+    }, 500);
+  };
+
   const agregarCamion = (nuevoCamion) => {
     setCamiones((prev) => [...prev, nuevoCamion]);
+    setToast({
+      message: 'Autobús agregado exitosamente',
+      type: 'success'
+    });
   };
 
   const crearAlerta = async (alertaNueva) => {
@@ -122,14 +146,22 @@ export default function DropDrag() {
     try {
       await camionesService.sacarCamion(idCamion);
       await historialService.logSalida(registroSalida);
+      setToast({
+        message: `Unidad ${camion.codigo} ha salido`,
+        type: 'success'
+      });
     } catch (err) {
       console.error("Error updating camion en API:", err);
+      setToast({
+        message: 'Error al registrar salida',
+        type: 'error'
+      });
     }
 
     setCamiones(prev =>
-      prev.map(c => 
-        c.id === idCamion 
-          ? { ...c, area: "Fuera", horaSalidaTerminal: horaSalidaTexto } 
+      prev.map(c =>
+        c.id === idCamion
+          ? { ...c, area: "Fuera", horaSalidaTerminal: horaSalidaTexto }
           : c
       )
     );
@@ -328,6 +360,10 @@ export default function DropDrag() {
     try {
       await camionesService.finalizarCamion(idCamion);
       await historialService.logCompletado(registroCompletado);
+      setToast({
+        message: `Ruta completada: ${camion.codigo}`,
+        type: 'success'
+      });
     } catch (err) {
       console.error("Error finalizing camion:", err);
     }
@@ -379,6 +415,7 @@ export default function DropDrag() {
                         .map((camion) => (
                           <div
                             key={camion.id}
+                            onDoubleClick={() => setCamionSeleccionado(camion)}
                             title="Doble clic para ver detalles del Registro"
                           >
                             <TarjetaInfo
@@ -497,6 +534,21 @@ export default function DropDrag() {
 
   return (
     <div className="layout-container">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {camionSeleccionado && (
+        <BusDetailModal
+          camion={camionSeleccionado}
+          onClose={() => setCamionSeleccionado(null)}
+        />
+      )}
+
       <aside className="sidebar">
         <div className="sidebar__logo">
           <img
@@ -544,7 +596,11 @@ export default function DropDrag() {
           </button>
         </nav>
 
-        <button className="sidebar__logout" onClick={() => alert('Cerrando sesión...')}>
+        <button 
+          className="sidebar__logout" 
+          onClick={handleLogout}
+          title={`Cerrar sesión (${user?.nombre || user?.id || 'Usuario'})`}
+        >
           <MdExitToApp className="sidebar__icon" />
           <span>Cerrar sesión</span>
         </button>
@@ -553,7 +609,7 @@ export default function DropDrag() {
       <main className="main-content">
         <header className="main-content__header">
           <h1>Control de Patio - Oaxaca</h1>
-          <p>Vista general de ocupación por área</p>
+          <p>Sesión de {user?.nombre || user?.id}</p>
         </header>
         {alertas.length > 0 && (
           <div className="alertas-container">

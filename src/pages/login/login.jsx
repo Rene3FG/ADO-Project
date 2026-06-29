@@ -1,13 +1,20 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { RiBus2Line } from "react-icons/ri";
 import authService from "../../services/authService.js";
+import { useAuth } from "../../context/AuthContext.jsx";
+import Toast from "../../components/Toast.jsx";
 import "./login.css";
 
 function Login() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  
   const [numeroEmpleado, setNumeroEmpleado] = useState("");
   const [contrasena, setContrasena] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState(null);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -23,14 +30,31 @@ function Login() {
 
       const response = await authService.login(numeroEmpleado, contrasena);
       console.log("Login exitoso:", response);
-      
-      // Redirect to dashboard or home page
-      // For now, just show success
-      alert(`Bienvenido ${response.usuario?.nombre || numeroEmpleado}`);
-      // TODO: Redirect to /dashboard or main app
+
+      // Update auth context
+      login({
+        id: numeroEmpleado,
+        nombre: response.usuario?.nombre || numeroEmpleado,
+        email: response.usuario?.email
+      });
+
+      // Show success message
+      setToast({
+        message: `Bienvenido ${response.usuario?.nombre || numeroEmpleado}`,
+        type: 'success'
+      });
+
+      // Redirect to dashboard
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 500);
     } catch (err) {
       console.error("Login error:", err);
       setError(err.message || "Error al iniciar sesión. Verifica tus credenciales.");
+      setToast({
+        message: err.message || "Error al iniciar sesión",
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -38,6 +62,14 @@ function Login() {
 
   return (
     <>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       <header className="top-bar">
         <div className="header-content">
           <div className="mini-bus">
@@ -63,7 +95,22 @@ function Login() {
             Ingresa tu número de empleado para continuar
           </p>
 
-          {error && <div className="error-message" style={{ color: '#ef4444', marginBottom: '15px', fontSize: '14px' }}>{error}</div>}
+          {error && (
+            <div 
+              className="error-message" 
+              style={{ 
+                color: '#ef4444', 
+                marginBottom: '15px', 
+                fontSize: '14px',
+                padding: '10px',
+                backgroundColor: '#fee2e2',
+                borderRadius: '4px',
+                border: '1px solid #fca5a5'
+              }}
+            >
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleLogin}>
             <div className="input-group">
@@ -92,6 +139,10 @@ function Login() {
               type="submit"
               className="login-button"
               disabled={loading}
+              style={{
+                opacity: loading ? 0.7 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer'
+              }}
             >
               {loading ? "Validando..." : "Entrar al sistema"}
             </button>
