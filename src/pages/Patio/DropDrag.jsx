@@ -518,7 +518,7 @@ if (areaActual === "Fuera" || camion.finalizado) {
             onClick={() => setPestanaActiva('registrar')}
           >
             <MdAssignmentTurnedIn className="sidebar__icon" />
-            <span>Registrar camión</span>
+            <span>Registrar autobús</span>
           </button>
           <button 
             className={`sidebar__item ${pestanaActiva === 'historial' ? 'sidebar__item--active' : ''}`}
