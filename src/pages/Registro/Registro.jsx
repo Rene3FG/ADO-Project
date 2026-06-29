@@ -33,47 +33,18 @@ export default function Registro({
     });
   };
 
-  // Función auxiliar para obtener el texto del orden (ej. "1a área")
-  const obtenerTextoOrden = (nombreArea) => {
-    const index = camion.areasRuta.indexOf(nombreArea);
-    return index !== -1 ? `${index + 1}a área` : "";
-  };
-
   const registrarCamion = () => {
-    const nuevoCamion = {
-      id: Date.now().toString(),
-      codigo: camion.numero,
-      tipo: camion.tipoUnidad,
-      area: camion.areasRuta[0] || "", 
-      conductor: camion.conductor,
-      origen: camion.origen,
-      destino: camion.destino,
-      ruta: camion.areasRuta 
-    };
-
-    agregarCamion(nuevoCamion);
-    
-    const ahora = new Date();
+    agregarCamion({ ...camion, id: Date.now().toString(), codigo: camion.numero });
     agregarHistorial({
       id: Date.now(),
       unidad: camion.numero,
       areaFinal: camion.area,
-      fecha: ahora.toLocaleDateString('es-MX'),
-      hora: ahora.toLocaleTimeString('es-MX'),
+      fecha: new Date().toLocaleDateString('es-MX'),
+      hora: new Date().toLocaleTimeString('es-MX'),
       mensaje: `Se registró la unidad ${camion.numero} en el área ${camion.area}`
     });
-
     setMostrarModalExito(true);
-    setCamion({
-      numero: "",
-      tipoUnidad: "",
-      observaciones: "",
-      area: "",
-      conductor: "",
-      origen: "",
-      destino: "",
-      areasRuta: []
-    });
+    setCamion({ numero: "", tipoUnidad: "", observaciones: "", area: "", conductor: "", origen: "", destino: "", areasRuta: [] });
     setPaso(1);
   };
 
@@ -84,31 +55,49 @@ export default function Registro({
         <p className="registro-subtitle">Control de acceso al patio</p>
 
         <div className="step-indicator">
-          <div className={`step ${paso >= 1 ? "active" : ""}`}>1</div>
-          <div className={`step ${paso >= 2 ? "active" : ""}`}>2</div>
-          <div className={`step ${paso >= 3 ? "active" : ""}`}>3</div>
-          <div className={`step ${paso >= 4 ? "active" : ""}`}>4</div>
+          {[1,2,3,4].map(s => <div key={s} className={`step ${paso >= s ? "active" : ""}`}>{s}</div>)}
         </div>
 
         {paso === 1 && (
-          <>
-            <h2 style={{ color: '#ff0000' }}>Nuevo Registro</h2>
-            <div className="button-group">
-              <button className="btn-primary" onClick={() => setPaso(2)}>Registrar Autobús</button>
-            </div>
-          </>
+          <div className="button-group">
+            <button className="btn-primary" onClick={() => setPaso(2)}>Registrar Autobús</button>
+          </div>
         )}
 
         {paso === 2 && (
           <>
             <h2 style={{ color: '#ff0000' }}>Datos del Autobús</h2>
             <div className="form-grid">
-              {/* Campos de formulario iguales */}
               <div className="input-group">
                 <label>Número de Autobús</label>
-                <input type="text" value={camion.numero} onChange={(e) => setCamion({...camion, numero: e.target.value})} />
+                <input type="text" placeholder="Ej: ADO-1001" value={camion.numero} onChange={(e) => setCamion({...camion, numero: e.target.value})} />
               </div>
-              {/* ... (resto de tus inputs) ... */}
+              <div className="input-group">
+                <label>Tipo de Unidad</label>
+                <select value={camion.tipoUnidad} onChange={(e) => setCamion({...camion, tipoUnidad: e.target.value})}>
+                  <option value="">Seleccione</option>
+                  <option value="Foraneo">ADO</option>
+                  <option value="Local">OCC</option>
+                  <option value="GL">AU</option>
+                  <option value="Premium">LUJO</option>
+                </select>
+              </div>
+              <div className="input-group">
+                <label>Nombre del Conductor</label>
+                <input type="text" placeholder="Nombre completo" value={camion.conductor} onChange={(e) => setCamion({...camion, conductor: e.target.value})} />
+              </div>
+              <div className="input-group">
+                <label>Terminal de Origen</label>
+                <input type="text" placeholder="Ej: CDMX TAPO" value={camion.origen} onChange={(e) => setCamion({...camion, origen: e.target.value})} />
+              </div>
+              <div className="input-group">
+                <label>Terminal de Destino</label>
+                <input type="text" placeholder="Ej: Oaxaca Centro" value={camion.destino} onChange={(e) => setCamion({...camion, destino: e.target.value})} />
+              </div>
+              <div className="input-group">
+                <label>Observaciones</label>
+                <textarea rows="4" placeholder="Detalles de llegada o averías sutiles..." value={camion.observaciones} onChange={(e) => setCamion({...camion, observaciones: e.target.value})} />
+              </div>
             </div>
             <div className="button-group">
               <button className="btn-secondary" onClick={() => setPaso(1)}>Atrás</button>
@@ -121,20 +110,15 @@ export default function Registro({
           <>
             <h2 style={{ color: '#5B177F' }}>Seleccionar las Áreas de Ruta</h2>
             <div className="area-grid">
-              {["Desfogue", "Diesel", "Ad-Blue", "Taller", "Lavado Interior", "Lavado Exterior"].map(area => (
-                <div
-                  key={area}
-                  className={`area-card ${camion.areasRuta.includes(area) ? "selected" : ""}`}
-                  onClick={() => alternarAreaEnRuta(area)}
-                >
-                  {area} 
-                  {camion.areasRuta.includes(area) && (
-                    <span style={{ marginLeft: '10px', fontWeight: 'bold' }}>
-                      ({obtenerTextoOrden(area)})
-                    </span>
-                  )}
-                </div>
-              ))}
+              {["Desfogue", "Diesel", "Ad-Blue", "Taller", "Lavado Interior", "Lavado Exterior"].map((area) => {
+                const index = camion.areasRuta.indexOf(area);
+                return (
+                  <div key={area} className={`area-card ${index !== -1 ? "selected" : ""}`} onClick={() => alternarAreaEnRuta(area)}>
+                    {area}
+                    {index !== -1 && <span style={{display: 'block', fontWeight: 'bold', marginTop: '5px'}}>{index + 1}a área</span>}
+                  </div>
+                );
+              })}
             </div>
             <div className="button-group">
               <button className="btn-secondary" onClick={() => setPaso(2)}>Atrás</button>
@@ -148,7 +132,7 @@ export default function Registro({
             <h2 style={{ color: '#5B177F' }}>Confirmar Registro</h2>
             <div className="confirm-card">
               <p><strong>Número:</strong> {camion.numero}</p>
-              <p><strong>Ruta Planificada:</strong> {camion.areasRuta.length > 0 ? camion.areasRuta.map((a, i) => `${i + 1}a(${a})`).join(" ➔ ") : "Ninguna"}</p>
+              <p><strong>Ruta Planificada:</strong> {camion.areasRuta.length > 0 ? camion.areasRuta.join(" ➔ ") : "Ninguna"}</p>
             </div>
             <div className="button-group">
               <button className="btn-secondary" onClick={() => setPaso(3)}>Atrás</button>
@@ -159,11 +143,10 @@ export default function Registro({
       </div>
 
       {mostrarModalExito && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" style={{ zIndex: 1000 }}>
           <div className="modal-card">
             <h2>✅ Registro Exitoso</h2>
-            <p>La unidad <strong>{camion.numero}</strong> ha sido registrada.</p>
-            <button onClick={() => setMostrarModalExito(false)}>Ok</button>
+            <button className="btn-primary" onClick={() => setMostrarModalExito(false)}>Ok</button>
           </div>
         </div>
       )}
