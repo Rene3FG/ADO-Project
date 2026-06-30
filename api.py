@@ -589,8 +589,8 @@ def get_camiones(fecha: Optional[str] = Query(default=None)):
                    t.destination_terminal AS destino,
                    t.notes AS observaciones
             FROM records r
-            LEFT JOIN bus_types bt ON bt.id = r.type_id
             LEFT JOIN trips t ON t.serial_number = r.serial_number AND t.date = r.date
+            LEFT JOIN bus_types bt ON bt.id = t.type_id
             WHERE r.date = :f AND r.is_active = true
             ORDER BY r.serial_number
         """), {"f": target}).fetchall()
