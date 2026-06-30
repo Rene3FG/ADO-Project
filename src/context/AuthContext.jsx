@@ -14,16 +14,30 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = authService.getToken();
-    if (token) {
-      const saved = localStorage.getItem('sca_user');
-      setUser(saved ? JSON.parse(saved) : null);
-      setIsAuthenticated(true);
-    } else {
-      setIsAuthenticated(false);
-      setUser(null);
-    }
-    setLoading(false);
+    const checkAuth = async () => {
+      const token = authService.getToken();
+      if (!token) {
+        setIsAuthenticated(false);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      try {
+        await fetch(`${import.meta.env.VITE_API_URL || 'https://ado-project.onrender.com'}/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }).then(r => { if (!r.ok) throw new Error('token inválido'); });
+        const saved = localStorage.getItem('sca_user');
+        setUser(saved ? JSON.parse(saved) : null);
+        setIsAuthenticated(true);
+      } catch {
+        authService.logout();
+        localStorage.removeItem('sca_user');
+        setIsAuthenticated(false);
+        setUser(null);
+      }
+      setLoading(false);
+    };
+    checkAuth();
   }, []);
 
   const login = (userData) => {
