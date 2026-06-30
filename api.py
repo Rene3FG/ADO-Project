@@ -1,17 +1,48 @@
 import os
 import json
 import bcrypt
-from datetime import datetime, date
+import secrets
+from datetime import datetime, date, timedelta
 from typing import Optional
 from contextlib import contextmanager
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import IntegrityError
+import jwt
 
 from config import DATABASE_URL
 from db_client import AREA_NOMBRE_DB
+
+JWT_SECRET = os.environ.get("JWT_SECRET", secrets.token_hex(32))
+JWT_ALGORITHM = "HS256"
+JWT_EXPIRE_HOURS = 12
+
+_bearer = HTTPBearer(auto_error=False)
+
+def _make_token(payload: dict) -> str:
+    data = {**payload, "exp": datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS)}
+    return jwt.encode(data, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def get_current_user(creds: HTTPAuthorizationCredentials = Depends(_bearer)):
+    if not creds:
+        raise HTTPException(401, "Se requiere autenticación")
+    try:
+        return jwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(401, "Token expirado")
+    except jwt.InvalidTokenError:
+        raise HTTPException(401, "Token inválido")
+
+def require_role(*roles):
+    def dep(user: dict = Depends(get_current_user)):
+        if user.get("rol") not in roles:
+            raise HTTPException(403, f"Se requiere rol: {', '.join(roles)}")
+        return user
+    return dep
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
@@ -31,29 +62,37 @@ def rows_to_list(rows):
 # ── Modelos Pydantic ──────────────────────────────────────────────
 
 class CorrridaUpdate(BaseModel):
-    hora_corrida:   Optional[str]  = None
-    hora_salida:    Optional[str]  = None
-    tipo_nombre:    Optional[str]  = None
-    need_recepcion: Optional[int]  = None
-    need_desfogue:  Optional[int]  = None
-    need_diesel:    Optional[int]  = None
-    need_adblue:    Optional[int]  = None
-    need_lav_ext:   Optional[int]  = None
-    need_lav_int:   Optional[int]  = None
-    need_taller:    Optional[int]  = None
+    hora_corrida:         Optional[str]  = None
+    hora_salida:          Optional[str]  = None
+    tipo_nombre:          Optional[str]  = None
+    need_recepcion:       Optional[int]  = None
+    need_desfogue:        Optional[int]  = None
+    need_diesel:          Optional[int]  = None
+    need_adblue:          Optional[int]  = None
+    need_lav_ext:         Optional[int]  = None
+    need_lav_int:         Optional[int]  = None
+    need_taller:          Optional[int]  = None
+    conductor:            Optional[str]  = None
+    terminal_origen:      Optional[str]  = None
+    terminal_destino:     Optional[str]  = None
+    observaciones:        Optional[str]  = None
 
 class CorridaCreate(BaseModel):
-    serie:          int
-    tipo_nombre:    str
-    hora_corrida:   Optional[str] = None
-    hora_salida:    Optional[str] = None
-    need_recepcion: Optional[int] = 0
-    need_desfogue:  Optional[int] = 0
-    need_diesel:    Optional[int] = 0
-    need_adblue:    Optional[int] = 0
-    need_lav_ext:   Optional[int] = 0
-    need_lav_int:   Optional[int] = 0
-    need_taller:    Optional[int] = 0
+    serie:                int
+    tipo_nombre:          str
+    hora_corrida:         Optional[str] = None
+    hora_salida:          Optional[str] = None
+    need_recepcion:       Optional[int] = 0
+    need_desfogue:        Optional[int] = 0
+    need_diesel:          Optional[int] = 0
+    need_adblue:          Optional[int] = 0
+    need_lav_ext:         Optional[int] = 0
+    need_lav_int:         Optional[int] = 0
+    need_taller:          Optional[int] = 0
+    conductor:            Optional[str] = None
+    terminal_origen:      Optional[str] = None
+    terminal_destino:     Optional[str] = None
+    observaciones:        Optional[str] = None
 
 class RegistroUpdate(BaseModel):
     ubicacion_texto: Optional[str]   = None
@@ -90,6 +129,9 @@ class UsuarioCreate(BaseModel):
 class AreaCreate(BaseModel):
     nombre: str
     capacidad: Optional[int] = 4
+
+class AreaUpdate(BaseModel):
+    capacidad: int
 
 class TiemposUpdate(BaseModel):
     hora_entrada:     Optional[str]   = None  # "HH:MM:SS"
@@ -149,20 +191,26 @@ CORRIDA_COLUMNS = (
     " c.needs_diesel AS need_diesel, c.needs_adblue AS need_adblue,"
     " c.needs_ext_wash AS need_lav_ext, c.needs_int_wash AS need_lav_int,"
     " c.needs_workshop AS need_taller, c.sheets_row, c.is_dirty,"
-    " c.last_modified_by, c.last_modified_at, c.sheets_synced_at"
+    " c.last_modified_by, c.last_modified_at, c.sheets_synced_at,"
+    " c.driver_name AS conductor, c.origin_terminal AS terminal_origen,"
+    " c.destination_terminal AS terminal_destino, c.notes AS observaciones"
 )
 
 # Pydantic (español) -> columna real en "trips"
 CORRIDA_FIELD_DB = {
-    "hora_corrida":   "scheduled_time",
-    "hora_salida":    "departure_time",
-    "need_recepcion": "needs_reception",
-    "need_desfogue":  "needs_drainage",
-    "need_diesel":    "needs_diesel",
-    "need_adblue":    "needs_adblue",
-    "need_lav_ext":   "needs_ext_wash",
-    "need_lav_int":   "needs_int_wash",
-    "need_taller":    "needs_workshop",
+    "hora_corrida":     "scheduled_time",
+    "hora_salida":      "departure_time",
+    "need_recepcion":   "needs_reception",
+    "need_desfogue":    "needs_drainage",
+    "need_diesel":      "needs_diesel",
+    "need_adblue":      "needs_adblue",
+    "need_lav_ext":     "needs_ext_wash",
+    "need_lav_int":     "needs_int_wash",
+    "need_taller":      "needs_workshop",
+    "conductor":        "driver_name",
+    "terminal_origen":  "origin_terminal",
+    "terminal_destino": "destination_terminal",
+    "observaciones":    "notes",
 }
 
 @app.get("/corridas", summary="Lista corridas del día")
@@ -244,10 +292,12 @@ def create_corrida(body: CorridaCreate):
             " (date, serial_number, type_id, scheduled_time, departure_time,"
             "  needs_reception, needs_drainage, needs_diesel, needs_adblue,"
             "  needs_ext_wash, needs_int_wash, needs_workshop,"
+            "  driver_name, origin_terminal, destination_terminal, notes,"
             "  is_dirty, last_modified_by, last_modified_at)"
             " VALUES (:f, :s, :tipo_id, :hora_corrida, :hora_salida,"
             "  :need_recepcion, :need_desfogue, :need_diesel, :need_adblue,"
             "  :need_lav_ext, :need_lav_int, :need_taller,"
+            "  :conductor, :terminal_origen, :terminal_destino, :observaciones,"
             "  true, 'app', :ts)"
         ), {
             "f": target, "s": body.serie, "tipo_id": tipo_row[0],
@@ -255,7 +305,10 @@ def create_corrida(body: CorridaCreate):
             "need_recepcion": body.need_recepcion, "need_desfogue": body.need_desfogue,
             "need_diesel": body.need_diesel, "need_adblue": body.need_adblue,
             "need_lav_ext": body.need_lav_ext, "need_lav_int": body.need_lav_int,
-            "need_taller": body.need_taller, "ts": datetime.now(),
+            "need_taller": body.need_taller,
+            "conductor": body.conductor, "terminal_origen": body.terminal_origen,
+            "terminal_destino": body.terminal_destino, "observaciones": body.observaciones,
+            "ts": datetime.now(),
         })
 
     return get_corrida(body.serie, target)
@@ -473,22 +526,28 @@ def get_areas():
     ]
 
 @app.post("/areas", status_code=201, summary="Crea una nueva área de servicio (admin)")
-def create_area(body: AreaCreate):
+def create_area(body: AreaCreate, _user: dict = Depends(require_role("Administrador"))):
+    try:
+        with db() as conn:
+            row = conn.execute(text(
+                "INSERT INTO area (name, capacity) VALUES (:n, :c) RETURNING id"
+            ), {"n": body.nombre, "c": body.capacidad}).fetchone()
+        return {"id": row[0], "nombre": body.nombre, "capacidad": body.capacidad}
+    except IntegrityError:
+        raise HTTPException(409, f"El área '{body.nombre}' ya existe")
+
+@app.put("/areas/{area_id}", summary="Actualiza capacidad de un área (admin)")
+def update_area(area_id: int, body: AreaUpdate, _user: dict = Depends(require_role("Administrador"))):
     with db() as conn:
-        existing = conn.execute(text(
-            "SELECT id FROM area WHERE name = :n"
-        ), {"n": body.nombre}).fetchone()
-        if existing:
-            raise HTTPException(409, f"El área '{body.nombre}' ya existe")
-
         row = conn.execute(text(
-            "INSERT INTO area (name, capacity) VALUES (:n, :c) RETURNING id"
-        ), {"n": body.nombre, "c": body.capacidad}).fetchone()
-
-    return {"id": row[0], "nombre": body.nombre, "capacidad": body.capacidad}
+            "UPDATE area SET capacity=:c WHERE id=:id RETURNING id, name, capacity"
+        ), {"c": body.capacidad, "id": area_id}).fetchone()
+        if not row:
+            raise HTTPException(404, f"Área id={area_id} no encontrada")
+    return {"id": row.id, "nombre": row.name, "capacidad": row.capacity}
 
 @app.delete("/areas/{area_id}", summary="Elimina un área de servicio (admin)")
-def delete_area(area_id: int):
+def delete_area(area_id: int, _user: dict = Depends(require_role("Administrador"))):
     with db() as conn:
         if not conn.execute(text(
             "SELECT id FROM area WHERE id = :id"
@@ -518,9 +577,14 @@ def get_camiones(fecha: Optional[str] = Query(default=None)):
                    (SELECT a.name FROM movements m
                     JOIN area a ON a.id = m.area_id
                     WHERE m.serial_number = r.serial_number
-                    ORDER BY m.id DESC LIMIT 1) AS area_db
+                    ORDER BY m.id DESC LIMIT 1) AS area_db,
+                   t.driver_name AS conductor,
+                   t.origin_terminal AS origen,
+                   t.destination_terminal AS destino,
+                   t.notes AS observaciones
             FROM records r
             LEFT JOIN bus_types bt ON bt.id = r.type_id
+            LEFT JOIN trips t ON t.serial_number = r.serial_number AND t.date = r.date
             WHERE r.date = :f AND r.is_active = true
             ORDER BY r.serial_number
         """), {"f": target}).fetchall()
@@ -531,9 +595,10 @@ def get_camiones(fecha: Optional[str] = Query(default=None)):
             "codigo": str(r.serial_number),
             "tipo": r.tipo_nombre or "Desconocido",
             "area": AREA_DB_TO_DISPLAY.get(r.area_db or "", r.area_db or "Desfogue"),
-            "conductor": None,
-            "origen": "",
-            "destino": "",
+            "conductor": r.conductor or "",
+            "origen": r.origen or "",
+            "destino": r.destino or "",
+            "observaciones": r.observaciones or "",
             "ruta": [],
         }
         for r in rows
@@ -782,7 +847,7 @@ def get_roles():
     return rows_to_list(rows)
 
 @app.post("/usuarios", status_code=201, summary="Crea un usuario (operador/supervisor/admin)")
-def create_usuario(body: UsuarioCreate):
+def create_usuario(body: UsuarioCreate, _user: dict = Depends(require_role("Administrador"))):
     with db() as conn:
         existing = conn.execute(text(
             "SELECT id FROM users WHERE username = :u"
@@ -816,7 +881,7 @@ def create_usuario(body: UsuarioCreate):
         "rol": body.rol,
     }
 
-@app.post("/login", summary="Verifica credenciales contra users/roles")
+@app.post("/login", summary="Verifica credenciales y devuelve JWT")
 def login(body: LoginRequest):
     with db() as conn:
         row = conn.execute(text(
@@ -832,12 +897,20 @@ def login(body: LoginRequest):
     if not bcrypt.checkpw(body.password.encode(), row.password_hash.encode()):
         raise credenciales_invalidas
 
+    payload = {"sub": str(row.id), "username": row.username, "rol": row.rol}
+    token = _make_token(payload)
+
     return {
         "id": row.id,
         "username": row.username,
         "nombre": f"{row.first_name} {row.last_name}".strip(),
         "rol": row.rol,
+        "token": token,
     }
+
+@app.get("/me", summary="Devuelve el usuario autenticado")
+def me(user: dict = Depends(get_current_user)):
+    return user
 
 
 if __name__ == "__main__":
