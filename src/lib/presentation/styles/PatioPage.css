@@ -1,0 +1,304 @@
+/* ── Variables ADO ─────────────────────────────────────────────── */
+:root {
+  --ado-red:      #D32F2F;
+  --ado-purple:   #7C3AED;
+  --text-main:    #1e293b;
+  --text-muted:   #64748b;
+  --bg-light:     #f8fafc;
+  --border-color: #e2e8f0;
+}
+
+/* ── Layout base ───────────────────────────────────────────────── */
+.app-layout {
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #f4f4f9;
+  font-family: system-ui, sans-serif;
+  position: relative;
+}
+
+/* ── Overlay (cierra el menú al tocar fuera) ───────────────────── */
+.overlay-menu {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────── */
+.sidebar {
+  width: 250px;
+  background-color: #11131e;
+  color: #f1f5f9;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  height: 100vh;
+  transition: transform 0.25s ease;
+  z-index: 200;
+}
+
+/* Mobile: sidebar oculta por defecto, visible con .abierto */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    transform: translateX(-100%);
+  }
+  .sidebar.abierto {
+    transform: translateX(0);
+  }
+}
+
+.sidebar-logo {
+  padding: 20px;
+  border-bottom: 1px solid #1e2235;
+}
+.sidebar-logo h1 {
+  color: #ef4444;
+  font-size: 1.8rem;
+  margin: 0;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.sidebar-menu {
+  list-style: none;
+  margin: 0;
+  padding: 12px 0;
+  flex: 1;
+  overflow-y: auto;
+}
+.sidebar-menu li a {
+  display: block;
+  padding: 12px 20px;
+  color: #94a3b8;
+  text-decoration: none;
+  font-size: 0.9rem;
+  border-radius: 6px;
+  margin: 2px 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.sidebar-menu li a:hover,
+.sidebar-menu li a.active {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #fff;
+}
+
+/* ── Main content ──────────────────────────────────────────────── */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Topbar ────────────────────────────────────────────────────── */
+.topbar {
+  background-color: #fff;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 20px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.topbar-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+.hamburger-btn {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+  color: var(--text-main);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.hamburger-btn:hover { background: var(--bg-light); }
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.user-profile .name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+.user-profile .role {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* ── Dashboard wrapper ─────────────────────────────────────────── */
+.dashboard-container {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Dash header ───────────────────────────────────────────────── */
+.dash-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.dash-header h2 { margin: 0; color: var(--text-main); }
+.dash-header p  { margin: 4px 0 0; color: var(--text-muted); font-size: 0.9rem; }
+
+/* ── Leyenda ───────────────────────────────────────────────────── */
+.leyenda {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.caja-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.caja-libre    { background-color: #e2e8f0; }
+.caja-ocupada  { background-color: #f59e0b; }
+
+.btn-registrar-header {
+  background-color: var(--ado-red);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.btn-registrar-header:hover { opacity: 0.9; }
+
+/* ── Dash grid (areas + widgets) ───────────────────────────────── */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .dash-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Areas grid ────────────────────────────────────────────────── */
+.areas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+/* ── Area card ─────────────────────────────────────────────────── */
+.area-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  border: 1px solid var(--border-color);
+}
+.area-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.area-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+.area-header span {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* ── Slots container ───────────────────────────────────────────── */
+.slots-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ── Slot boxes ────────────────────────────────────────────────── */
+.slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+  min-height: 54px;
+}
+.slot span:first-of-type {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.slot-time {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.slot.free {
+  background-color: #f1f5f9;
+  color: #94a3b8;
+  border: 1px dashed #cbd5e1;
+}
+.slot.occ {
+  background-color: #fff7ed;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+.slot.process {
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+/* ── Widget panel ──────────────────────────────────────────────── */
+.widget-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.widget-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  border: 1px solid var(--border-color);
+}
+.widget-title {
+  margin: 0 0 12px 0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-main);
+}

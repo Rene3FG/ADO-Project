@@ -10,6 +10,7 @@ import { ReportesPage } from './ReportesPage';
 import { AREAS_PATIO } from '../../areasConfig';
 import { AreaRepository } from '../../data/repositories/AreaRepository';
 import "../../../App.css";
+import "../styles/PatioPage.css";
 
 export const PatioPage = ({ usuario }) => {
   const { menuAbierto, alternarMenu, cerrarMenu, cerrarSesion } = useMenuBloc();
@@ -167,7 +168,7 @@ export const PatioPage = ({ usuario }) => {
                           <div className="area-header">
                             <h3>{area.icono} {area.nombre}</h3>
                             <div style={{ textAlign: 'right' }}>
-                              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-main)', marginBottom: '2px', fontWeight: 600 }}>Promedio: {promediosArea ? promediosArea[area.id] : '--'} min</span>
+                              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-main)', marginBottom: '2px', fontWeight: 600 }}>Promedio: {promediosArea?.[area.id] ?? '--'} min</span>
                               <span>Cap: {area.capacidad}</span>
                             </div>
                           </div>
@@ -231,7 +232,7 @@ export const PatioPage = ({ usuario }) => {
                   <div style={{ backgroundColor: '#D32F2F', color: 'white', padding: '20px', textAlign: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
                     <h1 style={{ margin: 0, fontSize: '24px' }}>Área: {usuario.areaAsignada}</h1>
                     <p style={{ margin: '5px 0 0 0', fontSize: '18px', fontWeight: 'bold', color: '#FFEB3B' }}>Ocupación: {ocupacionActual}/{capacidadMaxArea} camiones</p>
-                    {promediosArea && <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>⏱️ Tiempo Promedio: {promediosArea[usuario.areaAsignada]} min</p>}
+                    {promediosArea?.[usuario.areaAsignada] != null && <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>⏱️ Tiempo Promedio: {promediosArea[usuario.areaAsignada]} min</p>}
                   </div>
 
                   <div style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
