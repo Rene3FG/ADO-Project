@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TarjetaInfo from './TarjetaInfo.jsx';
 import './DropDrag.css';
-import Registro from '../Registro/Registro.jsx';
+import { RegistroUnidadPage } from '../../lib/presentation/pages/RegistroUnidadPage.jsx';
 import ConfAvaz from '../ConfAvanz/ConfAvaz.jsx';
 import Reportes from '../Reportes/Reportes.jsx';
 import BusDetailModal from '../../components/BusDetailModal.jsx';
@@ -468,12 +468,7 @@ export default function DropDrag() {
           </div>
         );
       case 'registrar':
-        return (
-          <Registro
-            agregarCamion={agregarCamion}
-            agregarHistorial={agregarHistorial}
-          />
-        );
+        return <RegistroUnidadPage />;
       case 'historial':
         return (
           <div className="historial-container">
