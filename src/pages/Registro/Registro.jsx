@@ -1,7 +1,11 @@
 import { useState } from "react";
-import camionesService from "../../services/camionesService.js";
-import historialService from "../../services/historialService.js";
+import apiClient from "../../services/apiClient.js";
 import "./Resgistro.css";
+
+const AREA_TO_API = {
+  "Desfogue": "DESFOGUE", "Diesel": "DIESEL", "Ad-Blue": "ADDBLUE",
+  "Taller": "TALLER", "Lavado Interior": "LAVADO INTERIOR", "Lavado Exterior": "LAVADO EXTERIOR",
+};
 
 export default function Registro({
   agregarCamion,
@@ -54,42 +58,34 @@ export default function Registro({
         return;
       }
 
-      const nuevoCamion = {
-        codigo: camion.numero,
-        tipo: camion.tipoUnidad,
-        area: camion.areasRuta[0] || "",
-        conductor: camion.conductor,
-        origen: camion.origen,
-        destino: camion.destino,
-        ruta: camion.areasRuta,
-        observaciones: camion.observaciones
+      const needMap = {
+        need_desfogue: camion.areasRuta.includes("Desfogue") ? 1 : 0,
+        need_diesel:   camion.areasRuta.includes("Diesel") ? 1 : 0,
+        need_adblue:   camion.areasRuta.includes("Ad-Blue") ? 1 : 0,
+        need_taller:   camion.areasRuta.includes("Taller") ? 1 : 0,
+        need_lav_int:  camion.areasRuta.includes("Lavado Interior") ? 1 : 0,
+        need_lav_ext:  camion.areasRuta.includes("Lavado Exterior") ? 1 : 0,
       };
 
-      // Crear camión en la API
-      const respuestaAPI = await camionesService.createCamion(nuevoCamion);
-      console.log("Camión creado en API:", respuestaAPI);
+      await apiClient.post('/corridas', {
+        serie: Number(camion.numero) || camion.numero,
+        tipo_nombre: camion.tipoUnidad || "ADO",
+        conductor: camion.conductor || null,
+        terminal_origen: camion.origen || null,
+        terminal_destino: camion.destino || null,
+        observaciones: camion.observaciones || null,
+        ...needMap,
+      });
 
-      // Agregar a estado local también (para UI que lo requiera)
-      const camionConId = {
-        id: respuestaAPI.id || Date.now().toString(),
-        ...nuevoCamion
-      };
+      const areaApi = AREA_TO_API[camion.areasRuta[0]];
+      if (areaApi) {
+        await apiClient.post('/movimientos', {
+          serie: Number(camion.numero) || camion.numero,
+          area_nombre: areaApi,
+        });
+      }
 
-      agregarCamion(camionConId);
-
-      // Registrar en historial
-      const ahora = new Date();
-      const registroHistorial = {
-        unidad: camion.numero,
-        areaFinal: camion.area,
-        fecha: ahora.toLocaleDateString('es-MX'),
-        hora: ahora.toLocaleTimeString('es-MX'),
-        mensaje: `Se registró la unidad ${camion.numero} en el área ${camion.area}`
-      };
-
-      await historialService.logRegistro(registroHistorial);
-      agregarHistorial(registroHistorial);
-
+      if (agregarCamion) agregarCamion({ id: Date.now().toString(), codigo: camion.numero });
       alert("Autobús registrado correctamente");
 
       // Limpiar formulario
@@ -185,12 +181,12 @@ export default function Registro({
                   disabled={loading}
                 >
                   <option value="">Seleccione</option>
-                  <option value="Foraneo">ADO</option>
-                  <option value="Local">OCC</option>
-                  <option value="GL">AU</option>
-                  <option value="Premium">LUJO</option>
-                  <option value="Premium">SUR</option>
-                  <option value="Premium">TXO</option>
+                  <option value="ADO">ADO</option>
+                  <option value="OCC">OCC</option>
+                  <option value="AU">AU</option>
+                  <option value="LUJO">LUJO</option>
+                  <option value="SUR">SUR</option>
+                  <option value="TXO">TXO</option>
                 </select>
               </div>
 
