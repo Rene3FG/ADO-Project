@@ -21,6 +21,12 @@ JWT_SECRET = os.environ.get("JWT_SECRET", secrets.token_hex(32))
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRE_HOURS = 12
 
+ROLE_MAP = {
+    "Administrator": "Administrador",
+    "Supervisor":    "Supervisor",
+    "Operator":      "Operador",
+}
+
 _bearer = HTTPBearer(auto_error=False)
 
 def _make_token(payload: dict) -> str:
@@ -897,14 +903,15 @@ def login(body: LoginRequest):
     if not bcrypt.checkpw(body.password.encode(), row.password_hash.encode()):
         raise credenciales_invalidas
 
-    payload = {"sub": str(row.id), "username": row.username, "rol": row.rol}
+    rol = ROLE_MAP.get(row.rol, row.rol)
+    payload = {"sub": str(row.id), "username": row.username, "rol": rol}
     token = _make_token(payload)
 
     return {
         "id": row.id,
         "username": row.username,
         "nombre": f"{row.first_name} {row.last_name}".strip(),
-        "rol": row.rol,
+        "rol": rol,
         "token": token,
     }
 
