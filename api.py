@@ -2,9 +2,12 @@ import os
 import json
 import bcrypt
 import secrets
+import threading
+import schedule
+import time
 from datetime import datetime, date, timedelta
 from typing import Optional
-from contextlib import contextmanager
+from contextlib import contextmanager, asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -172,12 +175,37 @@ AREA_DB_TO_DISPLAY = {
 AREA_DISPLAY_TO_DB = {v: k for k, v in AREA_DB_TO_DISPLAY.items()}
 
 
+# ── Sync engine en hilo de fondo ─────────────────────────────────
+
+def _run_sync_loop():
+    try:
+        from sync_engine import run_sync_cycle
+        from config import SYNC_INTERVAL_SECONDS
+        run_sync_cycle()
+        schedule.every(SYNC_INTERVAL_SECONDS).seconds.do(run_sync_cycle)
+        while True:
+            schedule.run_pending()
+            time.sleep(5)
+    except Exception as e:
+        print(f"[SYNC] Error en hilo de sync: {e}")
+
+@asynccontextmanager
+async def lifespan(app):
+    if os.environ.get("GOOGLE_CREDS_FILE") or os.path.exists("credentials/service_account.json"):
+        t = threading.Thread(target=_run_sync_loop, daemon=True)
+        t.start()
+        print("[SYNC] Hilo de sincronización iniciado")
+    else:
+        print("[SYNC] Sin credenciales Google — sync desactivado")
+    yield
+
 # ── App FastAPI + CORS ────────────────────────────────────────────
 
 app = FastAPI(
     title="SCA API",
     version="1.0.0",
     description="API REST para el Sistema de Control de Autobuses — ADO Oaxaca",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
