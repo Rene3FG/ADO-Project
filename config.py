@@ -5,7 +5,11 @@ load_dotenv()
 
 # ── Google Sheets
 SPREADSHEET_ID      = os.getenv("SPREADSHEET_ID", "1bHoYKL5U14JfmhwwoLMHwzOtGbFbA_1sRF75P5G18sY")
-GOOGLE_CREDS_FILE   = os.getenv("GOOGLE_CREDS_FILE", "credentials/service_account.json")
+GOOGLE_CREDS_FILE   = os.getenv(
+    "GOOGLE_CREDS_FILE",
+    "/etc/secrets/service_account.json" if os.path.exists("/etc/secrets/service_account.json")
+    else "credentials/service_account.json"
+)
 
 # ── PostgreSQL
 DATABASE_URL = os.getenv(

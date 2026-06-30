@@ -191,7 +191,9 @@ def _run_sync_loop():
 
 @asynccontextmanager
 async def lifespan(app):
-    if os.environ.get("GOOGLE_CREDS_FILE") or os.path.exists("credentials/service_account.json"):
+    if (os.path.exists("/etc/secrets/service_account.json") or
+            os.path.exists("credentials/service_account.json") or
+            os.environ.get("GOOGLE_CREDS_FILE")):
         t = threading.Thread(target=_run_sync_loop, daemon=True)
         t.start()
         print("[SYNC] Hilo de sincronización iniciado")
