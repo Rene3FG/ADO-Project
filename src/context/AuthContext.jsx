@@ -13,31 +13,28 @@ export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Check if user is already logged in (on app load)
   useEffect(() => {
-    const checkAuth = () => {
-      const token = authService.getToken();
-      if (token) {
-        setIsAuthenticated(true);
-        // In a real app, you would fetch user data from the token or an endpoint
-        // For now, we just verify the token exists
-      } else {
-        setIsAuthenticated(false);
-        setUser(null);
-      }
-      setLoading(false);
-    };
-
-    checkAuth();
+    const token = authService.getToken();
+    if (token) {
+      const saved = localStorage.getItem('sca_user');
+      setUser(saved ? JSON.parse(saved) : null);
+      setIsAuthenticated(true);
+    } else {
+      setIsAuthenticated(false);
+      setUser(null);
+    }
+    setLoading(false);
   }, []);
 
   const login = (userData) => {
+    localStorage.setItem('sca_user', JSON.stringify(userData));
     setUser(userData);
     setIsAuthenticated(true);
   };
 
   const logout = () => {
     authService.logout();
+    localStorage.removeItem('sca_user');
     setUser(null);
     setIsAuthenticated(false);
   };
