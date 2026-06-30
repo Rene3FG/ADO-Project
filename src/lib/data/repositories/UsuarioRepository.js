@@ -13,10 +13,12 @@ export const UsuarioRepository = {
   // ==========================================
   autenticar: async (idEmpleado, password) => {
     const idLimpio = String(idEmpleado).trim();
-    const usuario = await apiFetch('/login', {
+    const data = await apiFetch('/login', {
       method: 'POST',
       body: JSON.stringify({ username: idLimpio, password }),
     });
+    if (data.token) localStorage.setItem('sca_token', data.token);
+    const { token: _t, ...usuario } = data;
     return { usuario };
   },
 

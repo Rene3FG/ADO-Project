@@ -19,9 +19,7 @@ class AuthService {
         password: contrasena,
       });
 
-      // nuestra API devuelve { id, username, nombre, rol } sin JWT;
-      // usamos el username como token de identidad en localStorage
-      apiClient.setToken(response.username || String(response.id));
+      apiClient.setToken(response.token);
 
       return response;
     } catch (error) {

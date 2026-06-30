@@ -67,14 +67,48 @@ export const RegistroUnidadPage = () => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
             <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Hora límite de salida *</label>
-            <input 
-              type="time" 
-              name="horaSalida" 
-              value={formData.horaSalida} 
-              onChange={handleInputChange} 
-              required 
-              style={inputStyle} 
+            <input
+              type="time"
+              name="horaSalida"
+              value={formData.horaSalida}
+              onChange={handleInputChange}
+              required
+              style={inputStyle}
             />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Conductor</label>
+            <input
+              type="text"
+              name="conductor"
+              value={formData.conductor}
+              onChange={handleInputChange}
+              style={inputStyle}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+              <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Terminal de Origen</label>
+              <input
+                type="text"
+                name="terminalOrigen"
+                value={formData.terminalOrigen}
+                onChange={handleInputChange}
+                style={inputStyle}
+              />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+              <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Terminal de Destino</label>
+              <input
+                type="text"
+                name="terminalDestino"
+                value={formData.terminalDestino}
+                onChange={handleInputChange}
+                style={inputStyle}
+              />
+            </div>
           </div>
 
           <div style={{ backgroundColor: 'var(--bg-light)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
@@ -133,6 +167,9 @@ export const RegistroUnidadPage = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ backgroundColor: 'var(--bg-light)', padding: '20px', borderRadius: '8px', borderLeft: '5px solid var(--ado-purple)' }}>
             <p style={{ margin: '0 0 10px 0', color: 'var(--text-main)' }}><strong>Unidad:</strong> {formData.numeroSerie} ({formData.tipoUnidad})</p>
+            {formData.conductor && <p style={{ margin: '0 0 10px 0', color: 'var(--text-main)' }}><strong>Conductor:</strong> {formData.conductor}</p>}
+            {formData.terminalOrigen && <p style={{ margin: '0 0 10px 0', color: 'var(--text-main)' }}><strong>Terminal de Origen:</strong> {formData.terminalOrigen}</p>}
+            {formData.terminalDestino && <p style={{ margin: '0 0 10px 0', color: 'var(--text-main)' }}><strong>Terminal de Destino:</strong> {formData.terminalDestino}</p>}
             <p style={{ margin: '0 0 10px 0', color: 'var(--text-main)' }}><strong>Hora de Salida:</strong> {formData.horaSalida}</p>
             <p style={{ margin: '0 0 5px 0', color: 'var(--text-main)' }}><strong>Ruta Asignada:</strong></p>
             <ul style={{ margin: '0 0 15px 0', paddingLeft: '20px', color: 'var(--text-muted)' }}>

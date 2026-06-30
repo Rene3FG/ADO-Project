@@ -52,6 +52,10 @@ export const AutobusRepository = {
         serie: Number(datos.numeroSerie),
         tipo_nombre: datos.tipoUnidad,
         hora_salida: datos.horaSalida || null,
+        conductor: datos.conductor || null,
+        terminal_origen: datos.terminalOrigen || null,
+        terminal_destino: datos.terminalDestino || null,
+        observaciones: datos.observaciones || null,
         ...needs,
       }),
     });

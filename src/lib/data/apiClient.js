@@ -1,11 +1,14 @@
-// Cliente fetch para la SCA API (antes este archivo era supabaseClient.js).
-// Ver TODO en useAuthBloc.js: el login no pasa por aquí todavía.
 const API_URL = import.meta.env.VITE_API_URL || 'https://ado-project.onrender.com';
 
 export async function apiFetch(path, options = {}) {
+  const token = localStorage.getItem('sca_token');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(`${API_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...options,
+    headers: { ...headers, ...(options.headers || {}) },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));

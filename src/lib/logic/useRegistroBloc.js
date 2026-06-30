@@ -10,7 +10,10 @@ export const useRegistroBloc = () => {
   const [formData, setFormData] = useState({
     numeroSerie: '',
     tipoUnidad: 'ADO',
-    horaSalida: '', 
+    horaSalida: '',
+    conductor: '',
+    terminalOrigen: '',
+    terminalDestino: '',
     areasRequeridas: {
       'Desfogue': false, 'Diesel': false, 'Ad-blue': false,
       'Taller': false, 'Lavado Interior': false, 'Lavado Exterior': false
@@ -85,6 +88,9 @@ export const useRegistroBloc = () => {
         numeroSerie: formData.numeroSerie,
         tipoUnidad: formData.tipoUnidad,
         horaSalida: formData.horaSalida,
+        conductor: formData.conductor,
+        terminalOrigen: formData.terminalOrigen,
+        terminalDestino: formData.terminalDestino,
         areasRequeridas: areasSeleccionadas,
         areaInicial: formData.areaInicial || areaRecomendada || 'Espera',
         observaciones: formData.observaciones
@@ -96,6 +102,7 @@ export const useRegistroBloc = () => {
         setStep(1); // Regresamos al paso 1
         setFormData({
           numeroSerie: '', tipoUnidad: 'ADO', horaSalida: '',
+          conductor: '', terminalOrigen: '', terminalDestino: '',
           areasRequeridas: { 'Desfogue': false, 'Diesel': false, 'Ad-blue': false, 'Taller': false, 'Lavado Interior': false, 'Lavado Exterior': false },
           areaInicial: '', observaciones: ''
         });

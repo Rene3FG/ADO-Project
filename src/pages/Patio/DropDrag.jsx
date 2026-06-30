@@ -35,6 +35,10 @@ export default function DropDrag() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
+  const esAdmin = user?.rol === 'Administrador';
+  const esSupervisor = user?.rol === 'Supervisor';
+  const esOperador = user?.rol === 'Operador';
+
   const [pestanaActiva, setPestanaActiva] = useState('patio');
   const [camiones, setCamiones] = useState([]);
   const [areasConfig, setAreasConfig] = useState([]);
@@ -445,46 +449,14 @@ export default function DropDrag() {
                               progreso={obtenerProgresoCamion(camion)}
                             />
 
-                            {(camion.ruta && camion.ruta.length > 0) ? (
-                              <>
-                                {camion.area === camion.ruta[camion.ruta.length - 1] && !camion.finalizado && (
-                                  <button
-                                    className="btn-salida"
-                                    onClick={() => finalizarRecorrido(camion.id)}
-                                  >
-                                    Finalizar Área
-                                  </button>
-                                )}
-
-                                {camion.finalizado && camion.area === "Descanso" && (
-                                  <button
-                                    className="btn-salida"
-                                    style={{ backgroundColor: '#10b981' }}
-                                    onClick={() => sacarCamion(camion.id)}
-                                  >
-                                    Dar Salida
-                                  </button>
-                                )}
-                              </>
-                            ) : (
-                              nombreArea === "Descanso" && (
-                                !camion.finalizado ? (
-                                  <button
-                                    className="btn-salida"
-                                    onClick={() => finalizarRecorrido(camion.id)}
-                                  >
-                                    Finalizar recorrido
-                                  </button>
-                                ) : (
-                                  <button
-                                    className="btn-salida"
-                                    style={{ backgroundColor: '#10b981' }}
-                                    onClick={() => sacarCamion(camion.id)}
-                                  >
-                                    Dar Salida
-                                  </button>
-                                )
-                              )
+                            {nombreArea === "Descanso" && !camion.finalizado && (
+                              <button
+                                className="btn-salida"
+                                style={{ backgroundColor: '#10b981' }}
+                                onClick={() => sacarCamion(camion.id)}
+                              >
+                                Finalizar y dar salida
+                              </button>
                             )}
                           </div>
                         ))
@@ -596,34 +568,42 @@ export default function DropDrag() {
             <MdDashboard className="sidebar__icon" />
             <span>Patio en tiempo real</span>
           </button>
-          <button
-            className={`sidebar__item ${pestanaActiva === 'registrar' ? 'sidebar__item--active' : ''}`}
-            onClick={() => setPestanaActiva('registrar')}
-          >
-            <MdAssignmentTurnedIn className="sidebar__icon" />
-            <span>Registrar camión</span>
-          </button>
-          <button
-            className={`sidebar__item ${pestanaActiva === 'historial' ? 'sidebar__item--active' : ''}`}
-            onClick={() => setPestanaActiva('historial')}
-          >
-            <MdHistory className="sidebar__icon" />
-            <span>Historial</span>
-          </button>
-          <button
-            className={`sidebar__item ${pestanaActiva === 'reportes' ? 'sidebar__item--active' : ''}`}
-            onClick={() => setPestanaActiva('reportes')}
-          >
-            <MdBarChart className="sidebar__icon" />
-            <span>Reportes</span>
-          </button>
-          <button
-            className={`sidebar__item ${pestanaActiva === 'configuracion' ? 'sidebar__item--active' : ''}`}
-            onClick={() => setPestanaActiva('configuracion')}
-          >
-            <MdSettings className="sidebar__icon" />
-            <span>Configuración Avanzada</span>
-          </button>
+          {(esAdmin || esOperador) && (
+            <button
+              className={`sidebar__item ${pestanaActiva === 'registrar' ? 'sidebar__item--active' : ''}`}
+              onClick={() => setPestanaActiva('registrar')}
+            >
+              <MdAssignmentTurnedIn className="sidebar__icon" />
+              <span>Registrar camión</span>
+            </button>
+          )}
+          {(esAdmin || esSupervisor) && (
+            <button
+              className={`sidebar__item ${pestanaActiva === 'historial' ? 'sidebar__item--active' : ''}`}
+              onClick={() => setPestanaActiva('historial')}
+            >
+              <MdHistory className="sidebar__icon" />
+              <span>Historial</span>
+            </button>
+          )}
+          {(esAdmin || esSupervisor) && (
+            <button
+              className={`sidebar__item ${pestanaActiva === 'reportes' ? 'sidebar__item--active' : ''}`}
+              onClick={() => setPestanaActiva('reportes')}
+            >
+              <MdBarChart className="sidebar__icon" />
+              <span>Reportes</span>
+            </button>
+          )}
+          {esAdmin && (
+            <button
+              className={`sidebar__item ${pestanaActiva === 'configuracion' ? 'sidebar__item--active' : ''}`}
+              onClick={() => setPestanaActiva('configuracion')}
+            >
+              <MdSettings className="sidebar__icon" />
+              <span>Configuración Avanzada</span>
+            </button>
+          )}
         </nav>
 
         <button 

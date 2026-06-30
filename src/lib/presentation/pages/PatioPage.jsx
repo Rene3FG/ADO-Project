@@ -27,7 +27,9 @@ export const PatioPage = ({ usuario }) => {
     obtenerSemaforo, promediosArea
   } = usePatioBloc();
 
-  const esAdmin = !usuario.areaAsignada || usuario.areaAsignada === 'General';
+  const esAdmin = usuario.rol === 'Administrador';
+  const esSupervisor = usuario.rol === 'Supervisor';
+  const esOperador = usuario.rol === 'Operador';
   const WORKFLOW_ORDER = ['Desfogue', 'Diesel', 'Ad-blue', 'Taller', 'Lavado Interior', 'Lavado Exterior'];
 
   const [definicionAreas, setDefinicionAreas] = useState(AREAS_PATIO);
@@ -120,13 +122,10 @@ export const PatioPage = ({ usuario }) => {
       <aside className={`sidebar ${menuAbierto ? 'abierto' : ''}`}>
         <div className="sidebar-logo"><h1>ADO</h1></div>
         <ul className="sidebar-menu">
-          <li><a className={vistaActual === 'patio' ? 'active' : ''} onClick={() => navegarA('patio')}>🏠 {esAdmin ? 'Patio Central' : 'Mi Área'}</a></li>
-          {esAdmin && <li><a className={vistaActual === 'registrar' ? 'active' : ''} onClick={() => navegarA('registrar')}>⊕ Registrar camión</a></li>}
-          
-          {/* NUEVO: Enlaces reales al trabajo de tu compañero */}
-          {esAdmin && <li><a className={vistaActual === 'historial' ? 'active' : ''} onClick={() => navegarA('historial')}>🕒 Historial</a></li>}
-          {esAdmin && <li><a className={vistaActual === 'reportes' ? 'active' : ''} onClick={() => navegarA('reportes')}>📊 Reportes</a></li>}
-          
+          <li><a className={vistaActual === 'patio' ? 'active' : ''} onClick={() => navegarA('patio')}>🏠 {esOperador ? 'Mi Área' : 'Patio Central'}</a></li>
+          {(esAdmin || esOperador) && <li><a className={vistaActual === 'registrar' ? 'active' : ''} onClick={() => navegarA('registrar')}>⊕ Registrar camión</a></li>}
+          {(esAdmin || esSupervisor) && <li><a className={vistaActual === 'historial' ? 'active' : ''} onClick={() => navegarA('historial')}>🕒 Historial</a></li>}
+          {(esAdmin || esSupervisor) && <li><a className={vistaActual === 'reportes' ? 'active' : ''} onClick={() => navegarA('reportes')}>📊 Reportes</a></li>}
           {esAdmin && <li><a className={vistaActual === 'usuarios' ? 'active' : ''} onClick={() => navegarA('usuarios')}>👥 Gestión Usuarios</a></li>}
           <li style={{ marginTop: '20px' }}><a onClick={cerrarSesion} style={{ color: '#ef4444' }}>🚪 Cerrar sesión</a></li>
         </ul>
@@ -342,10 +341,10 @@ export const PatioPage = ({ usuario }) => {
           )}
 
           {/* NUEVO: Renderizado de las páginas de tu compañero */}
-          {vistaActual === 'registrar' && esAdmin && <RegistroUnidadPage />}
+          {vistaActual === 'registrar' && (esAdmin || esOperador) && <RegistroUnidadPage />}
           {vistaActual === 'usuarios' && esAdmin && <UsuariosPage />}
-          {vistaActual === 'historial' && esAdmin && <HistorialPage />}
-          {vistaActual === 'reportes' && esAdmin && <ReportesPage />}
+          {vistaActual === 'historial' && (esAdmin || esSupervisor) && <HistorialPage />}
+          {vistaActual === 'reportes' && (esAdmin || esSupervisor) && <ReportesPage />}
         </div>
 
         {/* ================= MODAL ADMIN ================= */}
