@@ -41,9 +41,19 @@ export const UsuarioRepository = {
     });
   },
 
-  // El resto del CRUD viejo (obtenerTodos/editar/eliminar, con area_asignada)
-  // se quitó de aquí: apuntaba a la tabla vieja 'usuario'/'rol' en español,
-  // que ya no existe. useUsuariosBloc.js (mobile) queda deshabilitado — esa
-  // pantalla necesita además GET/PUT/DELETE /usuarios y resolver qué hacer
-  // con "área asignada", que no existe como columna en la tabla real `users`.
+  listar: () => apiFetch('/usuarios'),
+
+  editar: (id, { nombre, rol, password }) => {
+    const partes = nombre.trim().split(' ');
+    const first_name = partes[0];
+    const last_name = partes.slice(1).join(' ') || first_name;
+    const body = { first_name, last_name, rol };
+    if (password && password !== '***') body.password = password;
+    return apiFetch(`/usuarios/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(body),
+    });
+  },
+
+  eliminar: (id) => apiFetch(`/usuarios/${id}`, { method: 'DELETE' }),
 };

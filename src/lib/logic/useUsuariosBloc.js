@@ -1,46 +1,59 @@
 // src/lib/logic/useUsuariosBloc.js
-//
-// TODO (gestión de usuarios deshabilitada): UsuarioRepository sigue escrito
-// contra las tablas viejas en español (usuario/rol), que ya no existen en la
-// Supabase compartida — el equipo de Formularios las reemplazó por users/roles
-// en inglés. La SCA API tampoco expone endpoints de usuarios (no es su
-// dominio). Hasta que se decida con ese equipo cómo se va a administrar
-// usuarios (endpoint nuevo, o que ellos mismos lo resuelvan), esta pantalla
-// no hace ninguna llamada real — ver UsuarioRepository.js para el detalle.
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { UsuarioRepository } from '../data/repositories/UsuarioRepository';
 
 export const useUsuariosBloc = () => {
-  const [usuarios] = useState([]);
-  const [cargando] = useState(false);
-  const disponible = false;
+  const [usuarios, setUsuarios] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [cargando, setCargando] = useState(true);
+  const disponible = true;
 
-  // Estados para el Modal de Crear/Editar
   const [modalAbierto, setModalAbierto] = useState(false);
   const [esEdicion, setEsEdicion] = useState(false);
+  const [usuarioEditandoId, setUsuarioEditandoId] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
-  const estadoInicial = { id_empleado: '', nombre: '', id_rol: '2', area_asignada: '', password: '' };
+  const estadoInicial = { id_empleado: '', nombre: '', rol: 'Operator', password: '' };
   const [formData, setFormData] = useState(estadoInicial);
+
+  const cargar = async () => {
+    setCargando(true);
+    try {
+      const [lista, listaRoles] = await Promise.all([
+        UsuarioRepository.listar(),
+        UsuarioRepository.listarRoles(),
+      ]);
+      setUsuarios(lista);
+      setRoles(listaRoles);
+    } catch (e) {
+      console.error('Error cargando usuarios:', e);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  useEffect(() => { cargar(); }, []);
 
   const abrirModalNuevo = () => {
     setEsEdicion(false);
+    setUsuarioEditandoId(null);
     setFormData(estadoInicial);
     setModalAbierto(true);
   };
 
   const abrirModalEditar = (user) => {
     setEsEdicion(true);
+    setUsuarioEditandoId(user.id);
     setFormData({
       id_empleado: user.id_empleado,
       nombre: user.nombre,
-      id_rol: user.id_rol.toString(),
-      area_asignada: user.area_asignada || '',
-      password: '***' // Enmascaramos la contraseña por seguridad visual
+      rol: user.rol,
+      password: '***',
     });
     setModalAbierto(true);
   };
 
-  const cerrarModal = () => { setModalAbierto(false); };
+  const cerrarModal = () => setModalAbierto(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -49,15 +62,39 @@ export const useUsuariosBloc = () => {
 
   const guardarUsuario = async (e) => {
     e.preventDefault();
-    alert('Gestión de usuarios no disponible todavía (pendiente de coordinar con Formularios).');
+    setGuardando(true);
+    try {
+      if (esEdicion) {
+        await UsuarioRepository.editar(usuarioEditandoId, formData);
+      } else {
+        await UsuarioRepository.crear({
+          username: formData.id_empleado,
+          password: formData.password,
+          nombre: formData.nombre,
+          rol: formData.rol,
+        });
+      }
+      cerrarModal();
+      await cargar();
+    } catch (e) {
+      alert(e.message || 'Error al guardar usuario');
+    } finally {
+      setGuardando(false);
+    }
   };
 
-  const eliminarUsuario = async () => {
-    alert('Gestión de usuarios no disponible todavía (pendiente de coordinar con Formularios).');
+  const eliminarUsuario = async (id, nombre) => {
+    if (!window.confirm(`¿Eliminar a ${nombre}?`)) return;
+    try {
+      await UsuarioRepository.eliminar(id);
+      await cargar();
+    } catch (e) {
+      alert(e.message || 'Error al eliminar usuario');
+    }
   };
 
   return {
-    usuarios, cargando, disponible, modalAbierto, esEdicion, guardando, formData,
-    abrirModalNuevo, abrirModalEditar, cerrarModal, handleInputChange, guardarUsuario, eliminarUsuario
+    usuarios, roles, cargando, disponible, modalAbierto, esEdicion, guardando, formData,
+    abrirModalNuevo, abrirModalEditar, cerrarModal, handleInputChange, guardarUsuario, eliminarUsuario,
   };
 };

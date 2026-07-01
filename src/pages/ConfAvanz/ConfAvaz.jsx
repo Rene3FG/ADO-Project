@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MdAddLocation, MdPersonAdd, MdDirectionsBus, MdDelete, MdArrowBack, MdCompareArrows } from "react-icons/md";
 import areasService from "../../services/areasService.js";
 import camionesService from "../../services/camionesService.js";
+import { UsuarioRepository } from "../../lib/data/repositories/UsuarioRepository.js";
 import "./ConfAvanz.css";
 
 export default function ConfAvanz({ areasConfig, setAreasConfig, camiones, setCamiones }) {
@@ -11,6 +12,18 @@ export default function ConfAvanz({ areasConfig, setAreasConfig, camiones, setCa
   const [nuevaAreaCapacidad, setNuevaAreaCapacidad] = useState(4);
   const [loadingArea, setLoadingArea] = useState(false);
   const [errorArea, setErrorArea] = useState("");
+
+  const [rolesDisponibles, setRolesDisponibles] = useState([]);
+  const [nuevoUsuario, setNuevoUsuario] = useState({ username: '', nombre: '', rol: 'Operator', password: '' });
+  const [loadingUsuario, setLoadingUsuario] = useState(false);
+  const [errorUsuario, setErrorUsuario] = useState('');
+  const [successUsuario, setSuccessUsuario] = useState('');
+
+  useEffect(() => {
+    if (vistaActual === 'usuarios' && rolesDisponibles.length === 0) {
+      UsuarioRepository.listarRoles().then(setRolesDisponibles).catch(() => {});
+    }
+  }, [vistaActual]);
 
   const [camionSeleccionadoId, setCamionSeleccionadoId] = useState('');
   const [areaDestinoId, setAreaDestinoId] = useState('');
@@ -128,6 +141,75 @@ export default function ConfAvanz({ areasConfig, setAreasConfig, camiones, setCa
       setLoadingReubicacion(false);
     }
   };
+
+  const crearUsuario = async (e) => {
+    e.preventDefault();
+    setErrorUsuario('');
+    setSuccessUsuario('');
+    setLoadingUsuario(true);
+    try {
+      await UsuarioRepository.crear({
+        username: nuevoUsuario.username,
+        password: nuevoUsuario.password,
+        nombre: nuevoUsuario.nombre,
+        rol: nuevoUsuario.rol,
+      });
+      setSuccessUsuario(`Usuario "${nuevoUsuario.username}" creado correctamente.`);
+      setNuevoUsuario({ username: '', nombre: '', rol: 'Operator', password: '' });
+    } catch (err) {
+      setErrorUsuario(err.message || 'Error al crear usuario');
+    } finally {
+      setLoadingUsuario(false);
+    }
+  };
+
+  if (vistaActual === 'usuarios') {
+    return (
+      <div className="config-panel">
+        <div className="config-header-flex">
+          <button className="btn-back" onClick={() => { setVistaActual('menu'); setErrorUsuario(''); setSuccessUsuario(''); }}><MdArrowBack /> Volver</button>
+          <h2>Agregar Usuario</h2>
+        </div>
+
+        {errorUsuario && <div style={{ color: '#ef4444', marginBottom: '15px', padding: '10px', borderRadius: '4px', backgroundColor: '#fee2e2' }}>{errorUsuario}</div>}
+        {successUsuario && <div style={{ color: '#16a34a', marginBottom: '15px', padding: '10px', borderRadius: '4px', backgroundColor: '#dcfce7' }}>{successUsuario}</div>}
+
+        <form onSubmit={crearUsuario} style={{ display: 'flex', flexDirection: 'column', gap: '14px', maxWidth: '420px' }}>
+          <div>
+            <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '5px' }}>ID Empleado (nombre de usuario)</label>
+            <input type="text" value={nuevoUsuario.username} onChange={e => setNuevoUsuario(u => ({ ...u, username: e.target.value }))}
+              required disabled={loadingUsuario}
+              style={{ width: '100%', padding: '11px', borderRadius: '8px', border: '1px solid var(--border-color)', boxSizing: 'border-box' }} />
+          </div>
+          <div>
+            <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '5px' }}>Nombre Completo</label>
+            <input type="text" value={nuevoUsuario.nombre} onChange={e => setNuevoUsuario(u => ({ ...u, nombre: e.target.value }))}
+              required disabled={loadingUsuario}
+              style={{ width: '100%', padding: '11px', borderRadius: '8px', border: '1px solid var(--border-color)', boxSizing: 'border-box' }} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '5px' }}>Rol</label>
+              <select value={nuevoUsuario.rol} onChange={e => setNuevoUsuario(u => ({ ...u, rol: e.target.value }))}
+                disabled={loadingUsuario}
+                style={{ width: '100%', padding: '11px', borderRadius: '8px', border: '1px solid var(--border-color)', boxSizing: 'border-box', backgroundColor: 'white' }}>
+                {rolesDisponibles.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontWeight: 600, fontSize: '0.9rem', display: 'block', marginBottom: '5px' }}>Contraseña</label>
+              <input type="password" value={nuevoUsuario.password} onChange={e => setNuevoUsuario(u => ({ ...u, password: e.target.value }))}
+                required disabled={loadingUsuario}
+                style={{ width: '100%', padding: '11px', borderRadius: '8px', border: '1px solid var(--border-color)', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+          <button type="submit" className="btn-primary" disabled={loadingUsuario} style={{ marginTop: '6px' }}>
+            {loadingUsuario ? 'Creando...' : 'Crear Usuario'}
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   if (vistaActual === 'areas') {
     return (
@@ -258,7 +340,7 @@ export default function ConfAvanz({ areasConfig, setAreasConfig, camiones, setCa
           </div>
         </div>
 
-        <div className="config-option-card" onClick={() => alert('Próximamente: Módulo de Usuarios')}>
+        <div className="config-option-card" onClick={() => setVistaActual('usuarios')}>
           <div className="config-option-icon"><MdPersonAdd /></div>
           <div className="config-option-text">
             <h3>Agregar usuario</h3>
