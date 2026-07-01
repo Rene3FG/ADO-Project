@@ -20,13 +20,11 @@ export const useUsuariosBloc = () => {
     setCargando(true);
     try {
       const [lista, listaRoles] = await Promise.all([
-        UsuarioRepository.listar(),
-        UsuarioRepository.listarRoles(),
+        UsuarioRepository.listar().catch(() => []),
+        UsuarioRepository.listarRoles().catch(() => []),
       ]);
       setUsuarios(lista);
       setRoles(listaRoles);
-    } catch (e) {
-      console.error('Error cargando usuarios:', e);
     } finally {
       setCargando(false);
     }
