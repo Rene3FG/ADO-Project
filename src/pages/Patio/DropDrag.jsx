@@ -621,20 +621,21 @@ export default function DropDrag() {
           <h1>Control de Patio - Oaxaca</h1>
           <p>Sesión de {user?.nombre || user?.id}</p>
         </header>
-        {alertas.length > 0 && (
-          <div className="alertas-container">
-            {alertas.map((alerta, index) => (
-              <div key={index} className="alerta-toast">
-                <MdAddAlert />
-                <span>
-                  El autobús {alerta.autobus} está en {alerta.area} y lleva {alerta.tiempo}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {renderizarContenido()}
+        <div className="content-scroll-area">
+          {alertas.length > 0 && (
+            <div className="alertas-container">
+              {alertas.map((alerta, index) => (
+                <div key={index} className="alerta-toast">
+                  <MdAddAlert />
+                  <span>
+                    El autobús {alerta.autobus} está en {alerta.area} y lleva {alerta.tiempo}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {renderizarContenido()}
+        </div>
       </main>
     </div>
   );
