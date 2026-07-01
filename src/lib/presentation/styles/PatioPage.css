@@ -150,8 +150,8 @@
 .dashboard-container {
   flex: 1;
   min-height: 0;
-  max-height: 100vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ── Dash header ───────────────────────────────────────────────── */

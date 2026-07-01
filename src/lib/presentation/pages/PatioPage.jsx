@@ -144,7 +144,7 @@ export const PatioPage = ({ usuario }) => {
           </div>
         </header>
 
-        <div className="dashboard-container" style={{ padding: esAdmin ? '30px' : '0', backgroundColor: esAdmin ? 'var(--bg-light)' : '#f4f4f9', minHeight: '100vh' }}>
+        <div className="dashboard-container" style={{ padding: esAdmin ? '30px' : '0', backgroundColor: esAdmin ? 'var(--bg-light)' : '#f4f4f9' }}>
           {vistaActual === 'patio' && (
             <>
               {esAdmin ? (
