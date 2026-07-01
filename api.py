@@ -135,6 +135,12 @@ class UsuarioCreate(BaseModel):
     shift_start_time: Optional[str] = None
     shift_end_time:   Optional[str] = None
 
+class UsuarioUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name:  Optional[str] = None
+    rol:        Optional[str] = None
+    password:   Optional[str] = None
+
 class AreaCreate(BaseModel):
     nombre: str
     capacidad: Optional[int] = 4
@@ -881,6 +887,62 @@ def get_roles():
     with db() as conn:
         rows = conn.execute(text("SELECT id, name FROM roles ORDER BY id")).fetchall()
     return rows_to_list(rows)
+
+@app.get("/usuarios", summary="Lista usuarios activos")
+def get_usuarios():
+    with db() as conn:
+        rows = conn.execute(text(
+            "SELECT u.id, u.username, u.first_name, u.last_name, u.role_id, r.name AS rol"
+            " FROM users u JOIN roles r ON u.role_id = r.id"
+            " WHERE u.is_active = true ORDER BY u.id"
+        )).fetchall()
+    return [
+        {
+            "id": r.id,
+            "id_empleado": r.username,
+            "nombre": f"{r.first_name} {r.last_name}".strip(),
+            "rol": r.rol,
+            "role_id": r.role_id,
+        }
+        for r in rows
+    ]
+
+@app.put("/usuarios/{usuario_id}", summary="Actualiza nombre, rol o contraseña de un usuario")
+def update_usuario(usuario_id: int, body: UsuarioUpdate):
+    sets, params = [], {"id": usuario_id}
+    with db() as conn:
+        if not conn.execute(text(
+            "SELECT 1 FROM users WHERE id = :id AND is_active = true"
+        ), {"id": usuario_id}).fetchone():
+            raise HTTPException(404, "Usuario no encontrado")
+
+        if body.rol is not None:
+            rol_row = conn.execute(text("SELECT id FROM roles WHERE name = :n"), {"n": body.rol}).fetchone()
+            if not rol_row:
+                raise HTTPException(400, f"Rol '{body.rol}' no válido")
+            sets.append("role_id = :role_id"); params["role_id"] = rol_row[0]
+
+        if body.first_name is not None:
+            sets.append("first_name = :first_name"); params["first_name"] = body.first_name
+        if body.last_name is not None:
+            sets.append("last_name = :last_name"); params["last_name"] = body.last_name
+        if body.password and body.password != "***":
+            sets.append("password_hash = :ph")
+            params["ph"] = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
+
+        if sets:
+            conn.execute(text(f"UPDATE users SET {', '.join(sets)} WHERE id = :id"), params)
+    return {"ok": True}
+
+@app.delete("/usuarios/{usuario_id}", summary="Desactiva un usuario (soft delete)")
+def delete_usuario(usuario_id: int):
+    with db() as conn:
+        result = conn.execute(text(
+            "UPDATE users SET is_active = false WHERE id = :id AND is_active = true"
+        ), {"id": usuario_id})
+        if result.rowcount == 0:
+            raise HTTPException(404, "Usuario no encontrado")
+    return {"ok": True}
 
 @app.post("/usuarios", status_code=201, summary="Crea un usuario (operador/supervisor/admin)")
 def create_usuario(body: UsuarioCreate, _user: dict = Depends(require_role("Administrador"))):
