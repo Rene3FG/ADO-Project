@@ -146,7 +146,7 @@ export const PatioPage = ({ usuario }) => {
         <div className="sidebar-logo"><h1>ADO</h1></div>
         <ul className="sidebar-menu">
           <li><a className={vistaActual === 'patio' ? 'active' : ''} onClick={() => navegarA('patio')}>🏠 {esOperador ? 'Mi Área' : 'Patio Central'}</a></li>
-          {(esAdmin || esOperador) && <li><a className={vistaActual === 'registrar' ? 'active' : ''} onClick={() => navegarA('registrar')}>⊕ Registrar camión</a></li>}
+          {esAdmin && <li><a className={vistaActual === 'registrar' ? 'active' : ''} onClick={() => navegarA('registrar')}>⊕ Registrar camión</a></li>}
           {(esAdmin || esSupervisor) && <li><a className={vistaActual === 'historial' ? 'active' : ''} onClick={() => navegarA('historial')}>🕒 Historial</a></li>}
           {(esAdmin || esSupervisor) && <li><a className={vistaActual === 'reportes' ? 'active' : ''} onClick={() => navegarA('reportes')}>📊 Reportes</a></li>}
           {esAdmin && <li><a className={vistaActual === 'configuracion' ? 'active' : ''} onClick={() => navegarA('configuracion')}>⚙️ Config. Avanzada</a></li>}
@@ -394,7 +394,7 @@ export const PatioPage = ({ usuario }) => {
           )}
 
           {/* NUEVO: Renderizado de las páginas de tu compañero */}
-          {vistaActual === 'registrar' && (esAdmin || esOperador) && <RegistroUnidadPage />}
+          {vistaActual === 'registrar' && esAdmin && <RegistroUnidadPage />}
           {vistaActual === 'configuracion' && esAdmin && <ConfiguracionPage autobuses={autobuses} />}
           {vistaActual === 'historial' && (esAdmin || esSupervisor) && <HistorialPage />}
           {vistaActual === 'reportes' && (esAdmin || esSupervisor) && <ReportesPage />}
