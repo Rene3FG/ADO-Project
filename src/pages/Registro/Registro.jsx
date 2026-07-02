@@ -14,6 +14,7 @@ export default function Registro({
   const [paso, setPaso] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mostrarModalExito, setMostrarModalExito] = useState(false);
 
   const [camion, setCamion] = useState({
     numero: "",
@@ -85,8 +86,27 @@ export default function Registro({
         });
       }
 
-      if (agregarCamion) agregarCamion({ id: Date.now().toString(), codigo: camion.numero });
-      alert("Autobús registrado correctamente");
+      if (agregarCamion) {
+        agregarCamion({
+          ...camion,
+          id: Date.now().toString(),
+          codigo: camion.numero,
+          ruta: camion.areasRuta
+        });
+      }
+
+      if (agregarHistorial) {
+        agregarHistorial({
+          id: Date.now(),
+          unidad: camion.numero,
+          areaFinal: camion.area,
+          fecha: new Date().toLocaleDateString('es-MX'),
+          hora: new Date().toLocaleTimeString('es-MX'),
+          mensaje: `Se registró la unidad ${camion.numero} en el área ${camion.area}`
+        });
+      }
+
+      setMostrarModalExito(true);
 
       // Limpiar formulario
       setCamion({
@@ -112,22 +132,13 @@ export default function Registro({
   return (
     <div className="registro-page">
       <div className="registro-card">
-
-        <h1 className="registro-title">
-          Registro de Autobús
-        </h1>
-
-        <p className="registro-subtitle">
-          Control de acceso al patio
-        </p>
+        <h1 className="registro-title">Registro de Autobús</h1>
+        <p className="registro-subtitle">Control de acceso al patio</p>
 
         {error && <div className="error-message" style={{ color: '#ef4444', marginBottom: '15px', padding: '10px', borderRadius: '4px', backgroundColor: '#fee2e2' }}>{error}</div>}
 
         <div className="step-indicator">
-          <div className={`step ${paso >= 1 ? "active" : ""}`}>1</div>
-          <div className={`step ${paso >= 2 ? "active" : ""}`}>2</div>
-          <div className={`step ${paso >= 3 ? "active" : ""}`}>3</div>
-          <div className={`step ${paso >= 4 ? "active" : ""}`}>4</div>
+          {[1,2,3,4].map(s => <div key={s} className={`step ${paso >= s ? "active" : ""}`}>{s}</div>)}
         </div>
 
         {paso === 1 && (
@@ -149,9 +160,7 @@ export default function Registro({
         {paso === 2 && (
           <>
             <h2 style={{ color: '#ff0000' }}>Datos del Autobús</h2>
-
             <div className="form-grid">
-
               <div className="input-group">
                 <label>Número de Autobús</label>
                 <input
@@ -167,7 +176,6 @@ export default function Registro({
                   disabled={loading}
                 />
               </div>
-
               <div className="input-group">
                 <label>Tipo de Unidad</label>
                 <select
@@ -189,7 +197,6 @@ export default function Registro({
                   <option value="TXO">TXO</option>
                 </select>
               </div>
-
               <div className="input-group">
                 <label>Nombre del Conductor</label>
                 <input
@@ -221,7 +228,6 @@ export default function Registro({
                   disabled={loading}
                 />
               </div>
-
               <div className="input-group">
                 <label>Terminal de Destino</label>
                 <input
@@ -237,7 +243,6 @@ export default function Registro({
                   disabled={loading}
                 />
               </div>
-
               <div className="input-group">
                 <label>Observaciones</label>
                 <textarea
@@ -255,7 +260,6 @@ export default function Registro({
               </div>
 
             </div>
-
             <div className="button-group">
               <button
                 className="btn-secondary"
@@ -279,51 +283,17 @@ export default function Registro({
         {paso === 3 && (
           <>
             <h2 style={{ color: '#5B177F' }}>Seleccionar las Áreas de Ruta</h2>
-
             <div className="area-grid">
-              <div
-                className={`area-card ${camion.areasRuta.includes("Desfogue") ? "selected" : ""}`}
-                onClick={() => alternarAreaEnRuta("Desfogue")}
-              >
-                Desfogue {camion.areasRuta.includes("Desfogue") && `(#${camion.areasRuta.indexOf("Desfogue") + 1})`}
-              </div>
-
-              <div
-                className={`area-card ${camion.areasRuta.includes("Diesel") ? "selected" : ""}`}
-                onClick={() => alternarAreaEnRuta("Diesel")}
-              >
-                Diesel {camion.areasRuta.includes("Diesel") && `(#${camion.areasRuta.indexOf("Diesel") + 1})`}
-              </div>
-
-              <div
-                className={`area-card ${camion.areasRuta.includes("Ad-Blue") ? "selected" : ""}`}
-                onClick={() => alternarAreaEnRuta("Ad-Blue")}
-              >
-                AdBlue {camion.areasRuta.includes("Ad-Blue") && `(#${camion.areasRuta.indexOf("Ad-Blue") + 1})`}
-              </div>
-
-              <div
-                className={`area-card ${camion.areasRuta.includes("Taller") ? "selected" : ""}`}
-                onClick={() => alternarAreaEnRuta("Taller")}
-              >
-                Taller {camion.areasRuta.includes("Taller") && `(#${camion.areasRuta.indexOf("Taller") + 1})`}
-              </div>
-
-              <div
-                className={`area-card ${camion.areasRuta.includes("Lavado Interior") ? "selected" : ""}`}
-                onClick={() => alternarAreaEnRuta("Lavado Interior")}
-              >
-                Lavado Interior {camion.areasRuta.includes("Lavado Interior") && `(#${camion.areasRuta.indexOf("Lavado Interior") + 1})`}
-              </div>
-
-              <div
-                className={`area-card ${camion.areasRuta.includes("Lavado Exterior") ? "selected" : ""}`}
-                onClick={() => alternarAreaEnRuta("Lavado Exterior")}
-              >
-                Lavado Exterior {camion.areasRuta.includes("Lavado Exterior") && `(#${camion.areasRuta.indexOf("Lavado Exterior") + 1})`}
-              </div>
+              {["Desfogue", "Diesel", "Ad-Blue", "Taller", "Lavado Interior", "Lavado Exterior"].map((area) => {
+                const index = camion.areasRuta.indexOf(area);
+                return (
+                  <div key={area} className={`area-card ${index !== -1 ? "selected" : ""}`} onClick={() => alternarAreaEnRuta(area)}>
+                    {area}
+                    {index !== -1 && <span style={{display: 'block', fontWeight: 'bold', marginTop: '5px'}}>{index + 1}a área</span>}
+                  </div>
+                );
+              })}
             </div>
-
             <div className="button-group">
               <button
                 className="btn-secondary"
@@ -347,7 +317,6 @@ export default function Registro({
         {paso === 4 && (
           <>
             <h2 style={{ color: '#5B177F' }}>Confirmar Registro</h2>
-
             <div className="confirm-card">
               <p>
                 <strong>Número:</strong> {camion.numero || "No especificado"}
@@ -371,7 +340,6 @@ export default function Registro({
                 <strong>Observaciones:</strong> {camion.observaciones || "Sin observaciones"}
               </p>
             </div>
-
             <div className="button-group">
               <button
                 className="btn-secondary"
@@ -391,8 +359,16 @@ export default function Registro({
             </div>
           </>
         )}
-
       </div>
+
+      {mostrarModalExito && (
+        <div className="modal-overlay" style={{ zIndex: 1000 }}>
+          <div className="modal-card">
+            <h2>✅ Registro Exitoso</h2>
+            <button className="btn-primary" onClick={() => setMostrarModalExito(false)}>Ok</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

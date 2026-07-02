@@ -7,7 +7,8 @@ const memoriaTiempos = {};
 export default function TarjetaInfo({
   camion,
   alIniciarArrastre,
-  crearAlerta
+  crearAlerta,
+  progreso
 }) {
   const [segundos, setSegundos] = useState(0);
   const alertaGenerada = useRef(false);
@@ -71,25 +72,41 @@ export default function TarjetaInfo({
   }
 
   return (
-    <div
-      className="bus-card"
+    <div 
+      className="tarjeta-camion"
       draggable
       onDragStart={(e) => alIniciarArrastre(e, camion.id)}
     >
-      <div className="bus-card__header">
-        <div className={`semaforo semaforo--${colorSemaforo}`}></div>
-
-        <div className="bus-card__eco">
-          {camion.codigo}
-        </div>
+      {/*Semáforo y Código del Autobús */}
+      <div className="tarjeta-header">
+        <span className={`estado-semaforo ${colorSemaforo}`}></span>
+        <span className="codigo-unidad">{camion.codigo}</span>
       </div>
 
-      <div className="bus-card__type">
+      {/*Tipo de Autobús */}
+      <div className="tipo-unidad">
         {camion.tipo}
       </div>
 
-      <div className="bus-card__status">
+      {/*Cronómetro */}
+      <div className={`tiempo-area ${colorSemaforo}`}>
         Tiempo en área: {formatearTiempo(segundos)}
+      </div>
+
+      {/*Barra de Progreso */}
+      <div style={{ width: '90%', margin: '10px auto 0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', padding: '0 2px' }}>
+          <span style={{ fontSize: '10px', color: '#9ca3af' }}>Avance</span>
+          <span style={{ fontSize: '11px', fontWeight: 'bold', color: progreso === 100 ? '#10b981' : '#ffffff' }}>
+            {progreso}%
+          </span>
+        </div>
+        <div className="tarjeta-progreso-mini-bg" style={{ width: '100%', margin: '0' }}>
+          <div 
+            className="tarjeta-progreso-mini-fill" 
+            style={{ width: `${progreso}%` }}
+          ></div>
+        </div>
       </div>
     </div>
   );

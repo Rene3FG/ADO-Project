@@ -351,7 +351,7 @@ export default function ConfAvanz({ areasConfig, setAreasConfig, camiones, setCa
         <div className="config-option-card" onClick={() => setVistaActual('mover')}>
           <div className="config-option-icon"><MdDirectionsBus /></div>
           <div className="config-option-text">
-            <h3>Mover camiones</h3>
+            <h3>Mover unidades</h3>
             <p>Salte el ciclo operativo y reubique manualmente cualquier autobús en caso de emergencia.</p>
           </div>
         </div>

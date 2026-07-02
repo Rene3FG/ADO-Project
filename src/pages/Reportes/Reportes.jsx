@@ -1,20 +1,8 @@
 import "./Reportes.css";
 import { MdBarChart, MdAssignmentTurnedIn, MdTimeline, MdPeople } from "react-icons/md";
 
-// const [datosReportes, setDatosReportes] = useState([
-//     {
-//       id: "rep-1",
-//       codigo: "ADO-1020",
-//       conductor: "Carlos Gómez",
-//       horaEntrada: "10:15:30 AM",
-//       horaSalida: "11:45:22 AM",
-//       estado: "Completado"
-//     }
-// ]);
-
 export default function Reportes({ datos }) {
 
-  // Cálculos estadísticos rápidos para los indicadores de arriba
   const totalUnidades = datos.length;
   const completados = datos.filter(d => d.horaSalida !== "En proceso...").length;
   const enProceso = totalUnidades - completados;
@@ -56,47 +44,102 @@ export default function Reportes({ datos }) {
         <div className="no-reportes">No hay registros analíticos disponibles.</div>
       ) : (
         <div className="table-container-rep">
-          <table className="reportes-table">
-            <thead>
-              <tr>
-                <th>ID Autobús</th>
-                <th>Conductor</th>
-                <th>Hora Entrada al Flujo</th>
-                <th>Hora Salida / Liberación</th>
-                <th>Estatus</th>
-              </tr>
-            </thead>
-            <tbody>
-              {datos.map((item) => (
-                <tr key={item.id}>
-                  <td><span className="badge-bus-rep">{item.codigo}</span></td>
-                  <td>
-                    <div className="driver-cell">
-                      <MdPeople className="driver-icon" />
-                      <span>{item.conductor || "Sin conductor asignado"}</span>
-                    </div>
-                  </td>
-                  <td className="time-in">{item.horaEntrada}</td>
-                  <td className={`time-out ${item.horaSalida === "En proceso..." ? "text-anim" : ""}`}>
-                    {item.horaSalida}
-                  </td>
-                  <td>
-                    <span className={
-                      item.estado === 'Completado'  ? 'badge-rojo' :
-                      item.estado === 'Finalizado'  ? 'badge-amarillo' :
-                      item.estado === 'En descanso' ? 'badge-amarillo' :
-                      'badge-verde'
-                    }>
-                      {item.estado === 'Completado'  ? 'COMPLETADO' :
-                       item.estado === 'Finalizado'  ? 'FINALIZADO' :
-                       item.estado === 'En descanso' ? 'EN DESCANSO' :
-                       'EN PATIO'}
-                    </span>
-                  </td>
+
+          <div style={{ overflowX: 'auto', width: '100%', paddingBottom: '10px' }}>
+            <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'collapse', color: '#e5e7eb', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #1f2937' }}>
+                  <th style={{ padding: '16px', whiteSpace: 'nowrap', color: '#9ca3af', fontWeight: 'normal' }}>ID Autobús</th>
+                  <th style={{ padding: '16px', whiteSpace: 'nowrap', color: '#9ca3af', fontWeight: 'normal' }}>Conductor</th>
+                  <th style={{ padding: '16px', whiteSpace: 'nowrap', color: '#9ca3af', fontWeight: 'normal' }}>Hora Entrada al Flujo</th>
+                  <th style={{ padding: '16px', whiteSpace: 'nowrap', color: '#9ca3af', fontWeight: 'normal' }}>Hora Salida / Liberación</th>
+                  <th style={{ padding: '16px', whiteSpace: 'nowrap', color: '#9ca3af', fontWeight: 'normal' }}>Estatus</th>
+                  {/* minWidth: '120px' para que la palabra Progreso nunca se aplaste */}
+                  <th style={{ padding: '16px', whiteSpace: 'nowrap', color: '#9ca3af', fontWeight: 'normal', textAlign: 'right', minWidth: '120px' }}>Progreso</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {datos.map((item) => {
+                  
+                  let colorBorde = '#10b981'; // Verde por defecto (En Flujo / En Patio)
+                  let colorFondo = 'rgba(16, 185, 129, 0.1)';
+                  let colorTexto = '#10b981';
+
+                  if (item.estado === 'En descanso' || item.estado === 'Finalizado') {
+                    colorBorde = '#f59e0b'; // Amarillo/Naranja
+                    colorFondo = 'rgba(245, 158, 11, 0.1)';
+                    colorTexto = '#f59e0b';
+                  } else if (item.estado === 'Completado') {
+                    colorBorde = '#3b82f6'; // Azul
+                    colorFondo = 'rgba(59, 130, 246, 0.1)';
+                    colorTexto = '#3b82f6';
+                  }
+
+                  return (
+                    <tr key={item.id} style={{ borderBottom: '1px solid #1f2937' }}>
+                      
+                      {/* Recuadro oscuro para el ID del Autobús */}
+                      <td style={{ padding: '16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ 
+                          backgroundColor: 'rgba(255, 255, 255, 0.05)', 
+                          border: '1px solid rgba(255, 255, 255, 0.1)', 
+                          padding: '6px 12px', 
+                          borderRadius: '6px', 
+                          fontWeight: '600' 
+                        }}>
+                          {item.codigo}
+                        </span>
+                      </td>
+                      
+                      {/* Conductor con su icono morado */}
+                      <td style={{ padding: '16px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ color: '#8b5cf6', fontSize: '16px' }}>
+                            <MdPeople />
+                          </span>
+                          <span>{item.conductor || "Sin conductor asignado"}</span>
+                        </div>
+                      </td>
+                      
+                      <td style={{ padding: '16px', whiteSpace: 'nowrap' }}>{item.horaEntrada}</td>
+                      
+                      <td style={{ padding: '16px', whiteSpace: 'nowrap', color: item.horaSalida === 'En proceso...' ? '#f59e0b' : '#e5e7eb', fontStyle: item.horaSalida === 'En proceso...' ? 'italic' : 'normal' }}>
+                        {item.horaSalida}
+                      </td>
+                      
+                      {/* Recuadro de color estilo neón para el Estatus */}
+                      <td style={{ padding: '16px', whiteSpace: 'nowrap' }}>
+                        <span style={{ 
+                          backgroundColor: colorFondo, 
+                          border: `1px solid ${colorBorde}`, 
+                          color: colorTexto, 
+                          padding: '6px 12px', 
+                          borderRadius: '6px', 
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          letterSpacing: '0.5px'
+                        }}>
+                          {item.estado.toUpperCase()}
+                        </span>
+                      </td>
+                      
+                      {/* Celda de la Barra de Progreso */}
+                      <td style={{ padding: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-end' }}>
+                          <div style={{ backgroundColor: '#222b3c', borderRadius: '4px', width: '70px', height: '6px', overflow: 'hidden', flexShrink: 0 }}>
+                            <div style={{ background: 'linear-gradient(90deg, #3b82f6, #10b981)', height: '100%', width: `${item.progreso}%`, transition: 'width 0.4s ease' }}></div>
+                          </div>
+                          <span style={{ fontWeight: 'bold', fontSize: '14px', minWidth: '35px', textAlign: 'right' }}>{item.progreso}%</span>
+                        </div>
+                      </td>
+
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
         </div>
       )}
     </div>

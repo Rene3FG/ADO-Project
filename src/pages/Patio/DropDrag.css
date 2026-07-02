@@ -450,6 +450,165 @@
   transform: scale(0.97);
 }
 
+/* --- ENCABEZADO DE LA TARJETA --- */
+.tarjeta-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.codigo-unidad {
+  color: #ffffff;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+.tipo-unidad {
+  color: #9ca3af;
+  font-size: 12px;
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+/* --- SEMÁFORO (Puntito de estado) --- */
+.estado-semaforo {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.estado-semaforo.verde { background-color: #10b981; }
+.estado-semaforo.amarillo { background-color: #f59e0b; }
+.estado-semaforo.rojo { background-color: #ef4444; }
+
+/* --- CRONÓMETRO (Pastilla de color) --- */
+.tiempo-area {
+  font-size: 12px;
+  text-align: center;
+  padding: 4px 12px;
+  border-radius: 12px;
+  margin: 0 auto 10px auto;
+  width: fit-content;
+}
+
+/* Cuando recién entra (Sin pastilla, texto blanco) */
+.tiempo-area.verde { 
+  color: #ffffff; 
+  background-color: transparent;
+}
+
+/* Cuando se acerca al límite (Pastilla amarilla/naranja) */
+.tiempo-area.amarillo { 
+  color: #f59e0b; 
+  background-color: rgba(245, 158, 11, 0.1); 
+}
+
+/* Cuando excede el tiempo (Pastilla roja) */
+.tiempo-area.rojo { 
+  color: #ef4444; 
+  background-color: rgba(239, 68, 68, 0.15); 
+}
+
+/* --- BARRA DE PROGRESO --- */
+.tarjeta-progreso-mini-bg {
+  background-color: #222b3c;
+  border-radius: 4px;
+  height: 4px;
+  width: 90%;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.tarjeta-progreso-mini-fill {
+  background: linear-gradient(90deg, #3b82f6, #10b981);
+  height: 100%;
+  transition: width 0.4s ease;
+}
+
+.tarjeta-camion {
+  background-color: #1a2235; /* El color oscuro del fondo del recuadro */
+  border: 1px solid #2d3748; /* El borde sutil */
+  border-radius: 8px;
+  padding: 16px 12px;
+  margin-bottom: 12px;
+  cursor: grab;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2); /* Sombra para darle profundidad */
+}
+
+.tarjeta-camion:active {
+  cursor: grabbing;
+  opacity: 0.8;
+}
+
+/* =========================================
+   BOTONES DE ÁREA FINAL (DESCANSO / SALIDA)
+   ========================================= */
+.botones-accion-final {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  width: 100%;
+}
+
+.btn-final {
+  flex: 1;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-descanso {
+  background-color: #374151; 
+  color: #F9FAFB;
+  border: 1px solid #4B5563;
+}
+
+.btn-descanso:hover {
+  background-color: #4B5563;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.btn-salida {
+  background-color: #C62828; 
+  color: #FFFFFF;
+}
+
+.btn-salida:hover {
+  background-color: #E53935;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(198, 40, 40, 0.4);
+}
+
+.btn-final:active {
+  transform: translateY(0);
+}
+
+.btn-final {
+  flex: 1 1 0;
+  width: 100%;
+  padding: 8px 4px;
+  font-size: 11px; 
+  font-weight: 600;
+  text-align: center;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-sizing: border-box;
+}
+
 /*MEDIA QUERY */
 @media(max-width: 768px) { 
   .drag-board {
@@ -503,7 +662,5 @@
     grid-row: 2;   
     margin-top: 0;  
     justify-self: start; 
-  } 
-
-   
+  }    
 }
