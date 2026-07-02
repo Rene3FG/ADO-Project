@@ -13,6 +13,8 @@ export const useUsuariosBloc = () => {
   const [usuarioEditandoId, setUsuarioEditandoId] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
+  // La tabla roles guarda nombres en inglés (Administrator/Supervisor/Operator);
+  // el ROLE_MAP de api.py solo los traduce al español en /login, no en el CRUD.
   const estadoInicial = { id_empleado: '', nombre: '', rol: 'Operator', password: '' };
   const [formData, setFormData] = useState(estadoInicial);
 

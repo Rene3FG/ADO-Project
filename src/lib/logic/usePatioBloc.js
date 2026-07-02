@@ -26,10 +26,9 @@ export const usePatioBloc = () => {
   // Reloj interno para forzar actualización de los semáforos cada minuto
   const [tick, setTick] = useState(0);
 
-  useEffect(() => {
-    const intervalo = setInterval(() => setTick(t => t + 1), 30000); // Actualiza cada 30 seg
-    return () => clearInterval(intervalo);
-  }, []);
+  // Marca si ya hubo una primera carga: los refrescos periódicos no deben
+  // encender el spinner (evita el parpadeo de "Cargando..." cada 30 seg).
+  const primeraCargaHechaRef = useRef(false);
 
   const calcularPromediosDinamicos = (buses) => {
     let sumas = {};
@@ -44,11 +43,18 @@ export const usePatioBloc = () => {
     // Sumamos los tiempos reales del historial de cada camión
     buses.forEach(bus => {
       Object.entries(bus.historialTiempos || {}).forEach(([area, tiempos]) => {
+        // El sync de Sheets deja hora_entrada en "00:00:00.xxx" (serial de Excel,
+        // no una hora real); esas filas inflaban el promedio a cientos de minutos.
+        if (tiempos.inicio === '00:00') return;
         if (tiempos.inicio && tiempos.fin) {
           const [hI, mI] = tiempos.inicio.split(':').map(Number);
           const [hF, mF] = tiempos.fin.split(':').map(Number);
           let diff = (hF * 60 + mF) - (hI * 60 + mI);
           if (diff < 0) diff += 24 * 60; // Ajuste por si cruza la medianoche
+          // Hora malformada o área fuera de TIEMPOS_BASE: no contaminar el promedio con NaN.
+          // El tope de 180 min descarta movimientos con hora_salida de otro día
+          // (el sync mezcla timestamps viejos); ningún servicio real dura tanto.
+          if (!Number.isFinite(diff) || diff > 180 || sumas[area] === undefined) return;
           sumas[area] += diff;
           conteos[area] += 1;
         }
@@ -89,11 +95,12 @@ export const usePatioBloc = () => {
   const limpiarIniciado = (busId) => { delete iniciadosRef.current[busId]; };
 
   const cargarAutobuses = async () => {
-    setCargando(true);
+    if (!primeraCargaHechaRef.current) setCargando(true);
     try {
       const data = await AutobusRepository.obtenerAutobusesActivos();
       const activos = aplicarIniciados(data.filter(bus => bus.currentArea !== 'Salida'));
       setAutobuses(activos);
+      primeraCargaHechaRef.current = true;
       calcularPromediosDinamicos(data); // Calculamos usando incluso los que ya salieron si están en la query
     } catch (error) {
       console.error("No se pudieron cargar los autobuses:", error);
@@ -102,7 +109,16 @@ export const usePatioBloc = () => {
     }
   };
 
-  useEffect(() => { cargarAutobuses(); }, []);
+  useEffect(() => {
+    cargarAutobuses();
+    // "Tiempo real" sin Supabase: la API no emite eventos, así que refrescamos
+    // silenciosamente cada 30 seg (mismo reloj que actualiza los semáforos).
+    const intervalo = setInterval(() => {
+      setTick(t => t + 1);
+      cargarAutobuses();
+    }, 30000);
+    return () => clearInterval(intervalo);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const abrirModalMover = (bus) => { setBusSeleccionado(bus); setAreaDestino(''); };
   const cerrarModal = () => { setBusSeleccionado(null); setAreaDestino(''); };

@@ -24,5 +24,12 @@ export const AreaRepository = {
       body: JSON.stringify({ nombre: AREA_LOCAL_TO_API[nombre] || nombre, capacidad }),
     }),
 
+  // PUT /areas solo acepta capacidad; el nombre es la llave del área en la API
+  editar: (dbId, capacidad) =>
+    apiFetch(`/areas/${dbId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ capacidad }),
+    }),
+
   eliminar: (dbId) => apiFetch(`/areas/${dbId}`, { method: 'DELETE' }),
 };

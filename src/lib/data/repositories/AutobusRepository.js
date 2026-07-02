@@ -25,13 +25,22 @@ function esPrioridad(horaSalida) {
   return (salida - ahora) / (1000 * 60) <= 60;
 }
 
+// El sync de Sheets a veces guarda un timestamp ISO completo en hora_salida
+// ("2026-05-12T12:14:30...") en vez de "HH:MM:SS"; si tomamos los primeros 5
+// caracteres de eso, los promedios del patio terminan en NaN.
+function horaCorta(valor) {
+  if (!valor) return undefined;
+  const t = valor.includes('T') ? valor.split('T')[1] : valor;
+  return t.substring(0, 5);
+}
+
 function construirHistorial(movimientosDelBus) {
   const historial = {};
   for (const m of movimientosDelBus) {
     const areaLocal = AREA_API_TO_LOCAL[m.area_nombre] || m.area_nombre;
     historial[areaLocal] = {
-      inicio: (m.hora_entrada || '').substring(0, 5),
-      fin: m.hora_salida ? m.hora_salida.substring(0, 5) : undefined,
+      inicio: horaCorta(m.hora_entrada) || '',
+      fin: horaCorta(m.hora_salida),
     };
   }
   return historial;

@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 import Login from './pages/login/login.jsx'
 import DropDrag from './pages/Patio/DropDrag.jsx'
@@ -11,9 +11,38 @@ import { PatioPage } from './lib/presentation/pages/PatioPage.jsx'
 
 function MobileApp() {
   const [usuarioActual, setUsuarioActual] = useState(null)
+  const [verificandoSesion, setVerificandoSesion] = useState(true)
+
+  // Restaura la sesión guardada para que un F5 no regrese al login
+  useEffect(() => {
+    const sesionGuardada = localStorage.getItem('sesionAdo')
+    if (sesionGuardada) {
+      try {
+        setUsuarioActual(JSON.parse(sesionGuardada))
+      } catch {
+        localStorage.removeItem('sesionAdo')
+      }
+    }
+    setVerificandoSesion(false)
+  }, [])
+
+  if (verificandoSesion) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f8fafc' }}>
+        <h2 style={{ color: '#6b21a8' }}>Cargando sistema...</h2>
+      </div>
+    )
+  }
 
   if (!usuarioActual) {
-    return <LoginPage onLoginSuccess={(datos) => setUsuarioActual(datos)} />
+    return (
+      <LoginPage
+        onLoginSuccess={(datos) => {
+          localStorage.setItem('sesionAdo', JSON.stringify(datos))
+          setUsuarioActual(datos)
+        }}
+      />
+    )
   }
 
   return <PatioPage usuario={usuarioActual} />
