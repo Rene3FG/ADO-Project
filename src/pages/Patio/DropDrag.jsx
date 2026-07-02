@@ -37,7 +37,6 @@ export default function DropDrag() {
 
   const esAdmin = user?.rol === 'Administrador';
   const esSupervisor = user?.rol === 'Supervisor';
-  const esOperador = user?.rol === 'Operador';
 
   const [pestanaActiva, setPestanaActiva] = useState('patio');
   const [camiones, setCamiones] = useState([]);
@@ -661,7 +660,7 @@ export default function DropDrag() {
             <MdDashboard className="sidebar__icon" />
             <span>Patio en tiempo real</span>
           </button>
-          {(esAdmin || esOperador) && (
+          {esAdmin && (
             <button
               className={`sidebar__item ${pestanaActiva === 'registrar' ? 'sidebar__item--active' : ''}`}
               onClick={() => setPestanaActiva('registrar')}
