@@ -14,7 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 9
     steps:
+      # El cron corre desde main (rama default), pero el sync engine
+      # (sync_once.py, requirements.txt, etc.) vive en la rama Excel.
       - uses: actions/checkout@v4
+        with:
+          ref: Excel
 
       - uses: actions/setup-python@v5
         with:
