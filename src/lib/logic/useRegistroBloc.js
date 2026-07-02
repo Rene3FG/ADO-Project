@@ -1,11 +1,27 @@
 // src/lib/logic/useRegistroBloc.js
 import { useState, useEffect } from 'react';
 import { AutobusRepository } from '../data/repositories/AutobusRepository';
+import { apiFetch } from '../data/apiClient';
+
+// Fallback mientras carga GET /tipos-camion (o si la API no responde)
+const TIPOS_DEFAULT = ['ADO', 'AU', 'LUJO', 'OCC', 'SUR', 'TXO'];
 
 export const useRegistroBloc = () => {
-  const [step, setStep] = useState(1); 
-  
+  const [step, setStep] = useState(1);
+
   const WORKFLOW_ORDER = ['Desfogue', 'Diesel', 'Ad-blue', 'Taller', 'Lavado Interior', 'Lavado Exterior'];
+
+  // Tipos de unidad reales desde la API (bus_types) — antes estaban
+  // hardcodeados en el select y faltaban LUJO/SUR/TXO.
+  const [tiposUnidad, setTiposUnidad] = useState(TIPOS_DEFAULT);
+  useEffect(() => {
+    apiFetch('/tipos-camion')
+      .then((tipos) => {
+        const nombres = (tipos || []).map((t) => t.nombre).filter(Boolean);
+        if (nombres.length > 0) setTiposUnidad(nombres);
+      })
+      .catch(() => {});
+  }, []);
 
   const [formData, setFormData] = useState({
     numeroSerie: '',
@@ -117,7 +133,7 @@ export const useRegistroBloc = () => {
 
   return {
     step, setStep,
-    formData, WORKFLOW_ORDER, areaRecomendada, todasSeleccionadas,
+    formData, WORKFLOW_ORDER, areaRecomendada, todasSeleccionadas, tiposUnidad,
     handleInputChange, handleCheckboxChange, handleToggleAll, avanzarPaso,
     cargando, error, exito, guardarUnidad
   };

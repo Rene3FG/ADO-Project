@@ -102,6 +102,12 @@ export const PatioPage = ({ usuario }) => {
     return slots;
   };
 
+  // Capacidad real del patio = suma de capacidades de las áreas (antes era un 24 fijo)
+  const capacidadTotalPatio = definicionAreas.reduce((suma, a) => suma + (a.capacidad || 0), 0);
+  const ocupacionPorcentaje = capacidadTotalPatio > 0
+    ? Math.round((autobuses.length / capacidadTotalPatio) * 100)
+    : 0;
+
   const alertasPrioridad = autobuses.filter(bus => bus.isPriority && bus.currentArea !== 'Salida');
   const alertasRetraso = autobuses.filter(bus => obtenerSemaforo && obtenerSemaforo(bus)?.color === 'rojo');
 
@@ -211,11 +217,11 @@ export const PatioPage = ({ usuario }) => {
                         </div>
                         <div style={{ marginTop: '20px' }}>
                           <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', fontWeight: 600 }}>Ocupación total</p>
-                          <h3 style={{ margin: '0 0 10px 0', color: 'var(--ado-purple)' }}>
-                            {Math.round((autobuses.length / 24) * 100)}%
+                          <h3 style={{ margin: '0 0 10px 0', color: ocupacionPorcentaje > 100 ? '#dc2626' : 'var(--ado-purple)' }}>
+                            {ocupacionPorcentaje}%
                           </h3>
                           <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--bg-light)', borderRadius: '3px', overflow: 'hidden' }}>
-                            <div style={{ width: `${(autobuses.length / 24) * 100}%`, height: '100%', backgroundColor: 'var(--ado-purple)' }}></div>
+                            <div style={{ width: `${Math.min(ocupacionPorcentaje, 100)}%`, height: '100%', backgroundColor: ocupacionPorcentaje > 100 ? '#dc2626' : 'var(--ado-purple)' }}></div>
                           </div>
                         </div>
                       </div>

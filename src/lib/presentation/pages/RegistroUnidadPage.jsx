@@ -3,7 +3,7 @@ import { useRegistroBloc } from '../../logic/useRegistroBloc';
 
 export const RegistroUnidadPage = () => {
   const {
-    step, setStep, formData, WORKFLOW_ORDER, areaRecomendada, todasSeleccionadas,
+    step, setStep, formData, WORKFLOW_ORDER, areaRecomendada, todasSeleccionadas, tiposUnidad,
     handleInputChange, handleCheckboxChange, handleToggleAll, avanzarPaso,
     cargando, error, exito, guardarUnidad
   } = useRegistroBloc();
@@ -52,15 +52,15 @@ export const RegistroUnidadPage = () => {
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
               <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Tipo de Unidad *</label>
-              <select 
-                name="tipoUnidad" 
-                value={formData.tipoUnidad} 
-                onChange={handleInputChange} 
+              <select
+                name="tipoUnidad"
+                value={formData.tipoUnidad}
+                onChange={handleInputChange}
                 style={inputStyle}
               >
-                <option value="ADO">ADO</option>
-                <option value="OCC">OCC</option>
-                <option value="AU">AU</option>
+                {tiposUnidad.map((tipo) => (
+                  <option key={tipo} value={tipo}>{tipo}</option>
+                ))}
               </select>
             </div>
           </div>
