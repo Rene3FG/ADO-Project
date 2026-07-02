@@ -14,6 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 9
     steps:
+      # Keep-alive: Render free tier duerme la API tras 15 min sin tráfico
+      # (cold start de 30-60s rompía el primer login). Este cron corre cada
+      # 10 min, así que el ping la mantiene despierta.
+      - name: Ping API en Render (keep-alive)
+        run: curl -sf --max-time 90 https://ado-project.onrender.com/areas > /dev/null || true
+
       # El cron corre desde main (rama default), pero el sync engine
       # (sync_once.py, requirements.txt, etc.) vive en la rama Excel.
       - uses: actions/checkout@v4

@@ -4,7 +4,9 @@
  */
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://ado-project.onrender.com';
-const API_TIMEOUT = import.meta.env.VITE_API_TIMEOUT || 10000;
+// 90s: Render free tier duerme el backend tras 15 min sin tráfico y el
+// cold start tarda 30-60s — con 10s el primer login siempre daba timeout.
+const API_TIMEOUT = import.meta.env.VITE_API_TIMEOUT || 90000;
 
 class ApiClient {
   constructor(baseURL = API_URL, timeout = API_TIMEOUT) {
@@ -85,7 +87,7 @@ class ApiClient {
     } catch (error) {
       clearTimeout(timeoutId);
       if (error.name === 'AbortError') {
-        throw new Error(`Request timeout after ${this.timeout}ms`);
+        throw new Error('El servidor está tardando en responder (puede estar iniciando). Intenta de nuevo en unos segundos.');
       }
       throw error;
     }
