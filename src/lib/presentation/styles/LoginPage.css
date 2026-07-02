@@ -43,29 +43,35 @@
   gap: 20px;
 }
 
-.input-group {
+/* Reglas con scope .login-form: ".input-group" a secas también existe en
+   Resgistro.css (desktop, labels blancos sobre card oscura) y login.css;
+   sin el scope, estas reglas las pisaban y dejaban texto oscuro sobre
+   fondo oscuro en el Registro de escritorio. */
+.login-form .input-group {
   display: flex;
   flex-direction: column;
   text-align: left;
 }
 
-.input-group label {
+.login-form .input-group label {
   font-size: 0.9rem;
   color: #333;
   margin-bottom: 8px;
   font-weight: bold;
 }
 
-.input-group input {
+.login-form .input-group input {
   padding: 12px 15px;
   border: 1px solid #ccc;
   border-radius: 8px;
   font-size: 1rem;
   outline: none;
+  background-color: #fff;
+  color: #1e293b;
   transition: border-color 0.3s;
 }
 
-.input-group input:focus {
+.login-form .input-group input:focus {
   border-color: #ce0037;
   box-shadow: 0 0 0 3px rgba(206, 0, 55, 0.1);
 }

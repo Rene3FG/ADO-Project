@@ -31,6 +31,17 @@ export const PatioPage = ({ usuario }) => {
   const esAdmin = usuario.rol === 'Administrador';
   const esSupervisor = usuario.rol === 'Supervisor';
   const esOperador = usuario.rol === 'Operador';
+
+  // El /login no devuelve areaAsignada (no existe en la tabla users), así que
+  // el operador elige su área al entrar y se recuerda por usuario en este equipo.
+  const claveAreaOperador = `sca_area_operador_${usuario.username || usuario.id}`;
+  const [areaOperador, setAreaOperador] = useState(
+    () => usuario.areaAsignada || localStorage.getItem(claveAreaOperador) || ''
+  );
+  const seleccionarAreaOperador = (areaId) => {
+    localStorage.setItem(claveAreaOperador, areaId);
+    setAreaOperador(areaId);
+  };
   const WORKFLOW_ORDER = ['Desfogue', 'Diesel', 'Ad-blue', 'Taller', 'Lavado Interior', 'Lavado Exterior'];
 
   const [definicionAreas, setDefinicionAreas] = useState(AREAS_PATIO);
@@ -62,9 +73,9 @@ export const PatioPage = ({ usuario }) => {
     return terminadasTodas ? 'Salida' : 'Espera';
   };
 
-  const busesDelOperador = autobuses.filter(bus => bus.currentArea === usuario.areaAsignada);
+  const busesDelOperador = autobuses.filter(bus => bus.currentArea === areaOperador);
   const ocupacionActual = busesDelOperador.length;
-  const capacidadMaxArea = definicionAreas.find(a => a.id === usuario.areaAsignada)?.capacidad || 3;
+  const capacidadMaxArea = definicionAreas.find(a => a.id === areaOperador)?.capacidad || 3;
 
   const obtenerSlotsArea = (nombreArea, capacidad) => {
     const busesEnArea = autobuses.filter(bus => bus.currentArea === nombreArea);
@@ -228,11 +239,40 @@ export const PatioPage = ({ usuario }) => {
                 </>
               ) : (
                 /* ================= VISTA: OPERADOR ================= */
+                !areaOperador ? (
+                  /* Sin área elegida: selector inicial */
+                  <div style={{ maxWidth: '500px', margin: '0 auto', padding: '20px', fontFamily: 'system-ui, sans-serif' }}>
+                    <div style={{ backgroundColor: '#D32F2F', color: 'white', padding: '20px', textAlign: 'center', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                      <h1 style={{ margin: 0, fontSize: '22px' }}>¿En qué área trabajas?</h1>
+                      <p style={{ margin: '8px 0 0 0', fontSize: '14px' }}>Selecciona tu área para ver sus unidades</p>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {definicionAreas.map(area => (
+                        <button
+                          key={area.id}
+                          onClick={() => seleccionarAreaOperador(area.id)}
+                          style={{ padding: '18px', fontSize: '18px', fontWeight: 'bold', backgroundColor: '#ffffff', color: '#1e293b', border: '1px solid #e2e8f0', borderRadius: '12px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.06)', textAlign: 'left' }}
+                        >
+                          {area.icono} {area.nombre}
+                          <span style={{ float: 'right', color: '#64748b', fontSize: '14px', fontWeight: 'normal' }}>
+                            {autobuses.filter(b => b.currentArea === area.id).length}/{area.capacidad}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
                 <div style={{ maxWidth: '800px', margin: '0 auto', fontFamily: 'system-ui, sans-serif' }}>
                   <div style={{ backgroundColor: '#D32F2F', color: 'white', padding: '20px', textAlign: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                    <h1 style={{ margin: 0, fontSize: '24px' }}>Área: {usuario.areaAsignada}</h1>
+                    <h1 style={{ margin: 0, fontSize: '24px' }}>Área: {areaOperador}</h1>
                     <p style={{ margin: '5px 0 0 0', fontSize: '18px', fontWeight: 'bold', color: '#FFEB3B' }}>Ocupación: {ocupacionActual}/{capacidadMaxArea} camiones</p>
-                    {promediosArea?.[usuario.areaAsignada] != null && <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>⏱️ Tiempo Promedio: {promediosArea[usuario.areaAsignada]} min</p>}
+                    {promediosArea?.[areaOperador] != null && <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>⏱️ Tiempo Promedio: {promediosArea[areaOperador]} min</p>}
+                    <button
+                      onClick={() => seleccionarAreaOperador('')}
+                      style={{ marginTop: '10px', padding: '6px 14px', fontSize: '13px', backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '6px', cursor: 'pointer' }}
+                    >
+                      ⇄ Cambiar de área
+                    </button>
                   </div>
 
                   <div style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -303,7 +343,7 @@ export const PatioPage = ({ usuario }) => {
                                 <select 
                                   value={destinoSeleccionado} 
                                   onChange={(e) => setDestinosOperador(prev => ({ ...prev, [bus.busId]: e.target.value }))}
-                                  style={{ width: '100%', padding: '12px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc', backgroundColor: '#fff', color: '#000', marginBottom: '10px' }}
+                                  style={{ width: '100%', padding: '12px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc', backgroundColor: '#fff', color: '#000', colorScheme: 'light', marginBottom: '10px' }}
                                 >
                                   <option value="" disabled>Seleccione destino...</option>
                                   {bus.requiredAreas.map(areaId => {
@@ -337,6 +377,7 @@ export const PatioPage = ({ usuario }) => {
                     )}
                   </div>
                 </div>
+                )
               )}
             </>
           )}

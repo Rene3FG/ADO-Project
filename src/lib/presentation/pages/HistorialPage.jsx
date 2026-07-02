@@ -8,7 +8,7 @@ export const HistorialPage = () => {
     fechaFinPersonalizada, setFechaFinPersonalizada
   } = useHistorialBloc();
 
-  const inputStyle = { padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'white', color: 'var(--text-main)', boxSizing: 'border-box' };
+  const inputStyle = { padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'white', color: 'var(--text-main)', colorScheme: 'light', boxSizing: 'border-box' };
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>

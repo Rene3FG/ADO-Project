@@ -81,21 +81,21 @@ body {
   gap:18px;
 }
 
-.input-group{
+.registro-card .input-group{
   display:flex;
   flex-direction:column;
 }
 
-.input-group label{
+.registro-card .input-group label{
   margin-bottom:6px;
   font-size:13px;
   font-weight:600;
   color:#ffffff;
 }
 
-.input-group input,
-.input-group select,
-.input-group textarea{
+.registro-card .input-group input,
+.registro-card .input-group select,
+.registro-card .input-group textarea{
   padding:12px;
   border:1px solid var(--border);
   border-radius:8px;
@@ -105,30 +105,30 @@ body {
 }
 
 /* Placeholder color */
-.input-group input::placeholder,
-.input-group textarea::placeholder{
+.registro-card .input-group input::placeholder,
+.registro-card .input-group textarea::placeholder{
   color: #aaa;
   font-weight: 400;
 }
 
 /* Para select (opciones) */
-.input-group select{
+.registro-card .input-group select{
   color: var(--text-primary);
 }
 
-.input-group select option{
+.registro-card .input-group select option{
   color: var(--text-primary);
   background: white;
 }
 
-.input-group textarea{
+.registro-card .input-group textarea{
   min-height:100px;
   resize:none;
 }
 
-.input-group input:focus,
-.input-group select:focus,
-.input-group textarea:focus{
+.registro-card .input-group input:focus,
+.registro-card .input-group select:focus,
+.registro-card .input-group textarea:focus{
   outline:none;
   border-color:var(--card-text);
   box-shadow:0 0 0 3px rgba(122,45,145,.15);
