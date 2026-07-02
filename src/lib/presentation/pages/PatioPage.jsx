@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useMenuBloc } from '../../logic/useMenuBloc';
 import { usePatioBloc } from '../../logic/usePatioBloc';
 import { RegistroUnidadPage } from './RegistroUnidadPage';
-import { UsuariosPage } from './UsuariosPage';
+import { ConfiguracionPage } from './ConfiguracionPage';
 // NUEVO: Importamos las páginas de tu compañero
 import { HistorialPage } from './HistorialPage';
 import { ReportesPage } from './ReportesPage';
@@ -13,7 +13,10 @@ import "../../../App.css";
 import "../styles/PatioPage.css";
 
 export const PatioPage = ({ usuario }) => {
-  const { menuAbierto, alternarMenu, cerrarMenu, cerrarSesion } = useMenuBloc();
+  const {
+    menuAbierto, alternarMenu, cerrarMenu,
+    modalCerrarSesionAbierto, confirmarCerrarSesion, cancelarCerrarSesion, ejecutarCerrarSesion
+  } = useMenuBloc();
   const [vistaActual, setVistaActual] = useState('patio');
 
   const [destinosOperador, setDestinosOperador] = useState({});
@@ -31,6 +34,8 @@ export const PatioPage = ({ usuario }) => {
   const esAdmin = usuario.rol === 'Administrador';
   const esSupervisor = usuario.rol === 'Supervisor';
   const esOperador = usuario.rol === 'Operador';
+  // El supervisor ve el patio completo igual que el admin (solo cambia el menú)
+  const vePatioCompleto = esAdmin || esSupervisor;
 
   // El /login no devuelve areaAsignada (no existe en la tabla users), así que
   // el operador elige su área al entrar y se recuerda por usuario en este equipo.
@@ -144,8 +149,8 @@ export const PatioPage = ({ usuario }) => {
           {(esAdmin || esOperador) && <li><a className={vistaActual === 'registrar' ? 'active' : ''} onClick={() => navegarA('registrar')}>⊕ Registrar camión</a></li>}
           {(esAdmin || esSupervisor) && <li><a className={vistaActual === 'historial' ? 'active' : ''} onClick={() => navegarA('historial')}>🕒 Historial</a></li>}
           {(esAdmin || esSupervisor) && <li><a className={vistaActual === 'reportes' ? 'active' : ''} onClick={() => navegarA('reportes')}>📊 Reportes</a></li>}
-          {esAdmin && <li><a className={vistaActual === 'usuarios' ? 'active' : ''} onClick={() => navegarA('usuarios')}>👥 Gestión Usuarios</a></li>}
-          <li style={{ marginTop: '20px' }}><a onClick={cerrarSesion} style={{ color: '#ef4444' }}>🚪 Cerrar sesión</a></li>
+          {esAdmin && <li><a className={vistaActual === 'configuracion' ? 'active' : ''} onClick={() => navegarA('configuracion')}>⚙️ Config. Avanzada</a></li>}
+          <li style={{ marginTop: '20px' }}><a onClick={confirmarCerrarSesion} style={{ color: '#ef4444' }}>🚪 Cerrar sesión</a></li>
         </ul>
       </aside>
 
@@ -161,11 +166,11 @@ export const PatioPage = ({ usuario }) => {
           </div>
         </header>
 
-        <div className="dashboard-container" style={{ padding: esAdmin ? '30px' : '0', backgroundColor: esAdmin ? 'var(--bg-light)' : '#f4f4f9' }}>
+        <div className="dashboard-container" style={{ padding: vePatioCompleto ? '30px' : '0', backgroundColor: vePatioCompleto ? 'var(--bg-light)' : '#f4f4f9' }}>
           {vistaActual === 'patio' && (
             <>
-              {esAdmin ? (
-                /* ================= VISTA: ADMINISTRADOR ================= */
+              {vePatioCompleto ? (
+                /* ================= VISTA: ADMINISTRADOR / SUPERVISOR ================= */
                 <>
                   <div className="dash-header">
                     <div><h2>Patio en tiempo real</h2><p>Vista general de ocupación por área</p></div>
@@ -175,7 +180,7 @@ export const PatioPage = ({ usuario }) => {
                         <div className="leyenda-item"><div className="caja-color caja-ocupada"></div> Ocupado</div>
                         <div className="leyenda-item"><div className="caja-color" style={{backgroundColor: '#f59e0b'}}></div> En proceso</div>
                       </div>
-                      <button className="btn-registrar-header" onClick={() => navegarA('registrar')}>⊕ Registrar camión</button>
+                      {esAdmin && <button className="btn-registrar-header" onClick={() => navegarA('registrar')}>⊕ Registrar camión</button>}
                     </div>
                   </div>
                   <div className="dash-grid">
@@ -390,13 +395,13 @@ export const PatioPage = ({ usuario }) => {
 
           {/* NUEVO: Renderizado de las páginas de tu compañero */}
           {vistaActual === 'registrar' && (esAdmin || esOperador) && <RegistroUnidadPage />}
-          {vistaActual === 'usuarios' && esAdmin && <UsuariosPage />}
+          {vistaActual === 'configuracion' && esAdmin && <ConfiguracionPage autobuses={autobuses} />}
           {vistaActual === 'historial' && (esAdmin || esSupervisor) && <HistorialPage />}
           {vistaActual === 'reportes' && (esAdmin || esSupervisor) && <ReportesPage />}
         </div>
 
-        {/* ================= MODAL ADMIN ================= */}
-        {esAdmin && busSeleccionado && (
+        {/* ================= MODAL ADMIN / SUPERVISOR ================= */}
+        {vePatioCompleto && busSeleccionado && (
           <div 
             onClick={cerrarModal} 
             style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px', boxSizing: 'border-box' }}
@@ -498,6 +503,40 @@ export const PatioPage = ({ usuario }) => {
                   style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--ado-red)', color: 'white', fontWeight: 800, cursor: moviendo ? 'not-allowed' : 'pointer', opacity: moviendo ? 0.7 : 1 }}
                 >
                   {moviendo ? 'Enviando...' : 'Sí, enviar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= MODAL DE CONFIRMACIÓN DE CERRAR SESIÓN ================= */}
+        {modalCerrarSesionAbierto && (
+          <div
+            onClick={cancelarCerrarSesion}
+            style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 3000, padding: '20px', boxSizing: 'border-box' }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '350px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', textAlign: 'center' }}
+            >
+              <div style={{ fontSize: '3rem', marginBottom: '10px' }}>🚪</div>
+              <h3 style={{ margin: '0 0 10px 0', color: 'var(--text-main)', fontSize: '1.3rem' }}>Cerrar Sesión</h3>
+              <p style={{ margin: '0 0 20px 0', color: 'var(--text-muted)', fontSize: '1rem', lineHeight: '1.5' }}>
+                ¿Estás seguro de que deseas salir del sistema?
+              </p>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={cancelarCerrarSesion}
+                  style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'white', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={ejecutarCerrarSesion}
+                  style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#ef4444', color: 'white', fontWeight: 800, cursor: 'pointer' }}
+                >
+                  Sí, salir
                 </button>
               </div>
             </div>
