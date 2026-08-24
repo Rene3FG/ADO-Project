@@ -9,6 +9,7 @@ import { HistorialPage } from './HistorialPage';
 import { ReportesPage } from './ReportesPage';
 import { AREAS_PATIO } from '../../areasConfig';
 import { AreaRepository } from '../../data/repositories/AreaRepository';
+import { SwipeToConfirm } from '../components/SwipeToConfirm';
 import "../../../App.css";
 import "../styles/PatioPage.css";
 
@@ -19,17 +20,38 @@ export const PatioPage = ({ usuario }) => {
   } = useMenuBloc();
   const [vistaActual, setVistaActual] = useState('patio');
 
-  const [destinosOperador, setDestinosOperador] = useState({});
-
-  const [movimientoAConfirmar, setMovimientoAConfirmar] = useState(null);
   const [inicioAConfirmar, setInicioAConfirmar] = useState(null);
 
   const {
     autobuses, cargando, cargarAutobuses,
     busSeleccionado, cerrarModal, abrirModalMover, moviendo,
-    obtenerOcupacion, arrancarServicio, confirmarMovimientoDirecto,
+    arrancarServicio, avanzarBus, avanzarPorNfc,
     obtenerSemaforo, promediosArea
   } = usePatioBloc();
+
+  // Web NFC (NDEFReader) solo existe en Android + Chrome — en cualquier otro
+  // navegador el botón se oculta en vez de fallar al tocarlo.
+  const soporteNfc = typeof window !== 'undefined' && 'NDEFReader' in window;
+  const escanearNfc = async () => {
+    try {
+      const reader = new window.NDEFReader();
+      await reader.scan();
+      reader.onreading = async ({ serialNumber, message }) => {
+        // Preferimos el UID físico del tag (serialNumber); si el navegador no
+        // lo expone, caemos al primer registro de texto NDEF escrito al enrolar.
+        const registroTexto = message?.records?.find(r => r.recordType === 'text');
+        const tagUid = serialNumber || (registroTexto && new TextDecoder(registroTexto.encoding).decode(registroTexto.data));
+        if (!tagUid) return;
+        try {
+          await avanzarPorNfc(tagUid);
+        } catch (error) {
+          alert(error.message || 'No se pudo procesar el tag NFC.');
+        }
+      };
+    } catch (error) {
+      alert('No se pudo activar el lector NFC: ' + (error.message || error));
+    }
+  };
 
   const esAdmin = usuario.rol === 'Administrador';
   const esSupervisor = usuario.rol === 'Supervisor';
@@ -37,17 +59,10 @@ export const PatioPage = ({ usuario }) => {
   // El supervisor ve el patio completo igual que el admin (solo cambia el menú)
   const vePatioCompleto = esAdmin || esSupervisor;
 
-  // El /login no devuelve areaAsignada (no existe en la tabla users), así que
-  // el operador elige su área al entrar y se recuerda por usuario en este equipo.
-  const claveAreaOperador = `sca_area_operador_${usuario.username || usuario.id}`;
-  const [areaOperador, setAreaOperador] = useState(
-    () => usuario.areaAsignada || localStorage.getItem(claveAreaOperador) || ''
-  );
-  const seleccionarAreaOperador = (areaId) => {
-    localStorage.setItem(claveAreaOperador, areaId);
-    setAreaOperador(areaId);
-  };
-  const WORKFLOW_ORDER = ['Desfogue', 'Diesel', 'Ad-blue', 'Taller', 'Lavado Interior', 'Lavado Exterior'];
+  // El área del operador ahora la asigna el admin desde Configuración
+  // (users.assigned_area_id) — /login la devuelve real, ya no se elige
+  // manualmente ni se guarda en localStorage.
+  const areaOperador = usuario.areaAsignada || '';
 
   const [definicionAreas, setDefinicionAreas] = useState(AREAS_PATIO);
 
@@ -66,17 +81,6 @@ export const PatioPage = ({ usuario }) => {
     const intervalo = setInterval(cargarAreas, 30000);
     return () => clearInterval(intervalo);
   }, [cargarAreas]);
-
-  const obtenerSugerencia = (bus) => {
-    const completadas = bus.completedAreas || [];
-    for (const area of WORKFLOW_ORDER) {
-      if (bus.requiredAreas.includes(area) && !completadas.includes(area) && area !== bus.currentArea) {
-        return area;
-      }
-    }
-    const terminadasTodas = bus.requiredAreas.every(a => completadas.includes(a) || a === bus.currentArea);
-    return terminadasTodas ? 'Salida' : 'Espera';
-  };
 
   const busesDelOperador = autobuses.filter(bus => bus.currentArea === areaOperador);
   const ocupacionActual = busesDelOperador.length;
@@ -120,16 +124,6 @@ export const PatioPage = ({ usuario }) => {
     setVistaActual(vista);
     cerrarMenu();
     if (vista === 'patio') cargarAutobuses();
-  };
-
-  const ejecutarMovimientoConfirmado = async () => {
-    if (!movimientoAConfirmar) return;
-    const { bus, destino } = movimientoAConfirmar;
-    
-    await confirmarMovimientoDirecto(bus, destino);
-    
-    setDestinosOperador(prev => { const n = {...prev}; delete n[bus.busId]; return n; });
-    setMovimientoAConfirmar(null);
   };
 
   const ejecutarInicioConfirmado = async () => {
@@ -251,25 +245,11 @@ export const PatioPage = ({ usuario }) => {
               ) : (
                 /* ================= VISTA: OPERADOR ================= */
                 !areaOperador ? (
-                  /* Sin área elegida: selector inicial */
-                  <div style={{ maxWidth: '500px', margin: '0 auto', padding: '20px', fontFamily: 'system-ui, sans-serif' }}>
-                    <div style={{ backgroundColor: '#D32F2F', color: 'white', padding: '20px', textAlign: 'center', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                      <h1 style={{ margin: 0, fontSize: '22px' }}>¿En qué área trabajas?</h1>
-                      <p style={{ margin: '8px 0 0 0', fontSize: '14px' }}>Selecciona tu área para ver sus unidades</p>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {definicionAreas.map(area => (
-                        <button
-                          key={area.id}
-                          onClick={() => seleccionarAreaOperador(area.id)}
-                          style={{ padding: '18px', fontSize: '18px', fontWeight: 'bold', backgroundColor: '#ffffff', color: '#1e293b', border: '1px solid #e2e8f0', borderRadius: '12px', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.06)', textAlign: 'left' }}
-                        >
-                          {area.icono} {area.nombre}
-                          <span style={{ float: 'right', color: '#64748b', fontSize: '14px', fontWeight: 'normal' }}>
-                            {autobuses.filter(b => b.currentArea === area.id).length}/{area.capacidad}
-                          </span>
-                        </button>
-                      ))}
+                  /* Sin área asignada: el admin la asigna desde Configuración */
+                  <div style={{ maxWidth: '500px', margin: '40px auto', padding: '20px', fontFamily: 'system-ui, sans-serif', textAlign: 'center' }}>
+                    <div style={{ backgroundColor: '#D32F2F', color: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                      <h1 style={{ margin: 0, fontSize: '20px' }}>Sin área asignada</h1>
+                      <p style={{ margin: '8px 0 0 0', fontSize: '14px' }}>Contacta al administrador para que te asigne un área en Configuración.</p>
                     </div>
                   </div>
                 ) : (
@@ -278,12 +258,15 @@ export const PatioPage = ({ usuario }) => {
                     <h1 style={{ margin: 0, fontSize: '24px' }}>Área: {areaOperador}</h1>
                     <p style={{ margin: '5px 0 0 0', fontSize: '18px', fontWeight: 'bold', color: '#FFEB3B' }}>Ocupación: {ocupacionActual}/{capacidadMaxArea} camiones</p>
                     {promediosArea?.[areaOperador] != null && <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>⏱️ Tiempo Promedio: {promediosArea[areaOperador]} min</p>}
-                    <button
-                      onClick={() => seleccionarAreaOperador('')}
-                      style={{ marginTop: '10px', padding: '6px 14px', fontSize: '13px', backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '6px', cursor: 'pointer' }}
-                    >
-                      ⇄ Cambiar de área
-                    </button>
+                    {soporteNfc && (
+                      <button
+                        onClick={escanearNfc}
+                        disabled={moviendo}
+                        style={{ marginTop: '10px', padding: '10px 18px', fontSize: '14px', fontWeight: 'bold', backgroundColor: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '8px', cursor: moviendo ? 'not-allowed' : 'pointer' }}
+                      >
+                        📡 Escanear NFC
+                      </button>
+                    )}
                   </div>
 
                   <div style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -291,8 +274,6 @@ export const PatioPage = ({ usuario }) => {
                       <p style={{ textAlign: 'center', color: '#777', fontSize: '18px', marginTop: '20px' }}>No hay unidades en la cola.</p>
                     ) : (
                       busesDelOperador.map(bus => {
-                        const sugerencia = obtenerSugerencia(bus); 
-                        const destinoSeleccionado = destinosOperador[bus.busId] || ''; 
                         const semaforo = obtenerSemaforo ? obtenerSemaforo(bus) : null;
 
                         return (
@@ -349,37 +330,14 @@ export const PatioPage = ({ usuario }) => {
                               </button>
                             ) : (
                               <div style={{ backgroundColor: '#f9f9f9', padding: '15px', borderRadius: '8px', border: '1px solid #eeeeee' }}>
-                                <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#333' }}>Siguiente estación:</label>
-                                
-                                <select 
-                                  value={destinoSeleccionado} 
-                                  onChange={(e) => setDestinosOperador(prev => ({ ...prev, [bus.busId]: e.target.value }))}
-                                  style={{ width: '100%', padding: '12px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ccc', backgroundColor: '#fff', color: '#000', colorScheme: 'light', marginBottom: '10px' }}
-                                >
-                                  <option value="" disabled>Seleccione destino...</option>
-                                  {bus.requiredAreas.map(areaId => {
-                                    if (areaId === bus.currentArea || bus.completedAreas.includes(areaId)) return null;
-                                    const areaDef = definicionAreas.find(a => a.id === areaId);
-                                    if (!areaDef) return null;
-                                    const estaLleno = obtenerOcupacion(areaId) >= areaDef.capacidad;
-                                    const esSugerida = areaId === sugerencia;
-                                    return (
-                                      <option key={areaId} value={areaId} disabled={estaLleno}>
-                                        {areaDef.nombre} {estaLleno ? '- LLENO' : ''} {esSugerida ? ' (Sugerido)' : ''}
-                                      </option>
-                                    );
-                                  })}
-                                  <option value="Salida">Salida del Complejo 🏁 {sugerencia === 'Salida' ? ' (Sugerido)' : ''}</option>
-                                  <option value="Espera">Espera 🚏 {sugerencia === 'Espera' ? ' (Sugerido)' : ''}</option>
-                                </select>
-
-                                <button 
-                                  onClick={() => setMovimientoAConfirmar({ bus, destino: destinoSeleccionado })} 
-                                  disabled={!destinoSeleccionado} 
-                                  style={{ width: '100%', padding: '15px', backgroundColor: '#1976D2', color: 'white', fontSize: '18px', fontWeight: 'bold', border: 'none', borderRadius: '8px', cursor: (!destinoSeleccionado) ? 'not-allowed' : 'pointer', opacity: (!destinoSeleccionado) ? 0.5 : 1 }}
-                                >
-                                  FINALIZAR SERVICIO Y ENVIAR
-                                </button>
+                                <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold', color: '#333', textAlign: 'center' }}>
+                                  Desliza para enviar al siguiente paso
+                                </label>
+                                <SwipeToConfirm
+                                  label="➜ Deslizar para avanzar"
+                                  disabled={moviendo}
+                                  onConfirm={() => avanzarBus(bus)}
+                                />
                               </div>
                             )}
                           </div>
@@ -467,42 +425,6 @@ export const PatioPage = ({ usuario }) => {
                   style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: '#388E3C', color: 'white', fontWeight: 800, cursor: 'pointer' }}
                 >
                   Sí, iniciar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================= MODAL DE CONFIRMACIÓN ANTI-DEDAZOS (MOVIMIENTO) ================= */}
-        {movimientoAConfirmar && (
-          <div 
-            onClick={() => setMovimientoAConfirmar(null)} 
-            style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2500, padding: '20px', boxSizing: 'border-box' }}
-          >
-            <div 
-              onClick={(e) => e.stopPropagation()} 
-              style={{ backgroundColor: 'white', padding: '25px', borderRadius: '16px', width: '100%', maxWidth: '350px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', textAlign: 'center' }}
-            >
-              <div style={{ fontSize: '3rem', marginBottom: '10px' }}>⚠️</div>
-              <h3 style={{ margin: '0 0 10px 0', color: 'var(--text-main)', fontSize: '1.3rem' }}>Confirmar Movimiento</h3>
-              <p style={{ margin: '0 0 20px 0', color: 'var(--text-muted)', fontSize: '1rem', lineHeight: '1.5' }}>
-                ¿Estás seguro de enviar la unidad <strong>#{movimientoAConfirmar.bus.busId}</strong> a la estación de <strong>{movimientoAConfirmar.destino}</strong>?
-              </p>
-              
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button 
-                  onClick={() => setMovimientoAConfirmar(null)} 
-                  disabled={moviendo}
-                  style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'white', color: 'var(--text-main)', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Cancelar
-                </button>
-                <button 
-                  onClick={ejecutarMovimientoConfirmado} 
-                  disabled={moviendo}
-                  style={{ flex: 1, padding: '12px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--ado-red)', color: 'white', fontWeight: 800, cursor: moviendo ? 'not-allowed' : 'pointer', opacity: moviendo ? 0.7 : 1 }}
-                >
-                  {moviendo ? 'Enviando...' : 'Sí, enviar'}
                 </button>
               </div>
             </div>

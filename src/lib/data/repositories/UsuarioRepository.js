@@ -43,12 +43,13 @@ export const UsuarioRepository = {
 
   listar: () => apiFetch('/usuarios'),
 
-  editar: (id, { nombre, rol, password }) => {
+  editar: (id, { nombre, rol, password, assigned_area_id }) => {
     const partes = nombre.trim().split(' ');
     const first_name = partes[0];
     const last_name = partes.slice(1).join(' ') || first_name;
     const body = { first_name, last_name, rol };
     if (password && password !== '***') body.password = password;
+    if (assigned_area_id !== '' && assigned_area_id != null) body.assigned_area_id = Number(assigned_area_id);
     return apiFetch(`/usuarios/${id}`, {
       method: 'PUT',
       body: JSON.stringify(body),

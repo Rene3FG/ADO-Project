@@ -1,10 +1,12 @@
 // src/lib/logic/useUsuariosBloc.js
 import { useState, useEffect } from 'react';
 import { UsuarioRepository } from '../data/repositories/UsuarioRepository';
+import { AreaRepository } from '../data/repositories/AreaRepository';
 
 export const useUsuariosBloc = () => {
   const [usuarios, setUsuarios] = useState([]);
   const [roles, setRoles] = useState([]);
+  const [areas, setAreas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const disponible = true;
 
@@ -15,18 +17,20 @@ export const useUsuariosBloc = () => {
 
   // La tabla roles guarda nombres en inglés (Administrator/Supervisor/Operator);
   // el ROLE_MAP de api.py solo los traduce al español en /login, no en el CRUD.
-  const estadoInicial = { id_empleado: '', nombre: '', rol: 'Operator', password: '' };
+  const estadoInicial = { id_empleado: '', nombre: '', rol: 'Operator', password: '', assigned_area_id: '' };
   const [formData, setFormData] = useState(estadoInicial);
 
   const cargar = async () => {
     setCargando(true);
     try {
-      const [lista, listaRoles] = await Promise.all([
+      const [lista, listaRoles, listaAreas] = await Promise.all([
         UsuarioRepository.listar().catch(() => []),
         UsuarioRepository.listarRoles().catch(() => []),
+        AreaRepository.listar().catch(() => []),
       ]);
       setUsuarios(lista);
       setRoles(listaRoles);
+      setAreas(listaAreas);
     } finally {
       setCargando(false);
     }
@@ -49,6 +53,7 @@ export const useUsuariosBloc = () => {
       nombre: user.nombre,
       rol: user.rol,
       password: '***',
+      assigned_area_id: user.assigned_area_id ?? '',
     });
     setModalAbierto(true);
   };
@@ -94,7 +99,7 @@ export const useUsuariosBloc = () => {
   };
 
   return {
-    usuarios, roles, cargando, disponible, modalAbierto, esEdicion, guardando, formData,
+    usuarios, roles, areas, cargando, disponible, modalAbierto, esEdicion, guardando, formData,
     abrirModalNuevo, abrirModalEditar, cerrarModal, handleInputChange, guardarUsuario, eliminarUsuario,
   };
 };

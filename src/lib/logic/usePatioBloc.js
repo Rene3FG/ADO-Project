@@ -156,6 +156,33 @@ export const usePatioBloc = () => {
     finally { setMoviendo(false); }
   };
 
+  // Swipe / NFC: avanza automáticamente al siguiente paso de la ruta del
+  // camión, sin pedir destino (lo resuelve el backend con POST /camiones/{serie}/avanzar).
+  const avanzarBus = async (bus) => {
+    if (!bus) return;
+    setMoviendo(true);
+    try {
+      await AutobusRepository.avanzarAutobus(bus.busId);
+      limpiarIniciado(bus.busId);
+      await cargarAutobuses();
+    } catch (error) {
+      alert(error.message || "Error al avanzar la unidad.");
+    } finally {
+      setMoviendo(false);
+    }
+  };
+
+  const avanzarPorNfc = async (tagUid) => {
+    setMoviendo(true);
+    try {
+      const r = await AutobusRepository.escanearNfc(tagUid);
+      await cargarAutobuses();
+      return r;
+    } finally {
+      setMoviendo(false);
+    }
+  };
+
   // NUEVA FUNCIÓN: Calcula el estado del semáforo para un camión
   const obtenerSemaforo = (bus) => {
     if (bus.estadoServicio !== 'En Proceso' || !bus.historialTiempos[bus.currentArea]?.inicio) return null;
@@ -178,6 +205,6 @@ export const usePatioBloc = () => {
     autobuses, cargando, cargarAutobuses,
     busSeleccionado, areaDestino, setAreaDestino, moviendo,
     abrirModalMover, cerrarModal, confirmarMovimiento, obtenerOcupacion, arrancarServicio,
-    confirmarMovimientoDirecto, obtenerSemaforo, promediosArea
+    confirmarMovimientoDirecto, avanzarBus, avanzarPorNfc, obtenerSemaforo, promediosArea
   };
 };

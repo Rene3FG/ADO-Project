@@ -3,7 +3,7 @@ import { useUsuariosBloc } from '../../logic/useUsuariosBloc';
 
 export const UsuariosPage = () => {
   const {
-    usuarios, roles, cargando, modalAbierto, esEdicion, guardando, formData,
+    usuarios, roles, areas, cargando, modalAbierto, esEdicion, guardando, formData,
     abrirModalNuevo, abrirModalEditar, cerrarModal, handleInputChange, guardarUsuario, eliminarUsuario
   } = useUsuariosBloc();
 
@@ -30,6 +30,7 @@ export const UsuariosPage = () => {
                   <th style={{ padding: '15px' }}>ID / Usuario</th>
                   <th style={{ padding: '15px' }}>Nombre</th>
                   <th style={{ padding: '15px' }}>Rol</th>
+                  <th style={{ padding: '15px' }}>Área asignada</th>
                   <th style={{ padding: '15px', textAlign: 'center' }}>Acciones</th>
                 </tr>
               </thead>
@@ -43,6 +44,7 @@ export const UsuariosPage = () => {
                         {user.rol}
                       </span>
                     </td>
+                    <td style={{ padding: '15px', color: 'var(--text-muted)' }}>{user.areaAsignada || '—'}</td>
                     <td style={{ padding: '15px', textAlign: 'center' }}>
                       <button onClick={() => abrirModalEditar(user)} style={{ background: 'none', border: 'none', color: '#0284c7', fontWeight: 800, cursor: 'pointer', marginRight: '10px' }}>Editar</button>
                       {user.id !== 1 && (
@@ -94,6 +96,19 @@ export const UsuariosPage = () => {
                     style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', marginTop: '5px', boxSizing: 'border-box' }} />
                 </div>
               </div>
+
+              {esEdicion && (
+                <div>
+                  <label style={{ fontWeight: 600, fontSize: '0.9rem' }}>Área asignada</label>
+                  <select name="assigned_area_id" value={formData.assigned_area_id} onChange={handleInputChange}
+                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', marginTop: '5px', boxSizing: 'border-box', backgroundColor: 'white' }}>
+                    <option value="">Sin asignar</option>
+                    {areas.map(a => (
+                      <option key={a.dbId} value={a.dbId}>{a.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button type="button" onClick={cerrarModal} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'white', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>

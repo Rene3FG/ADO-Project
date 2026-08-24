@@ -156,4 +156,15 @@ export const AutobusRepository = {
       body: JSON.stringify({ serie: bus.busId, area_nombre: areaApi }),
     });
   },
+
+  // Avance automático (swipe / NFC): el backend resuelve el siguiente paso de
+  // la ruta del camión y cierra+abre el movimiento en una sola transacción —
+  // reemplaza la orquestación de 2 llamadas de moverAutobus para este flujo.
+  avanzarAutobus: (serie) => apiFetch(`/camiones/${serie}/avanzar`, { method: 'POST' }),
+
+  escanearNfc: (tagUid) =>
+    apiFetch('/nfc/scan', {
+      method: 'POST',
+      body: JSON.stringify({ tag_uid: tagUid }),
+    }),
 };

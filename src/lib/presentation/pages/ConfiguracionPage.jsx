@@ -20,7 +20,7 @@ export const ConfiguracionPage = ({ autobuses = [] }) => {
   const [tabActiva, setTabActiva] = useState('usuarios');
 
   const {
-    usuarios, roles, cargando: cargandoUsuarios, modalAbierto: modalUsuAbierto, esEdicion: esEdicionUsu, guardando: guardandoUsu, formData: formUsu,
+    usuarios, roles, areas: areasParaAsignar, cargando: cargandoUsuarios, modalAbierto: modalUsuAbierto, esEdicion: esEdicionUsu, guardando: guardandoUsu, formData: formUsu,
     abrirModalNuevo: abrirModNuevoUsu, abrirModalEditar: abrirModEditarUsu, cerrarModal: cerrarModUsu, handleInputChange: handleUsuChange, guardarUsuario, eliminarUsuario
   } = useUsuariosBloc();
 
@@ -68,6 +68,7 @@ export const ConfiguracionPage = ({ autobuses = [] }) => {
                       <th style={thStyle}>ID / Usuario</th>
                       <th style={thStyle}>Nombre</th>
                       <th style={thStyle}>Rol</th>
+                      <th style={thStyle}>Área asignada</th>
                       <th style={{ ...thStyle, textAlign: 'center' }}>Acciones</th>
                     </tr>
                   </thead>
@@ -83,6 +84,7 @@ export const ConfiguracionPage = ({ autobuses = [] }) => {
                               {user.rol}
                             </span>
                           </td>
+                          <td style={{ ...tdStyle, color: 'var(--text-muted)' }}>{user.areaAsignada || '—'}</td>
                           <td style={{ ...tdStyle, textAlign: 'center' }}>
                             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                               <button onClick={() => abrirModEditarUsu(user)} style={{ background: 'none', border: 'none', color: '#0284c7', fontWeight: 800, cursor: 'pointer' }}>Editar</button>
@@ -182,6 +184,16 @@ export const ConfiguracionPage = ({ autobuses = [] }) => {
                 </div>
                 <div><label style={{ fontWeight: 600 }}>{esEdicionUsu ? 'Nueva Contraseña' : 'Contraseña'}</label><input type="password" name="password" value={formUsu.password} onChange={handleUsuChange} required={!esEdicionUsu} style={inputStyle} /></div>
               </div>
+
+              {esEdicionUsu && (
+                <div>
+                  <label style={{ fontWeight: 600 }}>Área asignada</label>
+                  <select name="assigned_area_id" value={formUsu.assigned_area_id} onChange={handleUsuChange} style={{ ...inputStyle, backgroundColor: 'white' }}>
+                    <option value="">Sin asignar</option>
+                    {areasParaAsignar.map(a => <option key={a.dbId} value={a.dbId}>{a.nombre}</option>)}
+                  </select>
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button type="button" onClick={cerrarModUsu} style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'white', color: '#333', fontWeight: 600, cursor: 'pointer' }}>Cancelar</button>
