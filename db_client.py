@@ -111,11 +111,20 @@ def upsert_movimiento(conn, data: dict, area_nombre: str, sheets_row: int):
 
     # Las pestañas de área del Sheet NO tienen columna de fecha, así que cada
     # fila histórica se re-importaba como movimiento de HOY y materializaba un
-    # camión fantasma en el patio (33 buses, áreas sobre capacidad). Una fila
-    # ya completada (Salida=TRUE) de un camión sin registro hoy es historia,
-    # no un camión presente: no crear el placeholder.
-    if not registro and data.get("completado"):
-        return
+    # camión fantasma en el patio (33 buses, áreas sobre capacidad). Un camión
+    # legítimo de hoy siempre pasa primero por PLANEACION (POST /corridas o el
+    # pull de PLANEACION), así que ya tiene fila en trips antes de que llegue
+    # su movimiento de área. Si no hay registro Y tampoco hay trips hoy, la
+    # fila del Sheet es historia vieja sin fecha, no un camión presente: no
+    # crear el placeholder. (Reemplaza el check anterior de solo `completado`,
+    # que no cubría filas viejas que quedaron "abiertas" sin Salida marcada.)
+    if not registro:
+        tiene_trip_hoy = conn.execute(
+            text("SELECT 1 FROM trips WHERE date=:f AND serial_number=:s"),
+            {"f": date.today(), "s": data["serie"]}
+        ).fetchone()
+        if not tiene_trip_hoy:
+            return
 
     registro_id = registro[0] if registro else _create_registro_placeholder(conn, data["serie"])
 
