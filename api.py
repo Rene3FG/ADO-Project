@@ -19,6 +19,7 @@ import jwt
 
 from config import DATABASE_URL
 from db_client import AREA_NOMBRE_DB
+from routing import calcular_ruta, siguiente_area
 
 JWT_SECRET = os.environ.get("JWT_SECRET", secrets.token_hex(32))
 JWT_ALGORITHM = "HS256"
@@ -52,6 +53,22 @@ def require_role(*roles):
             raise HTTPException(403, f"Se requiere rol: {', '.join(roles)}")
         return user
     return dep
+
+def get_operador_area(user: dict = Depends(get_current_user)) -> Optional[str]:
+    """None para Admin/Supervisor (sin restricción). Para Operador, el nombre
+    display de su área asignada — resuelto fresco de la DB en cada request
+    (no se embebe en el JWT) para que una reasignación aplique de inmediato,
+    sin esperar a que expire la sesión de 12h."""
+    if user.get("rol") != "Operador":
+        return None
+    with db() as conn:
+        row = conn.execute(text(
+            "SELECT a.name FROM users u JOIN area a ON a.id = u.assigned_area_id"
+            " WHERE u.id = :id"
+        ), {"id": int(user["sub"])}).fetchone()
+    if not row:
+        raise HTTPException(403, "Operador sin área asignada. Contacta al administrador.")
+    return AREA_DB_TO_DISPLAY.get(row.name, row.name)
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
@@ -136,10 +153,11 @@ class UsuarioCreate(BaseModel):
     shift_end_time:   Optional[str] = None
 
 class UsuarioUpdate(BaseModel):
-    first_name: Optional[str] = None
-    last_name:  Optional[str] = None
-    rol:        Optional[str] = None
-    password:   Optional[str] = None
+    first_name:       Optional[str] = None
+    last_name:        Optional[str] = None
+    rol:              Optional[str] = None
+    password:         Optional[str] = None
+    assigned_area_id: Optional[int] = None
 
 class AreaCreate(BaseModel):
     nombre: str
@@ -402,8 +420,17 @@ def get_registro(serie: int, fecha: Optional[str] = Query(default=None)):
     result["checklist"] = rows_to_list(checklist)
     return result
 
+def _area_actual_camion(conn, serie: int) -> Optional[str]:
+    """Nombre display del área donde está el camión ahora mismo (último
+    movimiento, sin importar si ya se completó), o None si nunca tuvo uno."""
+    row = conn.execute(text(
+        "SELECT a.name FROM movements m JOIN area a ON a.id = m.area_id"
+        " WHERE m.serial_number=:s ORDER BY m.id DESC LIMIT 1"
+    ), {"s": serie}).fetchone()
+    return AREA_DB_TO_DISPLAY.get(row.name, row.name) if row else None
+
 @app.put("/registros/{serie}", summary="Actualiza ubicación/avance desde la UI")
-def update_registro(serie: int, body: RegistroUpdate):
+def update_registro(serie: int, body: RegistroUpdate, area_operador: Optional[str] = Depends(get_operador_area)):
     target = str(date.today())
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if not updates:
@@ -415,6 +442,9 @@ def update_registro(serie: int, body: RegistroUpdate):
         ), {"f": target, "s": serie}).fetchone()
         if not existing:
             raise HTTPException(404, f"Registro serie={serie} no encontrado")
+
+        if area_operador and _area_actual_camion(conn, serie) != area_operador:
+            raise HTTPException(403, f"Este camión no está en tu área ({area_operador}).")
 
         set_clauses = ", ".join(f"{REGISTRO_FIELD_DB[k]}=:{k}" for k in updates)
         params = {**updates, "f": target, "s": serie, "ts": datetime.now()}
@@ -442,6 +472,7 @@ def get_movimientos(
     area:  Optional[str] = Query(default=None, description="Nombre del área ej: DIESEL"),
     serie: Optional[int] = Query(default=None, description="Número de serie del camión"),
     fecha: Optional[str] = Query(default=None, description="YYYY-MM-DD, default = hoy"),
+    area_operador: Optional[str] = Depends(get_operador_area),
 ):
     target = fecha or str(date.today())
     q = (
@@ -454,7 +485,14 @@ def get_movimientos(
         " WHERE m.date = :f"
     )
     params = {"f": target}
-    if area:
+    if area_operador:
+        # el operador solo puede consultar su propia área — AREA_DISPLAY_TO_DB
+        # es la traducción real display↔DB que usa el resto de este archivo
+        # (AREA_NOMBRE_DB, usado abajo para el filtro `area`, es otro mapeo
+        # con claves estilo-Sheet en mayúsculas, no compatible con area_operador).
+        q += " AND a.name = :area"
+        params["area"] = AREA_DISPLAY_TO_DB.get(area_operador, area_operador)
+    elif area:
         q += " AND a.name = :area"
         params["area"] = AREA_NOMBRE_DB.get(area, area)
     if serie:
@@ -476,11 +514,15 @@ def get_movimientos(
     return result
 
 @app.post("/movimientos", status_code=201, summary="Registra entrada de camión a un área")
-def create_movimiento(body: MovimientoCreate):
+def create_movimiento(body: MovimientoCreate, area_operador: Optional[str] = Depends(get_operador_area)):
     with db() as conn:
+        db_name = AREA_NOMBRE_DB.get(body.area_nombre, body.area_nombre)
+        if area_operador and db_name != AREA_DISPLAY_TO_DB.get(area_operador, area_operador):
+            raise HTTPException(403, f"Solo puedes registrar entradas a tu área ({area_operador}).")
+
         area_row = conn.execute(text(
             "SELECT id FROM area WHERE name = :n"
-        ), {"n": AREA_NOMBRE_DB.get(body.area_nombre, body.area_nombre)}).fetchone()
+        ), {"n": db_name}).fetchone()
         if not area_row:
             raise HTTPException(400, f"Área '{body.area_nombre}' no existe. "
                                      f"Consulta GET /areas para ver las disponibles.")
@@ -516,17 +558,24 @@ def create_movimiento(body: MovimientoCreate):
 
     return {"ok": True, "id": result[0], "serie": body.serie, "area": body.area_nombre}
 
+def _area_movimiento(conn, mov_id: int) -> Optional[str]:
+    row = conn.execute(text(
+        "SELECT a.name FROM movements m JOIN area a ON a.id = m.area_id WHERE m.id=:id"
+    ), {"id": mov_id}).fetchone()
+    return row.name if row else None
+
 @app.put("/movimientos/{mov_id}", summary="Actualiza datos de un movimiento")
-def update_movimiento(mov_id: int, body: MovimientoUpdate):
+def update_movimiento(mov_id: int, body: MovimientoUpdate, area_operador: Optional[str] = Depends(get_operador_area)):
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(400, "No hay campos para actualizar")
 
     with db() as conn:
-        if not conn.execute(text(
-            "SELECT id FROM movements WHERE id=:id"
-        ), {"id": mov_id}).fetchone():
+        area_db = _area_movimiento(conn, mov_id)
+        if area_db is None:
             raise HTTPException(404, f"Movimiento id={mov_id} no encontrado")
+        if area_operador and area_db != AREA_DISPLAY_TO_DB.get(area_operador, area_operador):
+            raise HTTPException(403, f"Este movimiento no está en tu área ({area_operador}).")
 
         set_clauses = ", ".join(f"{MOVIMIENTO_FIELD_DB[k]}=:{k}" for k in updates)
         conn.execute(text(
@@ -538,12 +587,13 @@ def update_movimiento(mov_id: int, body: MovimientoUpdate):
     return {"ok": True, "id": mov_id}
 
 @app.put("/movimientos/{mov_id}/completar", summary="Marca un movimiento como completado")
-def completar_movimiento(mov_id: int):
+def completar_movimiento(mov_id: int, area_operador: Optional[str] = Depends(get_operador_area)):
     with db() as conn:
-        if not conn.execute(text(
-            "SELECT id FROM movements WHERE id=:id"
-        ), {"id": mov_id}).fetchone():
+        area_db = _area_movimiento(conn, mov_id)
+        if area_db is None:
             raise HTTPException(404, f"Movimiento id={mov_id} no encontrado")
+        if area_operador and area_db != AREA_DISPLAY_TO_DB.get(area_operador, area_operador):
+            raise HTTPException(403, f"Este movimiento no está en tu área ({area_operador}).")
 
         now = datetime.now()
         conn.execute(text(
@@ -611,7 +661,10 @@ def delete_area(area_id: int, _user: dict = Depends(require_role("Administrador"
 # ── Camiones (`/camiones`) — vista unificada para testing/full-integration ──
 
 @app.get("/camiones", summary="Lista camiones activos hoy con área actual")
-def get_camiones(fecha: Optional[str] = Query(default=None)):
+def get_camiones(
+    fecha: Optional[str] = Query(default=None),
+    area_operador: Optional[str] = Depends(get_operador_area),
+):
     target = fecha or str(date.today())
     with db() as conn:
         rows = conn.execute(text("""
@@ -623,7 +676,9 @@ def get_camiones(fecha: Optional[str] = Query(default=None)):
                    t.driver_name AS conductor,
                    t.origin_terminal AS origen,
                    t.destination_terminal AS destino,
-                   t.notes AS observaciones
+                   t.notes AS observaciones,
+                   t.needs_drainage, t.needs_diesel, t.needs_adblue,
+                   t.needs_workshop, t.needs_int_wash, t.needs_ext_wash
             FROM records r
             LEFT JOIN trips t ON t.serial_number = r.serial_number AND t.date = r.date
             LEFT JOIN bus_types bt ON bt.id = t.type_id
@@ -631,7 +686,7 @@ def get_camiones(fecha: Optional[str] = Query(default=None)):
             ORDER BY r.serial_number
         """), {"f": target}).fetchall()
 
-    return [
+    resultado = [
         {
             "id": str(r.id),
             "codigo": str(r.serial_number),
@@ -641,10 +696,13 @@ def get_camiones(fecha: Optional[str] = Query(default=None)):
             "origen": r.origen or "",
             "destino": r.destino or "",
             "observaciones": r.observaciones or "",
-            "ruta": [],
+            "ruta": calcular_ruta(r),
         }
         for r in rows
     ]
+    if area_operador:
+        resultado = [c for c in resultado if c["area"] == area_operador]
+    return resultado
 
 @app.put("/camiones/{camion_id}", summary="Mueve camión a otra área o lo saca del patio")
 def update_camion(camion_id: int, body: CamionUpdate):
@@ -708,6 +766,98 @@ def delete_camion(camion_id: int):
         ), {"id": camion_id, "ts": datetime.now()})
 
     return {"ok": True, "id": camion_id}
+
+
+@app.post("/camiones/{serie}/avanzar", summary="Avanza el camión al siguiente paso de su ruta (swipe/NFC)")
+def avanzar_camion(serie: int, area_operador: Optional[str] = Depends(get_operador_area)):
+    target = str(date.today())
+    with db() as conn:
+        record = conn.execute(text(
+            "SELECT id FROM records WHERE serial_number=:s AND date=:f AND is_active=true"
+        ), {"s": serie, "f": target}).fetchone()
+        if not record:
+            raise HTTPException(404, f"Camión serie={serie} no encontrado para hoy")
+
+        trip = conn.execute(text(
+            "SELECT needs_drainage, needs_diesel, needs_adblue,"
+            " needs_workshop, needs_int_wash, needs_ext_wash"
+            " FROM trips WHERE serial_number=:s AND date=:f"
+        ), {"s": serie, "f": target}).fetchone()
+
+        ultimo_mov = conn.execute(text(
+            "SELECT m.id, a.name AS area_db FROM movements m"
+            " JOIN area a ON a.id = m.area_id"
+            " WHERE m.serial_number=:s ORDER BY m.id DESC LIMIT 1"
+        ), {"s": serie}).fetchone()
+        area_actual = AREA_DB_TO_DISPLAY.get(ultimo_mov.area_db, ultimo_mov.area_db) if ultimo_mov else None
+
+        if area_operador and area_actual != area_operador:
+            raise HTTPException(403, f"Este camión no está en tu área ({area_operador}).")
+
+        ruta = calcular_ruta(trip)
+        destino = siguiente_area(area_actual, ruta)
+
+        now = datetime.now()
+        if ultimo_mov:
+            conn.execute(text(
+                "UPDATE movements SET is_completed=true, exit_time=:ts,"
+                " is_dirty=true, last_modified_by='app', last_modified_at=:ts"
+                " WHERE id=:id"
+            ), {"id": ultimo_mov.id, "ts": now})
+
+        if destino == "Salida":
+            conn.execute(text(
+                "UPDATE records SET is_active=false, is_dirty=true,"
+                " last_modified_by='app', last_modified_at=:ts WHERE id=:id"
+            ), {"id": record.id, "ts": now})
+        else:
+            db_name = AREA_DISPLAY_TO_DB.get(destino)
+            area_row = conn.execute(text(
+                "SELECT id FROM area WHERE name=:n"
+            ), {"n": db_name}).fetchone()
+            if not area_row:
+                raise HTTPException(404, f"Área '{destino}' no encontrada en la DB")
+            conn.execute(text(
+                "INSERT INTO movements (record_id, area_id, serial_number, date, entry_time)"
+                " VALUES (:rid, :aid, :s, :d, :t)"
+            ), {"rid": record.id, "aid": area_row.id, "s": serie, "d": now.date(), "t": now.time()})
+            conn.execute(text(
+                "UPDATE records SET is_dirty=true, last_modified_by='app',"
+                " last_modified_at=:ts WHERE id=:id"
+            ), {"id": record.id, "ts": now})
+
+    return {"ok": True, "serie": serie, "area_anterior": area_actual, "area_nueva": destino}
+
+
+# ── NFC (`/nfc`) ───────────────────────────────────────────────────
+
+class NfcTagCreate(BaseModel):
+    tag_uid: str
+    serial_number: int
+
+class NfcScan(BaseModel):
+    tag_uid: str
+
+@app.post("/nfc/tags", status_code=201, summary="Asocia un tag NFC a un camión (admin/supervisor)")
+def registrar_nfc_tag(body: NfcTagCreate, user: dict = Depends(require_role("Administrador", "Supervisor"))):
+    with db() as conn:
+        conn.execute(text("""
+            INSERT INTO nfc_tags (tag_uid, serial_number, assigned_by)
+            VALUES (:uid, :s, :by)
+            ON CONFLICT (tag_uid) DO UPDATE SET
+                serial_number=EXCLUDED.serial_number, assigned_at=now(), assigned_by=EXCLUDED.assigned_by
+        """), {"uid": body.tag_uid, "s": body.serial_number, "by": user.get("username")})
+    return {"ok": True, "tag_uid": body.tag_uid, "serial_number": body.serial_number}
+
+@app.post("/nfc/scan", summary="Lectura de tag NFC — avanza el camión asociado")
+def escanear_nfc_tag(body: NfcScan, area_operador: Optional[str] = Depends(get_operador_area)):
+    with db() as conn:
+        tag = conn.execute(text(
+            "SELECT serial_number FROM nfc_tags WHERE tag_uid=:uid"
+        ), {"uid": body.tag_uid}).fetchone()
+    if not tag:
+        raise HTTPException(404, f"Tag '{body.tag_uid}' no está registrado a ningún camión.")
+    return avanzar_camion(tag.serial_number, area_operador)
 
 
 # ── Historial (`/historial`) ──────────────────────────────────────
@@ -892,8 +1042,10 @@ def get_roles():
 def get_usuarios():
     with db() as conn:
         rows = conn.execute(text(
-            "SELECT u.id, u.username, u.first_name, u.last_name, u.role_id, r.name AS rol"
+            "SELECT u.id, u.username, u.first_name, u.last_name, u.role_id, r.name AS rol,"
+            " u.assigned_area_id, aa.name AS area_asignada_db"
             " FROM users u JOIN roles r ON u.role_id = r.id"
+            " LEFT JOIN area aa ON aa.id = u.assigned_area_id"
             " WHERE u.is_active = true ORDER BY u.id"
         )).fetchall()
     return [
@@ -903,6 +1055,8 @@ def get_usuarios():
             "nombre": f"{r.first_name} {r.last_name}".strip(),
             "rol": r.rol,
             "role_id": r.role_id,
+            "assigned_area_id": r.assigned_area_id,
+            "areaAsignada": AREA_DB_TO_DISPLAY.get(r.area_asignada_db or "", r.area_asignada_db),
         }
         for r in rows
     ]
@@ -929,6 +1083,10 @@ def update_usuario(usuario_id: int, body: UsuarioUpdate):
         if body.password and body.password != "***":
             sets.append("password_hash = :ph")
             params["ph"] = bcrypt.hashpw(body.password.encode(), bcrypt.gensalt()).decode()
+        if body.assigned_area_id is not None:
+            if not conn.execute(text("SELECT 1 FROM area WHERE id = :a"), {"a": body.assigned_area_id}).fetchone():
+                raise HTTPException(400, f"Área id={body.assigned_area_id} no existe")
+            sets.append("assigned_area_id = :area_id"); params["area_id"] = body.assigned_area_id
 
         if sets:
             conn.execute(text(f"UPDATE users SET {', '.join(sets)} WHERE id = :id"), params)
@@ -984,8 +1142,9 @@ def login(body: LoginRequest):
     with db() as conn:
         row = conn.execute(text(
             "SELECT u.id, u.username, u.first_name, u.last_name,"
-            " u.password_hash, u.is_active, r.name AS rol"
+            " u.password_hash, u.is_active, r.name AS rol, aa.name AS area_asignada_db"
             " FROM users u JOIN roles r ON u.role_id = r.id"
+            " LEFT JOIN area aa ON aa.id = u.assigned_area_id"
             " WHERE u.username = :username"
         ), {"username": body.username}).fetchone()
 
@@ -1003,6 +1162,7 @@ def login(body: LoginRequest):
         "id": row.id,
         "username": row.username,
         "nombre": f"{row.first_name} {row.last_name}".strip(),
+        "areaAsignada": AREA_DB_TO_DISPLAY.get(row.area_asignada_db or "", row.area_asignada_db),
         "rol": rol,
         "token": token,
     }
