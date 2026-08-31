@@ -844,8 +844,10 @@ class NfcTagCreate(BaseModel):
 class NfcScan(BaseModel):
     tag_uid: str
 
-@app.post("/nfc/tags", status_code=201, summary="Asocia un tag NFC a un camión (admin/supervisor)")
-def registrar_nfc_tag(body: NfcTagCreate, user: dict = Depends(require_role("Administrador", "Supervisor"))):
+@app.post("/nfc/tags", status_code=201, summary="Asocia un tag NFC a un camión")
+def registrar_nfc_tag(body: NfcTagCreate, user: dict = Depends(require_role("Administrador", "Supervisor", "Operador"))):
+    # El Operador también puede asociar: es quien recibe la unidad y escanea
+    # el tag en el flujo de registro de llegada por NFC.
     with db() as conn:
         conn.execute(text("""
             INSERT INTO nfc_tags (tag_uid, serial_number, assigned_by)
