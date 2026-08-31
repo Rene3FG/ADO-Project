@@ -130,10 +130,10 @@ def area_config(sheet_key, area_nombre):
             (1, "hora_entrada",  parse_time_str),     # string "HH:MM:SS"
             (2, "completado",    parse_bool),
             (3, "hora_salida",   excel_serial_to_datetime),
-            (4, "hora_entrada2", excel_serial_to_time),  # decimal Excel
+            (4, "hora_entrada_excel", excel_serial_to_time),  # decimal Excel
             (5, "espacios_disp", parse_int),  # solo para lectura, no se persiste
         ],
-        # hora_entrada final = hora_entrada2 (decimal) si existe, sino parse de col 1
+        # hora_entrada final = hora_entrada_excel (decimal) si existe, sino parse de col 1
     }
 
 DIESEL          = area_config("DIESEL",          "DIESEL")
@@ -157,7 +157,7 @@ TALLER = {
         (1, "hora_entrada",  parse_time_str),
         (2, "completado",    parse_bool),
         (3, "hora_salida",   excel_serial_to_datetime),
-        (4, "hora_entrada2", excel_serial_to_time),
+        (4, "hora_entrada_excel", excel_serial_to_time),
         (5, "duracion_dias", parse_float),
     ],
 

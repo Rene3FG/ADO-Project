@@ -17,7 +17,15 @@ from mapping import (
     PULL_ORDER, PUSH_ORDER
 )
 
+# Global de módulo: una sola conexión a Sheets, abierta una vez al importar
+# y reutilizada en todos los ciclos de sync (pull_all/push_all), en vez de
+# reautenticar en cada llamada.
 sheets = SheetsClient()
+
+# type_id por defecto cuando se crea un registro sin pasar por PLANEACION
+# (placeholder de camión fantasma) o se pull-ea CENTRAL sin corrida asociada.
+# Corresponde a "AU" en bus_types — el operador corrige el tipo real después.
+DEFAULT_TIPO_ID = 1
 
 
 # PULL
@@ -40,6 +48,11 @@ def pull_all():
 
 
 def _pull_hoja(nombre: str, config: dict):
+    """Lee y aplica al DB todas las filas de una hoja (o el snapshot de KPIS).
+
+    Asume que `config` viene de PULL_ORDER (tiene la forma de PLANEACION/
+    CENTRAL/TALLER/TIEMPOS/area_config según corresponda a `nombre`).
+    """
     if nombre == "KPIS":
         _pull_kpis(config)
         return
@@ -51,24 +64,28 @@ def _pull_hoja(nombre: str, config: dict):
     # transacción pero las demás filas siguen en transacciones nuevas. Con
     # una sola transacción para toda la hoja, el primer error envenena la
     # conexión y tira TODA la hoja del ciclo (ver InFailedSqlTransaction).
-    for i, row in enumerate(rows, start=2):   # fila 2 = primera de datos
+    for sheets_row, row in enumerate(rows, start=2):   # fila 2 = primera de datos
         try:
             with engine.begin() as conn:
                 if nombre == "PLANEACION":
-                    _pull_row_planeacion(conn, row, i, config)
+                    _pull_row_planeacion(conn, row, sheets_row, config)
                 elif nombre == "CENTRAL":
-                    _pull_row_central(conn, row, i, config)
+                    _pull_row_central(conn, row, sheets_row, config)
                 elif nombre == "TALLER":
-                    _pull_row_taller(conn, row, i, config)
+                    _pull_row_taller(conn, row, sheets_row, config)
                 elif nombre == "TIEMPOS":
-                    _pull_row_tiempos(conn, row, i, config)
+                    _pull_row_tiempos(conn, row, sheets_row, config)
                 else:
-                    _pull_row_area(conn, row, i, config, nombre)
+                    _pull_row_area(conn, row, sheets_row, config, nombre)
         except Exception as e:
-            logger.warning(f"[PULL] {nombre} fila {i}: {e}")
+            logger.warning(f"[PULL] {nombre} fila {sheets_row}: {e}")
 
 
 def _pull_row_planeacion(conn, row, sheets_row, config):
+    """Sube una fila de PLANEACION a `trips` vía upsert_corrida (Last Write Wins).
+
+    Asume `conn` dentro de una transacción abierta; filas sin serie se ignoran.
+    """
     data = {}
     for col_idx, campo, fn in config["columnas"]:
         val = row[col_idx] if col_idx < len(row) else None
@@ -86,6 +103,11 @@ def _pull_row_planeacion(conn, row, sheets_row, config):
 
 
 def _pull_row_central(conn, row, sheets_row, config):
+    """Upsertea el registro CENTRAL de una serie y su checklist de áreas.
+
+    Asume `conn` dentro de una transacción abierta; si el registro ya existe
+    con last_modified_by='app', el Sheet no lo pisa (WHERE de la query).
+    """
     from mapping import parse_int, parse_float, parse_bool, excel_serial_to_datetime
 
     data = {}
@@ -99,7 +121,7 @@ def _pull_row_central(conn, row, sheets_row, config):
     conn.execute(text("""
         INSERT INTO records (date, serial_number, type_id, registration_time, progress, location_text, time_remaining,
                               sheets_row, last_modified_by, sheets_synced_at, is_dirty)
-        VALUES (CURRENT_DATE, :serie, 1, :hora_registro, :avance, :ubicacion_texto, :tiempo_restante,
+        VALUES (CURRENT_DATE, :serie, :tipo_id, :hora_registro, :avance, :ubicacion_texto, :tiempo_restante,
                 :sheets_row, 'sheets', now(), false)
         ON CONFLICT (date, serial_number) DO UPDATE SET
             progress=EXCLUDED.progress,
@@ -109,7 +131,7 @@ def _pull_row_central(conn, row, sheets_row, config):
             sheets_synced_at=now(),
             is_dirty=false
         WHERE records.last_modified_by = 'sheets'
-    """), {**data, "sheets_row": sheets_row})
+    """), {**data, "sheets_row": sheets_row, "tipo_id": DEFAULT_TIPO_ID})
 
     # Upsert checklist
     registro = conn.execute(
@@ -137,6 +159,11 @@ def _pull_row_central(conn, row, sheets_row, config):
 
 
 def _pull_row_area(conn, row, sheets_row, config, nombre):
+    """Upsertea un movimiento de área (DIESEL/ADDBLUE/DESFOGUE/LAVADO*) vía upsert_movimiento.
+
+    Asume `conn` dentro de una transacción abierta; ignora filas sin serie u
+    hora de entrada.
+    """
     from mapping import parse_int, parse_float, parse_bool, parse_time_str, excel_serial_to_datetime
 
     data = {}
@@ -148,15 +175,20 @@ def _pull_row_area(conn, row, sheets_row, config, nombre):
         return
 
     # hora_entrada final: preferir el decimal de Excel (más preciso)
-    if data.get("hora_entrada2"):
-        data["hora_entrada"] = data["hora_entrada2"]
-    data.pop("hora_entrada2", None)
+    if data.get("hora_entrada_excel"):
+        data["hora_entrada"] = data["hora_entrada_excel"]
+    data.pop("hora_entrada_excel", None)
     data.pop("espacios_disp", None)
 
     upsert_movimiento(conn, data, config["area_nombre"], sheets_row)
 
 
 def _pull_row_taller(conn, row, sheets_row, config):
+    """Upsertea el movimiento de TALLER y su detalle en workshop_details.
+
+    Asume `conn` dentro de una transacción abierta; el detalle solo se
+    escribe si el movimiento y su registro asociado ya existen en el DB.
+    """
     from mapping import parse_int, parse_bool, parse_float, parse_time_str, excel_serial_to_datetime
 
     data_mov = {}
@@ -167,9 +199,9 @@ def _pull_row_taller(conn, row, sheets_row, config):
     if not data_mov.get("serie"):
         return
 
-    if data_mov.get("hora_entrada2"):
-        data_mov["hora_entrada"] = data_mov["hora_entrada2"]
-    data_mov.pop("hora_entrada2", None)
+    if data_mov.get("hora_entrada_excel"):
+        data_mov["hora_entrada"] = data_mov["hora_entrada_excel"]
+    data_mov.pop("hora_entrada_excel", None)
 
     upsert_movimiento(conn, data_mov, "TALLER", sheets_row)
 
@@ -220,6 +252,11 @@ def _pull_row_taller(conn, row, sheets_row, config):
 
 
 def _pull_row_tiempos(conn, row, sheets_row, config):
+    """Upsertea la fila de TIEMPOS en `times` (clave única: serial_number).
+
+    Asume `conn` dentro de una transacción abierta; si el registro ya existe
+    con last_modified_by='app', el Sheet no lo pisa (WHERE de la query).
+    """
     data = {}
     for col_idx, campo, fn in config["columnas"]:
         val = row[col_idx] if col_idx < len(row) else None
@@ -249,12 +286,18 @@ def _pull_row_tiempos(conn, row, sheets_row, config):
 
 
 def _pull_kpis(config):
+    """Lee el snapshot de KPIs celda por celda y lo inserta en kpis__snapshot.
+
+    Siempre INSERT (nunca UPSERT); una celda que falle al leerse queda en
+    None mas no aborta el snapshot completo.
+    """
     data = {}
     for celda, campo, fn in config["celdas"]:
         try:
             val = sheets.read_cell(config["sheet"], celda)
             data[campo] = fn(val)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"[PULL] KPIS celda {celda} ({campo}): {e}")
             data[campo] = None
 
     with engine.begin() as conn:
@@ -299,6 +342,7 @@ def _push_hoja(nombre: str, config: dict):
 
 
 def _push_area(config):
+    """Pushea a Sheets los movimientos dirty (last_modified_by='app') de un área."""
     area_nombre = config["area_nombre"]
     with engine.begin() as conn:
         rows = get_dirty_movimientos(conn, area_nombre)
@@ -380,6 +424,7 @@ def _push_central(config):
 
 
 def _push_tiempos(config):
+    """Pushea a Sheets los tiempos dirty (last_modified_by='app')."""
     with engine.begin() as conn:
         rows = conn.execute(
             text("SELECT * FROM times WHERE is_dirty=true AND last_modified_by='app'")
@@ -408,6 +453,8 @@ def _push_tiempos(config):
 
 
 def _push_planeacion(config):
+    """Pushea a Sheets las corridas dirty (last_modified_by='app'), agregadas
+    ad-hoc vía POST /corridas y no solo las planeadas originalmente en el Sheet."""
     with engine.begin() as conn:
         from datetime import date
         corridas = conn.execute(
@@ -488,6 +535,11 @@ def _time_to_excel_serial(t) -> float | None:
 
 
 def _log_sync(hoja: str, direccion: str, errores: dict, inicio: datetime):
+    """Inserta un registro en sync_logs para un ciclo PULL_ALL/PUSH_ALL completo.
+
+    `errores` es un dict {nombre_hoja: mensaje} de las hojas que fallaron en
+    ese ciclo (vacío si todas corrieron sin excepción no capturada).
+    """
     with engine.begin() as conn:
         conn.execute(
             text("""

@@ -6,7 +6,15 @@ from loguru import logger
 from sqlalchemy import create_engine, text
 from config import DATABASE_URL
 
+# Global de módulo: pool de conexiones compartido por todo el sync engine y
+# la API (import de `engine` desde aquí), no una conexión por request.
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+
+# type_id por defecto para registros creados sin pasar por PLANEACION
+# (camión fantasma o CENTRAL sin corrida asociada). Corresponde a "AU" en
+# bus_types — el operador corrige el tipo real después. Debe coincidir con
+# DEFAULT_TIPO_ID en sync_engine.py.
+DEFAULT_TIPO_ID = 1
 
 # El schema en Supabase usa nombres de área en inglés; el resto del código
 # (Sheets, mapping.py) sigue usando los nombres en español.
@@ -23,12 +31,23 @@ AREA_NOMBRE_DB = {
 # ── Helpers ────────────────────────────────────────────────
 
 def get_tipo_id(conn, nombre: str) -> int | None:
+    """Busca el id de bus_types por nombre exacto (AU/SUR/TXO/ETN/ADO/PLATINO).
+
+    Asume `conn` dentro de una transacción abierta. Retorna None si no existe.
+    """
     row = conn.execute(
         text("SELECT id FROM bus_types WHERE name = :n"), {"n": nombre}
     ).fetchone()
     return row[0] if row else None
 
 def get_area_id(conn, nombre: str) -> int | None:
+    """Busca el id de `area` por nombre en español o inglés.
+
+    `nombre` puede venir en español (el que usa Sheets/mapping.py, ej.
+    "TALLER") o ya en inglés (el que usa la DB); se traduce vía
+    AREA_NOMBRE_DB si hace falta. Asume `conn` dentro de una transacción
+    abierta. Retorna None si no existe.
+    """
     row = conn.execute(
         text("SELECT id FROM area WHERE name = :n"), {"n": AREA_NOMBRE_DB.get(nombre, nombre)}
     ).fetchone()
@@ -96,6 +115,11 @@ def upsert_corrida(conn, data: dict, sheets_row: int):
 # ── MOVIMIENTOS
 
 def upsert_movimiento(conn, data: dict, area_nombre: str, sheets_row: int):
+    """Upsertea un movimiento de área en `movements` (Last Write Wins).
+
+    Asume `conn` dentro de una transacción abierta y que `data` ya trae
+    'serie' y 'hora_entrada'. No hace nada si el área no existe en el DB.
+    """
     area_id = get_area_id(conn, area_nombre)
     if not area_id:
         return
@@ -236,15 +260,19 @@ def archivar_turno(conn, turno: int, usuario_id: int):
 # ── HELPERS INTERNOS
 
 def _create_registro_placeholder(conn, serie: int) -> int:
-    """Crea un registro mínimo si no existe (el operador lo completará)"""
+    """Crea un registro mínimo si no existe (el operador lo completará).
+
+    Asume `conn` dentro de una transacción abierta. Usa DEFAULT_TIPO_ID
+    como tipo provisional hasta que se corrija manualmente.
+    """
     result = conn.execute(
         text("""
             INSERT INTO records (date, serial_number, type_id, last_modified_by)
-            VALUES (:f, :s, 1, 'sheets')
+            VALUES (:f, :s, :tipo_id, 'sheets')
             ON CONFLICT (date, serial_number) DO NOTHING
             RETURNING id
         """),
-        {"f": date.today(), "s": serie}
+        {"f": date.today(), "s": serie, "tipo_id": DEFAULT_TIPO_ID}
     ).fetchone()
     if result:
         return result[0]

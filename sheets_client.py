@@ -84,5 +84,5 @@ class SheetsClient:
         result = ""
         while n > 0:
             n, rem = divmod(n - 1, 26)
-            result = chr(65 + rem) + result
+            result = chr(ord('A') + rem) + result
         return result
