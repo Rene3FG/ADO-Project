@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, time
+from loguru import logger
 from config import SPREADSHEET_ID
 
 # Nombre hojas
@@ -25,12 +26,14 @@ def excel_serial_to_datetime(serial):
     return EXCEL_EPOCH + timedelta(days=serial)
 
 def excel_serial_to_time(serial):
+    """Igual que excel_serial_to_datetime pero descarta la parte de fecha."""
     if serial is None or serial == '':
         return None
     dt = excel_serial_to_datetime(serial)
     return dt.time()
 
 def parse_bool(val):
+    """Sheets manda bool nativo o el string 'TRUE'/'FALSE'; cualquier otra cosa → False."""
     if isinstance(val, bool):
         return val
     if isinstance(val, str):
@@ -38,25 +41,28 @@ def parse_bool(val):
     return False
 
 def parse_int(val, default=None):
+    """Convierte a int tolerando decimales de Sheets (ej. 789.0) y vacíos/None."""
     try:
         return int(float(val)) if val not in (None, '') else default
     except (ValueError, TypeError):
         return default
 
 def parse_float(val, default=None):
+    """Como parse_int pero preserva el decimal; vacíos/None → `default`."""
     try:
         return float(val) if val not in (None, '') else default
     except (ValueError, TypeError):
         return default
 
 def parse_time_str(val):
-    """'11:19:32' → time object"""
+    """'11:19:32' → time object. Formato inesperado en `val` → None (no crashea el pull)."""
     if not val:
         return None
     try:
         parts = str(val).strip().split(':')
         return time(int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) > 2 else 0)
-    except Exception:
+    except (ValueError, IndexError) as e:
+        logger.warning(f"parse_time_str: valor inválido {val!r}: {e}")
         return None
 
 
@@ -119,6 +125,11 @@ CENTRAL = {
 # ────────────────────────────────────────────────────────────
 
 def area_config(sheet_key, area_nombre):
+    """Genera el dict de config PULL/PUSH para una pestaña de área (DIESEL/ADDBLUE/etc).
+
+    `sheet_key` debe existir en SHEET_NAMES; `area_nombre` es el nombre en
+    español que espera get_area_id (db_client.py) para traducir a la DB.
+    """
     return {
         "sheet":       SHEET_NAMES[sheet_key],
         "rango":       "A2:F500",

@@ -11,6 +11,12 @@ SCOPES = [
 ]
 
 class SheetsClient:
+    """Envoltura delgada sobre gspread para leer/escribir el Spreadsheet del SCA.
+
+    Todas las filas/columnas de escritura (write_row, append_row, update_cell)
+    son 1-indexed, igual que la API de Sheets.
+    """
+
     def __init__(self):
         creds = Credentials.from_service_account_file(GOOGLE_CREDS_FILE, scopes=SCOPES)
         self.client = gspread.authorize(creds)

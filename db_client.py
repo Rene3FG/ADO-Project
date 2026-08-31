@@ -282,4 +282,9 @@ def _create_registro_placeholder(conn, serie: int) -> int:
     ).fetchone()[0]
 
 def _log_conflict(conn, hoja: str, serie: int, ts_app: datetime):
+    """Deja constancia en el log de un conflicto Last-Write-Wins ganado por la app.
+
+    `conn` se recibe por consistencia con el resto de helpers de este módulo
+    aunque hoy no se usa (no hay tabla de conflictos, solo log).
+    """
     logger.warning(f"[CONFLICT LOG] hoja={hoja} serie={serie} app_ts={ts_app}")

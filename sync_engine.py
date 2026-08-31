@@ -27,6 +27,12 @@ sheets = SheetsClient()
 # Corresponde a "AU" en bus_types — el operador corrige el tipo real después.
 DEFAULT_TIPO_ID = 1
 
+# Un serial de Excel es la fracción del día transcurrida (0.5 = mediodía);
+# se usan para convertir datetime/time de Postgres al mismo formato decimal.
+SECONDS_PER_DAY = 24 * 60 * 60
+SECONDS_PER_HOUR = 60 * 60
+SECONDS_PER_MINUTE = 60
+
 
 # PULL
 
@@ -331,6 +337,7 @@ def push_all():
 
 
 def _push_hoja(nombre: str, config: dict):
+    """Despacha el push de una hoja a su rutina específica según `nombre`."""
     if nombre in ("DIESEL","ADDBLUE","TALLER","DESFOGUE","LAVADO EXTERIOR","LAVADO INTERIOR"):
         _push_area(config)
     elif nombre == "CENTRAL":
@@ -469,20 +476,20 @@ def _push_planeacion(config):
             {"f": date.today()}
         ).fetchall()
 
-        for c in corridas:
-            fila = c.sheets_row
+        for corrida in corridas:
+            fila = corrida.sheets_row
             valores = [
-                _time_to_excel_serial(c.scheduled_time) or "",
-                c.serial_number,
-                c.tipo_nombre,
-                c.needs_reception or 0,
-                c.needs_drainage or 0,
-                c.needs_diesel or 0,
-                c.needs_adblue or 0,
-                c.needs_ext_wash or 0,
-                c.needs_int_wash or 0,
-                c.needs_workshop or 0,
-                _time_to_excel_serial(c.departure_time) or "",
+                _time_to_excel_serial(corrida.scheduled_time) or "",
+                corrida.serial_number,
+                corrida.tipo_nombre,
+                corrida.needs_reception or 0,
+                corrida.needs_drainage or 0,
+                corrida.needs_diesel or 0,
+                corrida.needs_adblue or 0,
+                corrida.needs_ext_wash or 0,
+                corrida.needs_int_wash or 0,
+                corrida.needs_workshop or 0,
+                _time_to_excel_serial(corrida.departure_time) or "",
             ]
 
             if fila:
@@ -491,11 +498,11 @@ def _push_planeacion(config):
                 fila = sheets.append_row(config["sheet"], valores)
                 conn.execute(
                     text("UPDATE trips SET sheets_row=:r WHERE id=:id"),
-                    {"r": fila, "id": c.id}
+                    {"r": fila, "id": corrida.id}
                 )
 
-            mark_synced(conn, "trips", c.id)
-            logger.info(f"[PUSH] PLANEACION serie={c.serial_number} fila={fila}")
+            mark_synced(conn, "trips", corrida.id)
+            logger.info(f"[PUSH] PLANEACION serie={corrida.serial_number} fila={fila}")
 
 
 # CICLO PRINCIPAL
@@ -515,6 +522,7 @@ def run_sync_cycle():
 # ── Utilidades
 
 def _datetime_to_excel_serial(dt) -> float | None:
+    """Convierte un datetime de Postgres al serial decimal de Excel (inverso de excel_serial_to_datetime)."""
     if dt is None:
         return None
     from mapping import EXCEL_EPOCH
@@ -524,14 +532,15 @@ def _datetime_to_excel_serial(dt) -> float | None:
     if dt.tzinfo is not None:
         dt = dt.replace(tzinfo=None)
     delta = dt - EXCEL_EPOCH
-    return delta.days + delta.seconds / 86400
+    return delta.days + delta.seconds / SECONDS_PER_DAY
 
 
 def _time_to_excel_serial(t) -> float | None:
     """Igual que _datetime_to_excel_serial pero para columnas TIME (sin fecha)."""
     if t is None:
         return None
-    return (t.hour * 3600 + t.minute * 60 + t.second) / 86400
+    total_seconds = t.hour * SECONDS_PER_HOUR + t.minute * SECONDS_PER_MINUTE + t.second
+    return total_seconds / SECONDS_PER_DAY
 
 
 def _log_sync(hoja: str, direccion: str, errores: dict, inicio: datetime):
