@@ -1,0 +1,21 @@
+name: Deploy a Render (rama Excel)
+
+# La GitHub App de Render no recibe los eventos de push de este repo
+# (todos los deploys desde julio han sido manuales pese a Auto-Deploy "On Commit"),
+# así que el deploy se dispara explícitamente vía el Deploy Hook del servicio.
+on:
+  push:
+    branches: [Excel]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar Deploy Hook de Render
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$RENDER_DEPLOY_HOOK")
+          echo "Render respondió HTTP $code"
+          test "$code" = "200"
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
