@@ -774,8 +774,12 @@ def delete_camion(camion_id: int):
 def avanzar_camion(serie: int, area_operador: Optional[str] = Depends(get_operador_area)):
     target = str(date.today())
     with db() as conn:
+        # FOR UPDATE serializa avances concurrentes del mismo camión (doble
+        # tap, red lenta, o el propio lector NFC reportando el tag varias
+        # veces): la segunda transacción espera a que la primera confirme y
+        # relee el estado ya actualizado, en vez de duplicar el movimiento.
         record = conn.execute(text(
-            "SELECT id FROM records WHERE serial_number=:s AND date=:f AND is_active=true"
+            "SELECT id FROM records WHERE serial_number=:s AND date=:f AND is_active=true FOR UPDATE"
         ), {"s": serie, "f": target}).fetchone()
         if not record:
             raise HTTPException(404, f"Camión serie={serie} no encontrado para hoy")
