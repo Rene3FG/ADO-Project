@@ -735,9 +735,11 @@ def update_camion(camion_id: int, body: CamionUpdate):
 
             now = datetime.now()
             conn.execute(text(
-                "INSERT INTO movements (area_id, serial_number, date, entry_time)"
-                " VALUES (:aid, :s, :d, :t)"
-            ), {"aid": area_row.id, "s": record.serial_number, "d": now.date(), "t": now.time()})
+                "INSERT INTO movements"
+                " (record_id, area_id, serial_number, date, entry_time, is_dirty, last_modified_by, last_modified_at)"
+                " VALUES (:rid, :aid, :s, :d, :t, true, 'app', :ts)"
+            ), {"rid": record.id, "aid": area_row.id, "s": record.serial_number,
+                "d": now.date(), "t": now.time(), "ts": now})
 
             conn.execute(text(
                 "UPDATE records SET is_dirty=true, last_modified_by='app',"
