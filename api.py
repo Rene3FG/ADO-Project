@@ -19,6 +19,7 @@ import jwt
 
 from config import DATABASE_URL
 from db_client import AREA_NOMBRE_DB
+from tiempo import ahora, hoy
 from routing import calcular_ruta, siguiente_area
 
 JWT_SECRET = os.environ.get("JWT_SECRET", secrets.token_hex(32))
@@ -275,7 +276,7 @@ CORRIDA_FIELD_DB = {
 
 @app.get("/corridas", summary="Lista corridas del día")
 def get_corridas(fecha: Optional[str] = Query(default=None, description="YYYY-MM-DD, default = hoy")):
-    target = fecha or str(date.today())
+    target = fecha or str(hoy())
     with db() as conn:
         rows = conn.execute(text(
             f"SELECT {CORRIDA_COLUMNS}, tc.name AS tipo_nombre"
@@ -286,7 +287,7 @@ def get_corridas(fecha: Optional[str] = Query(default=None, description="YYYY-MM
 
 @app.get("/corridas/{serie}", summary="Detalle de una corrida")
 def get_corrida(serie: int, fecha: Optional[str] = Query(default=None)):
-    target = fecha or str(date.today())
+    target = fecha or str(hoy())
     with db() as conn:
         row = conn.execute(text(
             f"SELECT {CORRIDA_COLUMNS}, tc.name AS tipo_nombre"
@@ -299,7 +300,7 @@ def get_corrida(serie: int, fecha: Optional[str] = Query(default=None)):
 
 @app.put("/corridas/{serie}", summary="Actualiza corrida desde la UI")
 def update_corrida(serie: int, body: CorrridaUpdate):
-    target = str(date.today())
+    target = str(hoy())
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(400, "No hay campos para actualizar")
@@ -321,7 +322,7 @@ def update_corrida(serie: int, body: CorrridaUpdate):
             tipo_id = tipo_row[0]
 
         set_clauses = ", ".join(f"{CORRIDA_FIELD_DB[k]}=:{k}" for k in updates)
-        params = {**updates, "tipo_id": tipo_id, "f": target, "s": serie, "ts": datetime.now()}
+        params = {**updates, "tipo_id": tipo_id, "f": target, "s": serie, "ts": ahora()}
 
         conn.execute(text(
             f"UPDATE trips SET {set_clauses}, type_id=:tipo_id,"
@@ -333,7 +334,7 @@ def update_corrida(serie: int, body: CorrridaUpdate):
 
 @app.post("/corridas", status_code=201, summary="Registra una corrida nueva (ad-hoc, fuera de PLANEACION)")
 def create_corrida(body: CorridaCreate):
-    target = str(date.today())
+    target = str(hoy())
     with db() as conn:
         existing = conn.execute(text(
             "SELECT id FROM trips WHERE date=:f AND serial_number=:s"
@@ -368,7 +369,7 @@ def create_corrida(body: CorridaCreate):
             "need_taller": body.need_taller,
             "conductor": body.conductor, "terminal_origen": body.terminal_origen,
             "terminal_destino": body.terminal_destino, "observaciones": body.observaciones,
-            "ts": datetime.now(),
+            "ts": ahora(),
         })
 
     return get_corrida(body.serie, target)
@@ -392,7 +393,7 @@ REGISTRO_FIELD_DB = {
 
 @app.get("/registros", summary="Vista CENTRAL — todos los camiones activos hoy")
 def get_registros(fecha: Optional[str] = Query(default=None)):
-    target = fecha or str(date.today())
+    target = fecha or str(hoy())
     with db() as conn:
         rows = conn.execute(text(
             f"SELECT {REGISTRO_COLUMNS} FROM records WHERE date = :f AND is_active = true ORDER BY serial_number"
@@ -401,7 +402,7 @@ def get_registros(fecha: Optional[str] = Query(default=None)):
 
 @app.get("/registros/{serie}", summary="Registro + checklist de un camión")
 def get_registro(serie: int, fecha: Optional[str] = Query(default=None)):
-    target = fecha or str(date.today())
+    target = fecha or str(hoy())
     with db() as conn:
         row = conn.execute(text(
             f"SELECT {REGISTRO_COLUMNS} FROM records WHERE date = :f AND serial_number = :s AND is_active = true"
@@ -431,7 +432,7 @@ def _area_actual_camion(conn, serie: int) -> Optional[str]:
 
 @app.put("/registros/{serie}", summary="Actualiza ubicación/avance desde la UI")
 def update_registro(serie: int, body: RegistroUpdate, area_operador: Optional[str] = Depends(get_operador_area)):
-    target = str(date.today())
+    target = str(hoy())
     updates = {k: v for k, v in body.model_dump().items() if v is not None}
     if not updates:
         raise HTTPException(400, "No hay campos para actualizar")
@@ -447,7 +448,7 @@ def update_registro(serie: int, body: RegistroUpdate, area_operador: Optional[st
             raise HTTPException(403, f"Este camión no está en tu área ({area_operador}).")
 
         set_clauses = ", ".join(f"{REGISTRO_FIELD_DB[k]}=:{k}" for k in updates)
-        params = {**updates, "f": target, "s": serie, "ts": datetime.now()}
+        params = {**updates, "f": target, "s": serie, "ts": ahora()}
 
         conn.execute(text(
             f"UPDATE records SET {set_clauses},"
@@ -474,7 +475,7 @@ def get_movimientos(
     fecha: Optional[str] = Query(default=None, description="YYYY-MM-DD, default = hoy"),
     area_operador: Optional[str] = Depends(get_operador_area),
 ):
-    target = fecha or str(date.today())
+    target = fecha or str(hoy())
     q = (
         "SELECT m.id, m.record_id AS registro_id, m.area_id, m.serial_number AS serie,"
         " m.date AS fecha, m.entry_time AS hora_entrada, m.exit_time AS hora_salida,"
@@ -530,26 +531,26 @@ def create_movimiento(body: MovimientoCreate, area_operador: Optional[str] = Dep
 
         registro = conn.execute(text(
             "SELECT id FROM records WHERE date=:f AND serial_number=:s AND is_active=true"
-        ), {"f": date.today(), "s": body.serie}).fetchone()
+        ), {"f": hoy(), "s": body.serie}).fetchone()
 
         if not registro:
             r = conn.execute(text(
                 "INSERT INTO records (date, serial_number, is_active, is_dirty, last_modified_by, last_modified_at)"
                 " VALUES (:f, :s, true, true, 'app', NOW()) RETURNING id"
-            ), {"f": date.today(), "s": body.serie}).fetchone()
+            ), {"f": hoy(), "s": body.serie}).fetchone()
             registro_id = r[0] if r else conn.execute(text(
                 "SELECT id FROM records WHERE date=:f AND serial_number=:s"
-            ), {"f": date.today(), "s": body.serie}).fetchone()[0]
+            ), {"f": hoy(), "s": body.serie}).fetchone()[0]
         else:
             registro_id = registro[0]
 
-        now = datetime.now()
+        now = ahora()
         hora_entrada = body.hora_entrada or now.strftime("%H:%M:%S")
 
         result = conn.execute(text(
             "INSERT INTO movements"
             " (record_id, area_id, serial_number, date, entry_time, is_dirty, last_modified_by, last_modified_at)"
-            " VALUES (:rid, :aid, :serie, CURRENT_DATE, :hora_entrada, true, 'app', :ts)"
+            " VALUES (:rid, :aid, :serie, CAST(:ts AS date), :hora_entrada, true, 'app', :ts)"
             " RETURNING id"
         ), {
             "rid": registro_id, "aid": area_id,
@@ -582,7 +583,7 @@ def update_movimiento(mov_id: int, body: MovimientoUpdate, area_operador: Option
             f"UPDATE movements SET {set_clauses},"
             " is_dirty=true, last_modified_by='app', last_modified_at=:ts"
             " WHERE id=:id"
-        ), {**updates, "id": mov_id, "ts": datetime.now()})
+        ), {**updates, "id": mov_id, "ts": ahora()})
 
     return {"ok": True, "id": mov_id}
 
@@ -595,7 +596,7 @@ def completar_movimiento(mov_id: int, area_operador: Optional[str] = Depends(get
         if area_operador and area_db != AREA_DISPLAY_TO_DB.get(area_operador, area_operador):
             raise HTTPException(403, f"Este movimiento no está en tu área ({area_operador}).")
 
-        now = datetime.now()
+        now = ahora()
         conn.execute(text(
             "UPDATE movements SET is_completed=true, exit_time=:ts,"
             " is_dirty=true, last_modified_by='app', last_modified_at=:ts"
@@ -665,7 +666,7 @@ def get_camiones(
     fecha: Optional[str] = Query(default=None),
     area_operador: Optional[str] = Depends(get_operador_area),
 ):
-    target = fecha or str(date.today())
+    target = fecha or str(hoy())
     with db() as conn:
         rows = conn.execute(text("""
             SELECT r.id, r.serial_number, bt.name AS tipo_nombre,
@@ -706,7 +707,7 @@ def get_camiones(
 
 @app.put("/camiones/{camion_id}", summary="Mueve camión a otra área o lo saca del patio")
 def update_camion(camion_id: int, body: CamionUpdate):
-    target = str(date.today())
+    target = str(hoy())
     with db() as conn:
         record = conn.execute(text(
             "SELECT id, serial_number FROM records WHERE id=:id AND date=:f AND is_active=true"
@@ -718,7 +719,7 @@ def update_camion(camion_id: int, body: CamionUpdate):
             conn.execute(text(
                 "UPDATE records SET is_active=false, is_dirty=true,"
                 " last_modified_by='app', last_modified_at=:ts WHERE id=:id"
-            ), {"id": camion_id, "ts": datetime.now()})
+            ), {"id": camion_id, "ts": ahora()})
 
         elif body.area:
             if body.area == "Descanso":
@@ -733,7 +734,7 @@ def update_camion(camion_id: int, body: CamionUpdate):
             if not area_row:
                 raise HTTPException(404, f"Área '{body.area}' no encontrada en la DB")
 
-            now = datetime.now()
+            now = ahora()
             conn.execute(text(
                 "INSERT INTO movements"
                 " (record_id, area_id, serial_number, date, entry_time, is_dirty, last_modified_by, last_modified_at)"
@@ -744,7 +745,7 @@ def update_camion(camion_id: int, body: CamionUpdate):
             conn.execute(text(
                 "UPDATE records SET is_dirty=true, last_modified_by='app',"
                 " last_modified_at=:ts WHERE id=:id"
-            ), {"id": camion_id, "ts": datetime.now()})
+            ), {"id": camion_id, "ts": ahora()})
 
     return {"ok": True, "id": camion_id}
 
@@ -754,7 +755,7 @@ def reubicar_camion(camion_id: int, body: CamionUpdate):
 
 @app.delete("/camiones/{camion_id}", summary="Elimina camión del patio activo")
 def delete_camion(camion_id: int):
-    target = str(date.today())
+    target = str(hoy())
     with db() as conn:
         record = conn.execute(text(
             "SELECT id FROM records WHERE id=:id AND date=:f AND is_active=true"
@@ -765,14 +766,14 @@ def delete_camion(camion_id: int):
         conn.execute(text(
             "UPDATE records SET is_active=false, is_dirty=true,"
             " last_modified_by='app', last_modified_at=:ts WHERE id=:id"
-        ), {"id": camion_id, "ts": datetime.now()})
+        ), {"id": camion_id, "ts": ahora()})
 
     return {"ok": True, "id": camion_id}
 
 
 @app.post("/camiones/{serie}/avanzar", summary="Avanza el camión al siguiente paso de su ruta (swipe/NFC)")
 def avanzar_camion(serie: int, area_operador: Optional[str] = Depends(get_operador_area)):
-    target = str(date.today())
+    target = str(hoy())
     with db() as conn:
         # FOR UPDATE serializa avances concurrentes del mismo camión (doble
         # tap, red lenta, o el propio lector NFC reportando el tag varias
@@ -803,7 +804,7 @@ def avanzar_camion(serie: int, area_operador: Optional[str] = Depends(get_operad
         ruta = calcular_ruta(trip)
         destino = siguiente_area(area_actual, ruta)
 
-        now = datetime.now()
+        now = ahora()
         if ultimo_mov:
             conn.execute(text(
                 "UPDATE movements SET is_completed=true, exit_time=:ts,"
@@ -875,7 +876,7 @@ def get_historial(
     unidad:  Optional[str] = Query(default=None),
     fecha:   Optional[str] = Query(default=None),
 ):
-    target = fecha or str(date.today())
+    target = fecha or str(hoy())
     q = (
         "SELECT m.id, m.serial_number AS serie, a.name AS area_db, m.entry_time, m.date"
         " FROM movements m JOIN area a ON a.id = m.area_id"
@@ -909,7 +910,7 @@ def get_historial(
 def log_historial(body: HistorialCreate):
     # El frontend mantiene el estado local; este endpoint es el punto de entrada
     # para que eventos de alerta/salida queden registrados en el futuro.
-    return {"ok": True, "id": int(datetime.now().timestamp() * 1000)}
+    return {"ok": True, "id": int(ahora().timestamp() * 1000)}
 
 
 @app.get("/tipos-camion", summary="Lista de tipos de camión")
@@ -960,14 +961,14 @@ def update_tiempos(serie: int, body: TiemposUpdate):
                 f"UPDATE times SET {set_clauses},"
                 " is_dirty=true, last_modified_by='app', last_modified_at=:ts"
                 " WHERE serial_number=:s"
-            ), {**db_fields, "s": serie, "ts": datetime.now()})
+            ), {**db_fields, "s": serie, "ts": ahora()})
         else:
             campos    = ", ".join(["serial_number"] + list(db_fields.keys()))
             vals_sql  = ", ".join([":serie"]         + [f":{k}" for k in db_fields.keys()])
             conn.execute(text(
                 f"INSERT INTO times ({campos}, is_dirty, last_modified_by, last_modified_at)"
                 f" VALUES ({vals_sql}, true, 'app', :ts)"
-            ), {**db_fields, "serie": serie, "ts": datetime.now()})
+            ), {**db_fields, "serie": serie, "ts": ahora()})
 
     return {"ok": True, "serie": serie}
 
@@ -1002,19 +1003,19 @@ def archivar_turno(body: ArchivarTurnoRequest):
     with db() as conn:
         registros = conn.execute(text(
             "SELECT row_to_json(r) FROM records r WHERE date=:f AND shift=:t"
-        ), {"f": date.today(), "t": body.turno}).fetchall()
+        ), {"f": hoy(), "t": body.turno}).fetchall()
 
         movimientos = conn.execute(text(
             "SELECT row_to_json(m) FROM movements m"
             " WHERE m.date=:f"
             " AND m.record_id IN (SELECT id FROM records WHERE date=:f AND shift=:t)"
-        ), {"f": date.today(), "t": body.turno}).fetchall()
+        ), {"f": hoy(), "t": body.turno}).fetchall()
 
         conn.execute(text(
             "INSERT INTO shift_closures (date, shift, closed_by, records_snapshot, movements_snapshot)"
             " VALUES (:f, :t, :u, CAST(:sr AS jsonb), CAST(:sm AS jsonb))"
         ), {
-            "f": date.today(),
+            "f": hoy(),
             "t": body.turno,
             "u": body.usuario_id,
             "sr": json.dumps([r[0] for r in registros]),
@@ -1023,7 +1024,7 @@ def archivar_turno(body: ArchivarTurnoRequest):
 
         conn.execute(text(
             "UPDATE records SET is_active=false WHERE date=:f AND shift=:t"
-        ), {"f": date.today(), "t": body.turno})
+        ), {"f": hoy(), "t": body.turno})
 
     return {
         "ok": True,

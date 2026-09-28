@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, date
+from tiempo import ahora, hoy
 from loguru import logger
 from sqlalchemy import create_engine, text
 from config import DATABASE_URL
@@ -67,8 +68,8 @@ def upsert_corrida(conn, data: dict, sheets_row: int):
     data["tipo_id"] = tipo_id
     data["sheets_row"] = sheets_row
     data["last_modified_by"] = "sheets"
-    data["sheets_synced_at"] = datetime.now()
-    data["fecha"] = date.today()
+    data["sheets_synced_at"] = ahora()
+    data["fecha"] = hoy()
 
     existing = conn.execute(
         text("SELECT id, last_modified_at, last_modified_by FROM trips WHERE date=:f AND serial_number=:s"),
@@ -130,7 +131,7 @@ def upsert_movimiento(conn, data: dict, area_nombre: str, sheets_row: int):
 
     registro = conn.execute(
         text("SELECT id FROM records WHERE date=:f AND serial_number=:s"),
-        {"f": date.today(), "s": data["serie"]}
+        {"f": hoy(), "s": data["serie"]}
     ).fetchone()
 
     # Las pestañas de área del Sheet NO tienen columna de fecha, así que cada
@@ -145,7 +146,7 @@ def upsert_movimiento(conn, data: dict, area_nombre: str, sheets_row: int):
     if not registro:
         tiene_trip_hoy = conn.execute(
             text("SELECT 1 FROM trips WHERE date=:f AND serial_number=:s"),
-            {"f": date.today(), "s": data["serie"]}
+            {"f": hoy(), "s": data["serie"]}
         ).fetchone()
         if not tiene_trip_hoy:
             return
@@ -161,7 +162,7 @@ def upsert_movimiento(conn, data: dict, area_nombre: str, sheets_row: int):
         {"r": registro_id, "a": area_id}
     ).fetchone()
 
-    now = datetime.now()
+    now = ahora()
 
     if existing:
         if existing.last_modified_by == 'app':
@@ -227,7 +228,7 @@ def archivar_turno(conn, turno: int, usuario_id: int):
     """
     registros = conn.execute(
         text("SELECT row_to_json(r) FROM records r WHERE date=:f AND shift=:t"),
-        {"f": date.today(), "t": turno}
+        {"f": hoy(), "t": turno}
     ).fetchall()
 
     movimientos = conn.execute(
@@ -236,7 +237,7 @@ def archivar_turno(conn, turno: int, usuario_id: int):
             JOIN records r ON r.id = m.record_id
             WHERE r.date=:f AND r.shift=:t
         """),
-        {"f": date.today(), "t": turno}
+        {"f": hoy(), "t": turno}
     ).fetchall()
 
     conn.execute(
@@ -245,7 +246,7 @@ def archivar_turno(conn, turno: int, usuario_id: int):
             VALUES (:f, :t, :u, CAST(:sr AS jsonb), CAST(:sm AS jsonb))
         """),
         {
-            "f": date.today(), "t": turno, "u": usuario_id,
+            "f": hoy(), "t": turno, "u": usuario_id,
             "sr": json.dumps([r[0] for r in registros]),
             "sm": json.dumps([m[0] for m in movimientos]),
         }
@@ -253,7 +254,7 @@ def archivar_turno(conn, turno: int, usuario_id: int):
 
     conn.execute(
         text("UPDATE records SET is_active=false WHERE date=:f AND shift=:t"),
-        {"f": date.today(), "t": turno}
+        {"f": hoy(), "t": turno}
     )
     logger.info(f"Turno {turno} archivado correctamente.")
 
@@ -272,13 +273,13 @@ def _create_registro_placeholder(conn, serie: int) -> int:
             ON CONFLICT (date, serial_number) DO NOTHING
             RETURNING id
         """),
-        {"f": date.today(), "s": serie, "tipo_id": DEFAULT_TIPO_ID}
+        {"f": hoy(), "s": serie, "tipo_id": DEFAULT_TIPO_ID}
     ).fetchone()
     if result:
         return result[0]
     return conn.execute(
         text("SELECT id FROM records WHERE date=:f AND serial_number=:s"),
-        {"f": date.today(), "s": serie}
+        {"f": hoy(), "s": serie}
     ).fetchone()[0]
 
 def _log_conflict(conn, hoja: str, serie: int, ts_app: datetime):

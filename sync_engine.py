@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from tiempo import hoy
 from loguru import logger
 from sqlalchemy import text
 
@@ -127,7 +128,7 @@ def _pull_row_central(conn, row, sheets_row, config):
     conn.execute(text("""
         INSERT INTO records (date, serial_number, type_id, registration_time, progress, location_text, time_remaining,
                               sheets_row, last_modified_by, sheets_synced_at, is_dirty)
-        VALUES (CURRENT_DATE, :serie, :tipo_id, :hora_registro, :avance, :ubicacion_texto, :tiempo_restante,
+        VALUES (:hoy, :serie, :tipo_id, :hora_registro, :avance, :ubicacion_texto, :tiempo_restante,
                 :sheets_row, 'sheets', now(), false)
         ON CONFLICT (date, serial_number) DO UPDATE SET
             progress=EXCLUDED.progress,
@@ -137,11 +138,11 @@ def _pull_row_central(conn, row, sheets_row, config):
             sheets_synced_at=now(),
             is_dirty=false
         WHERE records.last_modified_by = 'sheets'
-    """), {**data, "sheets_row": sheets_row, "tipo_id": DEFAULT_TIPO_ID})
+    """), {**data, "hoy": hoy(), "sheets_row": sheets_row, "tipo_id": DEFAULT_TIPO_ID})
 
     # Upsert checklist
     registro = conn.execute(
-        text("SELECT id FROM records WHERE date=CURRENT_DATE AND serial_number=:s"), {"s": data["serie"]}
+        text("SELECT id FROM records WHERE date=:hoy AND serial_number=:s"), {"hoy": hoy(), "s": data["serie"]}
     ).fetchone()
     if not registro:
         return
@@ -217,7 +218,7 @@ def _pull_row_taller(conn, row, sheets_row, config):
     from datetime import date
     registro = conn.execute(
         text("SELECT id FROM records WHERE date=:f AND serial_number=:s"),
-        {"f": date.today(), "s": data_mov["serie"]}
+        {"f": hoy(), "s": data_mov["serie"]}
     ).fetchone()
     if not registro:
         return
@@ -392,7 +393,7 @@ def _push_central(config):
                 FROM records r
                 WHERE r.date=:f AND r.is_dirty=true AND r.last_modified_by='app'
             """),
-            {"f": date.today()}
+            {"f": hoy()}
         ).fetchall()
 
         for reg in registros:
@@ -473,7 +474,7 @@ def _push_planeacion(config):
                 FROM trips t JOIN bus_types bt ON bt.id = t.type_id
                 WHERE t.date = :f AND t.is_dirty = true AND t.last_modified_by = 'app'
             """),
-            {"f": date.today()}
+            {"f": hoy()}
         ).fetchall()
 
         for corrida in corridas:
