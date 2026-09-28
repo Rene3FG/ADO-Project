@@ -20,6 +20,7 @@ import jwt
 from config import DATABASE_URL
 from db_client import AREA_NOMBRE_DB
 from tiempo import ahora, hoy
+import analiticas
 from routing import calcular_ruta, siguiente_area
 
 JWT_SECRET = os.environ.get("JWT_SECRET", secrets.token_hex(32))
@@ -1184,3 +1185,19 @@ def me(user: dict = Depends(get_current_user)):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+
+
+# ── Analíticas ─────────────────────────────────────────────
+
+@app.get("/analiticas")
+def get_analiticas(
+    desde: Optional[date] = Query(None), hasta: Optional[date] = Query(None),
+    _user: dict = Depends(require_role("Administrador", "Supervisor")),
+):
+    """Mantenimiento, comparativa día/noche y retraso; por defecto, últimos 30 días."""
+    hasta = hasta or hoy()
+    desde = desde or hasta - timedelta(days=30)
+    if desde > hasta:
+        raise HTTPException(400, "'desde' no puede ser posterior a 'hasta'")
+    with db() as conn:
+        return analiticas.calcular(conn, desde, hasta, lambda n: AREA_DB_TO_DISPLAY.get(n, n))
