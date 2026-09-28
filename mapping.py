@@ -32,6 +32,16 @@ def excel_serial_to_time(serial):
     dt = excel_serial_to_datetime(serial)
     return dt.time()
 
+def excel_duration_days(serial):
+    """Columna "Duración" del Sheet (fórmula salida-entrada): trae el serial de la
+    fecha de salida más la duración, así que la duración en días es su parte decimal."""
+    if serial is None or serial == '':
+        return None
+    try:
+        return float(serial) % 1
+    except (ValueError, TypeError):
+        return None
+
 def parse_bool(val):
     """Sheets manda bool nativo o el string 'TRUE'/'FALSE'; cualquier otra cosa → False."""
     if isinstance(val, bool):
@@ -141,10 +151,10 @@ def area_config(sheet_key, area_nombre):
             (1, "hora_entrada",  parse_time_str),     # string "HH:MM:SS"
             (2, "completado",    parse_bool),
             (3, "hora_salida",   excel_serial_to_datetime),
-            (4, "hora_entrada_excel", excel_serial_to_time),  # decimal Excel
+            (4, "duracion_dias", excel_duration_days),  # col "Duración" (fórmula D-B)
             (5, "espacios_disp", parse_int),  # solo para lectura, no se persiste
         ],
-        # hora_entrada final = hora_entrada_excel (decimal) si existe, sino parse de col 1
+        # hora_entrada sale de la col B ("Horario"); la col E es la duración, no la entrada
     }
 
 DIESEL          = area_config("DIESEL",          "DIESEL")
@@ -168,8 +178,7 @@ TALLER = {
         (1, "hora_entrada",  parse_time_str),
         (2, "completado",    parse_bool),
         (3, "hora_salida",   excel_serial_to_datetime),
-        (4, "hora_entrada_excel", excel_serial_to_time),
-        (5, "duracion_dias", parse_float),
+        (4, "duracion_dias", excel_duration_days),  # col "Duración" (fórmula D-B)
     ],
 
     # Columnas de subáreas: (indice, campo_workshop_details)

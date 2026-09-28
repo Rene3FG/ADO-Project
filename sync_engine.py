@@ -181,10 +181,6 @@ def _pull_row_area(conn, row, sheets_row, config, nombre):
     if not data.get("serie") or not data.get("hora_entrada"):
         return
 
-    # hora_entrada final: preferir el decimal de Excel (más preciso)
-    if data.get("hora_entrada_excel"):
-        data["hora_entrada"] = data["hora_entrada_excel"]
-    data.pop("hora_entrada_excel", None)
     data.pop("espacios_disp", None)
 
     upsert_movimiento(conn, data, config["area_nombre"], sheets_row)
@@ -205,10 +201,6 @@ def _pull_row_taller(conn, row, sheets_row, config):
 
     if not data_mov.get("serie"):
         return
-
-    if data_mov.get("hora_entrada_excel"):
-        data_mov["hora_entrada"] = data_mov["hora_entrada_excel"]
-    data_mov.pop("hora_entrada_excel", None)
 
     upsert_movimiento(conn, data_mov, "TALLER", sheets_row)
 
@@ -358,16 +350,14 @@ def _push_area(config):
             fila = row.sheets_row
             hora_entrada_str = row.entry_time.strftime("%H:%M:%S") if row.entry_time else ""
             hora_salida_num  = _datetime_to_excel_serial(row.exit_time)
-            hora_entrada_num = _time_to_excel_serial(row.entry_time)
-            duracion = (hora_salida_num - hora_entrada_num) if hora_salida_num and hora_entrada_num else ""
 
+            # Solo A:D. La col E ("Duración") y F ("Espacios disponibles") son
+            # fórmulas del Sheet y no se pisan desde la app.
             valores = [
                 row.serie,
                 hora_entrada_str,
                 row.is_completed,
                 hora_salida_num or "",
-                hora_entrada_num or "",
-                "",   # espacios_disp: no modificar desde la app
             ]
 
             if fila:
