@@ -5,7 +5,7 @@ psycopg2-binary>=2.9
 loguru>=0.7
 schedule>=1.2
 python-dotenv>=1.0
-pandas
+pandas>=2.3,<3
 openpyxl
 fastapi>=0.110
 uvicorn[standard]>=0.29
