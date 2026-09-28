@@ -3,13 +3,15 @@
 Las consultas SQL solo traen filas crudas; todo el cálculo (columnas derivadas,
 agrupaciones, cuantiles, semanas) se hace con pandas/numpy sobre DataFrames.
 
-Solo usa movimientos capturados desde la app (last_modified_by='app'): los que
-vienen de Sheets son filas de prueba repetidas cada día y con horas ambiguas.
+Usa todos los movimientos del sistema, vengan de la app o de la hoja de cálculo
+sincronizada. Se omiten los que tienen datos imposibles: los completados cuya hora
+de salida cae lejos de la fecha del movimiento (el sync viejo leía la columna
+"Duración" como hora de entrada y arrastraba salidas de meses atrás).
 
-Horas: hasta el 2026-09-27 el servidor escribía en UTC (ver tiempo.py); desde el
-28 escribe hora local. Las duraciones no se afectan (entrada y salida comparten
-reloj), pero el turno y el retraso se calculan en hora local, así que a las filas
-anteriores a HORA_LOCAL_DESDE se les restan 6 h.
+Horas: las filas de la app anteriores a HORA_LOCAL_DESDE guardan UTC (ver tiempo.py),
+así que para el turno y el retraso se les restan 6 h; las filas de Sheets ya vienen
+en hora local y no se corrigen. Las duraciones no se afectan (entrada y salida
+comparten reloj).
 """
 from datetime import date
 
@@ -19,6 +21,7 @@ from sqlalchemy import text
 
 HORA_LOCAL_DESDE = date(2026, 9, 28)
 DURACION_MAX_MIN = 720      # descarta estancias > 12 h (capturas manuales / huérfanas)
+TOLERANCIA_SALIDA = pd.Timedelta(days=2)   # una salida más lejos que esto de la fecha del movimiento es inconsistente
 MUESTRA_MINIMA = 30         # movimientos con duración para considerar confiables las cifras
 TURNOS = ("Día (06-18)", "Noche (18-06)")
 
@@ -50,20 +53,26 @@ def _movimientos(conn, p: dict) -> pd.DataFrame:
     """Movimientos de la app con columnas derivadas: duración y hora local de entrada/salida."""
     df = pd.read_sql(text("""
         SELECT m.id, m.serial_number AS serie, m.date AS fecha, a.name AS area, m.area_id,
-               m.is_completed AS completado,
+               m.is_completed AS completado, m.last_modified_by AS origen,
                EXTRACT(EPOCH FROM m.entry_time)::float8 AS entrada_seg,
                (m.exit_time AT TIME ZONE 'UTC') AS salida_raw
         FROM movements m JOIN area a ON a.id = m.area_id
-        WHERE m.last_modified_by = 'app' AND m.date BETWEEN :desde AND :hasta"""),
+        WHERE m.date BETWEEN :desde AND :hasta"""),
         conn, params=p)
     df["fecha"] = pd.to_datetime(df["fecha"])
     df["salida_raw"] = pd.to_datetime(df["salida_raw"])
     entrada_raw = df["fecha"] + pd.to_timedelta(df["entrada_seg"], unit="s")
     df["dur_min"] = (df["salida_raw"] - entrada_raw).dt.total_seconds() / 60.0
-    # UTC → local solo para filas anteriores al corte
-    corr = pd.to_timedelta(np.where(df["fecha"] < pd.Timestamp(HORA_LOCAL_DESDE), 6, 0), unit="h")
+    # UTC → local solo para filas de la app anteriores al corte (las de Sheets ya son hora local)
+    en_utc = (df["origen"] == "app") & (df["fecha"] < pd.Timestamp(HORA_LOCAL_DESDE))
+    corr = pd.to_timedelta(np.where(en_utc, 6, 0), unit="h")
     df["entrada_local"] = entrada_raw - corr
     df["salida_local"] = df["salida_raw"] - corr
+    # Filas con salida imposible respecto a su fecha: se omiten de TODAS las métricas
+    incoherente = df["completado"] & df["salida_raw"].notna() & (
+        (df["salida_raw"] - df["fecha"]).abs() > TOLERANCIA_SALIDA)
+    df = df[~incoherente].copy()
+    df.attrs["descartados"] = int(incoherente.sum())
     df["valido"] = df["completado"] & df["dur_min"].between(0, DURACION_MAX_MIN)
     hora = df["entrada_local"].dt.hour
     df["turno"] = np.where((hora >= 6) & (hora < 18), TURNOS[0], TURNOS[1])
@@ -165,6 +174,7 @@ def calcular(conn, desde: date, hasta: date, area_display) -> dict:
         "desde": desde.isoformat(), "hasta": hasta.isoformat(),
         "muestra": {"movimientos": int(len(mov)), "completados": int(mov["completado"].sum()),
                     "con_duracion": con_duracion, "dias": int(mov["fecha"].nunique()),
+                    "descartados": mov.attrs.get("descartados", 0),
                     "suficiente": con_duracion >= MUESTRA_MINIMA},
         "por_area": sorted(por_area, key=lambda a: a["area"]),
         "mantenimiento": _mantenimiento(conn, mov, p),
