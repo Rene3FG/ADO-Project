@@ -4,6 +4,32 @@ import './ChatWidget.css'
 
 const MAX_HISTORIAL = 10
 
+// Solo orienta la interfaz; el acceso real lo valida el servidor con el token.
+function rolActual() {
+  try {
+    return JSON.parse(localStorage.getItem('sesionAdo'))?.rol
+  } catch {
+    return undefined
+  }
+}
+
+function opcionesMenu(esOperador) {
+  const opciones = esOperador
+    ? [
+        { titulo: 'Estado de mi área', pregunta: '¿Cómo está mi área ahora? Capacidad, ocupados y camiones presentes.' },
+        { titulo: 'Corridas de hoy en mi área', pregunta: '¿Qué corridas de hoy requieren mi área?' },
+        { titulo: 'Resumen del turno', pregunta: 'Dame el resumen del turno de hoy en mi área.' },
+      ]
+    : [
+        { titulo: 'Ocupación de todas las áreas', pregunta: '¿Cuántos camiones hay en cada área?' },
+        { titulo: 'Estado del desfogue', pregunta: '¿Cómo está el desfogue?' },
+        { titulo: 'Corridas de hoy', pregunta: '¿Qué corridas hay programadas hoy?' },
+        { titulo: 'Resumen del turno', pregunta: 'Dame el resumen del turno de hoy.' },
+        { titulo: 'KPIs generales', pregunta: 'Dame los KPIs generales del patio.' },
+      ]
+  return opciones
+}
+
 // Asistente de consulta (solo lectura). El rol y el área los resuelve el
 // servidor a partir del token; aquí solo se envía el texto.
 export default function ChatWidget() {
@@ -12,16 +38,17 @@ export default function ChatWidget() {
   const [texto, setTexto] = useState('')
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
+  const [verMenu, setVerMenu] = useState(false)
   const fin = useRef(null)
+  const menu = opcionesMenu(rolActual() === 'Operador')
 
   useEffect(() => {
     fin.current?.scrollIntoView({ behavior: 'smooth' })
   }, [mensajes, cargando, abierto])
 
-  const enviar = async (e) => {
-    e.preventDefault()
-    const pregunta = texto.trim()
+  const enviarTexto = async (pregunta) => {
     if (!pregunta || cargando) return
+    setVerMenu(false)
     const historial = mensajes.slice(-MAX_HISTORIAL).map(({ role, content }) => ({ role, content }))
     setMensajes((m) => [...m, { role: 'user', content: pregunta }])
     setTexto('')
@@ -40,17 +67,32 @@ export default function ChatWidget() {
     }
   }
 
+  const enviar = (e) => {
+    e.preventDefault()
+    enviarTexto(texto.trim())
+  }
+
   return (
     <div className="chat-widget">
       {abierto && (
         <section className="chat-panel" aria-label="Asistente SCA">
           <header className="chat-header">
             <span>Asistente SCA</span>
-            <button type="button" onClick={() => setAbierto(false)} aria-label="Cerrar asistente">×</button>
+            <span className="chat-acciones">
+              <button type="button" className="chat-btn-menu" onClick={() => setVerMenu((v) => !v)}>Menú</button>
+              <button type="button" onClick={() => setAbierto(false)} aria-label="Cerrar asistente">×</button>
+            </span>
           </header>
           <div className="chat-mensajes">
-            {mensajes.length === 0 && (
-              <p className="chat-vacio">Pregunta por corridas, turno, desfogue o el estado de un área.</p>
+            {(mensajes.length === 0 || verMenu) && (
+              <div className="chat-menu">
+                <p className="chat-vacio">¿Qué quieres consultar? También puedes escribir tu pregunta.</p>
+                {menu.map((o) => (
+                  <button type="button" key={o.titulo} className="chat-opcion" onClick={() => enviarTexto(o.pregunta)}>
+                    {o.titulo}
+                  </button>
+                ))}
+              </div>
             )}
             {mensajes.map((m, i) => (
               <div key={i} className={`chat-burbuja chat-${m.role}`}>{m.content}</div>
