@@ -244,7 +244,8 @@ app.add_middleware(
 )
 
 import chat
-app.include_router(chat.crear_router(get_current_user))
+app.include_router(chat.crear_router(get_current_user, get_operador_area, db,
+                                     AREA_DISPLAY_TO_DB, AREA_DB_TO_DISPLAY))
 
 
 # ── Corridas (`/corridas`) ────────────────────────────────────────
