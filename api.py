@@ -243,6 +243,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+import chat
+app.include_router(chat.crear_router(get_current_user))
+
 
 # ── Corridas (`/corridas`) ────────────────────────────────────────
 
