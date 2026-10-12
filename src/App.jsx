@@ -5,6 +5,7 @@ import DropDrag from './pages/Patio/DropDrag.jsx'
 import { useIsMobile } from './lib/hooks/useIsMobile.js'
 import { LoginPage } from './lib/presentation/pages/LoginPage.jsx'
 import { PatioPage } from './lib/presentation/pages/PatioPage.jsx'
+import ChatWidget from './components/ChatWidget.jsx'
 
 // Sesión compartida por mobile y escritorio: mismo localStorage ('sesionAdo')
 // y mismo useAuthBloc (POST /login real) — antes DesktopApp usaba un stack
@@ -49,7 +50,7 @@ function MobileApp() {
 
   if (verificandoSesion) return <PantallaCarga />
   if (!usuarioActual) return <LoginPage onLoginSuccess={iniciarSesion} />
-  return <PatioPage usuario={usuarioActual} />
+  return <><PatioPage usuario={usuarioActual} /><ChatWidget /></>
 }
 
 function DesktopApp() {
@@ -57,7 +58,7 @@ function DesktopApp() {
 
   if (verificandoSesion) return <PantallaCarga />
   if (!usuarioActual) return <Login onLoginSuccess={iniciarSesion} />
-  return <DropDrag usuario={usuarioActual} onLogout={cerrarSesion} />
+  return <><DropDrag usuario={usuarioActual} onLogout={cerrarSesion} /><ChatWidget /></>
 }
 
 function App() {
