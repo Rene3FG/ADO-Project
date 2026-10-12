@@ -3,6 +3,7 @@
 Fase 1: capa de modelo + POST /chat sin herramientas.
 Todo acceso al proveedor LLM pasa por llamar_modelo().
 """
+import http.client
 import json
 import os
 import threading
@@ -33,6 +34,8 @@ SYSTEM_PROMPT = (
 
 MAX_HISTORIAL = 10        # mensajes previos aceptados
 MAX_CARACTERES = 1000     # por mensaje
+TIMEOUT_PROVEEDOR = 20    # s por llamada al LLM
+PRESUPUESTO_TOTAL = 45    # s por consulta; debe quedar bajo el corte del proxy (~100 s)
 
 
 class ProveedorError(Exception):
@@ -81,7 +84,7 @@ def _gemini(modelo: str, llave: str, system: str, mensajes: List[dict], herramie
         headers={"Content-Type": "application/json", "x-goog-api-key": llave},
     )
     try:
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with urllib.request.urlopen(req, timeout=TIMEOUT_PROVEEDOR) as r:
             data = json.load(r)
     except urllib.error.HTTPError as e:
         if e.code == 429:
@@ -90,10 +93,13 @@ def _gemini(modelo: str, llave: str, system: str, mensajes: List[dict], herramie
             raise ProveedorError(502, "Modelo no disponible en el proveedor.")
         raise ProveedorError(502, "El proveedor del asistente devolvió un error.")
     except (urllib.error.URLError, TimeoutError):
-        raise ProveedorError(502, "No se pudo contactar al proveedor del asistente.")
+        raise ProveedorError(504, "El asistente tardó demasiado en responder, intenta de nuevo.")
+    except (ValueError, http.client.HTTPException, OSError):
+        # JSON truncado, conexión cortada, etc.: sin esto el 500 sale sin cabeceras CORS
+        raise ProveedorError(502, "Respuesta inválida del proveedor del asistente.")
     try:
         partes = data["candidates"][0]["content"]["parts"]
-    except (KeyError, IndexError):
+    except (KeyError, IndexError, TypeError):
         raise ProveedorError(502, "Respuesta vacía del asistente.")
     llamadas = [{"name": p["functionCall"]["name"], "args": p["functionCall"].get("args", {})}
                 for p in partes if "functionCall" in p]
@@ -152,7 +158,10 @@ def responder(mensajes: List[dict], ctx, rol: str):
     system = (SYSTEM_PROMPT + f" Contexto del usuario (fijado por el servidor): rol {rol}; "
               f"alcance: {area}.")
     usadas = []
+    inicio = time.monotonic()
     for _ in range(MAX_RONDAS):
+        if time.monotonic() - inicio > PRESUPUESTO_TOTAL:
+            raise ProveedorError(504, "El asistente tardó demasiado en responder, intenta de nuevo.")
         r = llamar_modelo(mensajes, system, chat_tools.DECLARACIONES)
         if not r["llamadas"]:
             return (r["texto"] or "No tengo ese dato."), usadas
