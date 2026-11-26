@@ -31,6 +31,40 @@ from tiempo import ahora, hoy
 
 DEBOUNCE_SEGUNDOS = 5.0
 
+# Unidades de la maqueta: si no están registradas hoy, la primera lectura las
+# da de alta (ruta Desfogue → Diesel → Ad-Blue → Salida). Cualquier otra unidad
+# no registrada hoy responde 404.
+def unidades_demo() -> set[int]:
+    return {int(x) for x in os.environ.get("CHECKIN_UNIDADES", "101,102").split(",") if x.strip().isdigit()}
+
+
+def registrar_unidad_demo(conn, serie: int, area_inicial_id: int) -> None:
+    """Alta de HOY de una unidad de la maqueta (trip + record + movimiento en
+    el área inicial). Idempotente. La usan /checkin y scripts/reset_demo.py."""
+    f, now = hoy(), ahora()
+    conn.execute(text("""
+        INSERT INTO trips (date, serial_number, type_id, scheduled_time, departure_time,
+            needs_drainage, needs_diesel, needs_adblue, driver_name,
+            origin_terminal, destination_terminal, notes,
+            is_dirty, last_modified_by, last_modified_at)
+        VALUES (:f, :s, (SELECT id FROM bus_types WHERE name='ADO'), '08:00', '09:00', 1, 1, 1,
+            :cond, 'Oaxaca', 'CDMX', 'DEMO NFC', false, 'app', :ts)
+        ON CONFLICT (date, serial_number) DO UPDATE SET
+            needs_reception=0, needs_drainage=1, needs_diesel=1, needs_adblue=1,
+            needs_workshop=0, needs_int_wash=0, needs_ext_wash=0, notes='DEMO NFC'
+    """), {"f": f, "s": serie, "cond": f"Conductor {serie}", "ts": now})
+    rid = conn.execute(text("""
+        INSERT INTO records (date, serial_number, type_id, is_active, registration_time,
+            is_dirty, last_modified_by, last_modified_at)
+        VALUES (:f, :s, (SELECT id FROM bus_types WHERE name='ADO'), true, :ts, false, 'app', :ts)
+        ON CONFLICT (date, serial_number) DO UPDATE SET is_active=true, location_text=NULL
+        RETURNING id
+    """), {"f": f, "s": serie, "ts": now}).scalar()
+    conn.execute(text("""
+        INSERT INTO movements (record_id, area_id, serial_number, date, entry_time, last_modified_by)
+        VALUES (:rid, :aid, :s, :d, :t, 'app')
+    """), {"rid": rid, "aid": area_inicial_id, "s": serie, "d": f, "t": now.time()})
+
 _ultima_lectura: dict[int, float] = {}
 _lock = threading.Lock()
 
@@ -114,6 +148,19 @@ def crear_router(db: Callable, avanzar: Callable[[int, Optional[str]], dict],
                 "d": now.date(), "t": now.time(), "ts": now})
         return destino
 
+    def _alta_hoy(serie: int) -> str:
+        destino = "Desfogue"
+        with db() as conn:
+            conn.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": 7_000_000 + serie})
+            ya = conn.execute(text("SELECT 1 FROM records WHERE serial_number=:s AND date=:f"),
+                              {"s": serie, "f": str(hoy())}).fetchone()
+            if ya:  # otra lectura la dio de alta mientras esperábamos
+                return destino
+            area_id = conn.execute(text("SELECT id FROM area WHERE name=:n"),
+                                   {"n": area_display_to_db[destino]}).scalar()
+            registrar_unidad_demo(conn, serie, area_id)
+        return destino
+
     def _activa_hoy(serie: int) -> Optional[bool]:
         with db() as conn:
             row = conn.execute(text(
@@ -148,8 +195,13 @@ def crear_router(db: Callable, avanzar: Callable[[int, Optional[str]], dict],
         try:
             activa = _activa_hoy(serie)
             if activa is None:
-                raise HTTPException(404, f"La unidad {etiqueta(serie)} no está registrada hoy.")
-            nueva = avanzar(serie, None)["area_nueva"] if activa else _reiniciar_ciclo(serie)
+                if serie not in unidades_demo():
+                    raise HTTPException(404, f"La unidad {etiqueta(serie)} no está registrada hoy.")
+                nueva = _alta_hoy(serie)
+            elif activa:
+                nueva = avanzar(serie, None)["area_nueva"]
+            else:
+                nueva = _reiniciar_ciclo(serie)
         except HTTPException as e:
             with _lock:
                 _ultima_lectura.pop(serie, None)

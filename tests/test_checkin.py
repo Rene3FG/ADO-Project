@@ -152,3 +152,31 @@ def test_fecha_es_hoy():
     with api.db() as c:
         assert c.execute(text("SELECT date FROM movements WHERE serial_number=101"
                               " ORDER BY id DESC LIMIT 1")).scalar() == hoy()
+
+
+def test_unidad_de_la_maqueta_se_da_de_alta_sola():
+    """Si la demo pasa de medianoche (o no se corrió reset), la primera lectura
+    de ADO-101/102 la registra hoy en Desfogue; otras series siguen en 404."""
+    with api.db() as c:
+        c.execute(text("DELETE FROM movements WHERE serial_number=101"))
+        c.execute(text("DELETE FROM records WHERE serial_number=101"))
+        c.execute(text("DELETE FROM trips WHERE serial_number=101"))
+    r = leer("ADO-101")
+    assert "✅ ADO-101 → Desfogue" in r.text, r.text
+    assert area_actual(101) == ("DRAINAGE", False, True)
+    assert leer("ADO-103").status_code == 404
+
+
+def test_alta_concurrente_no_duplica():
+    import concurrent.futures as cf
+    with api.db() as c:
+        c.execute(text("DELETE FROM movements WHERE serial_number=101"))
+        c.execute(text("DELETE FROM records WHERE serial_number=101"))
+    checkin._ultima_lectura.clear()
+    # dos lecturas simultáneas saltándose el antirrebote: una sola alta
+    with cf.ThreadPoolExecutor(2) as ex:
+        list(ex.map(lambda _: client.get("/checkin", params={"unidad": "ADO-101", "k": TOKEN}),
+                    range(2)))
+    with api.db() as c:
+        n = c.execute(text("SELECT count(*) FROM movements WHERE serial_number=101")).scalar()
+    assert n == 1

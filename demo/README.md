@@ -1,5 +1,23 @@
 # Demo NFC/QR — check-in sin login
 
+## Producción (Render + Vercel) — modo principal
+
+- URL de los NFC/QR: `https://ado-project.onrender.com/checkin?unidad=ADO-101&k=<CHECKIN_TOKEN>`
+- En Render → Environment: `CHECKIN_TOKEN=<token>` y `DISABLE_SYNC=1` (que el
+  sync con el Sheet no meta camiones fantasma al patio durante la demo).
+- `ADO-101`/`ADO-102` se dan de alta solas en Desfogue con la primera lectura
+  del día (`CHECKIN_UNIDADES`, default `101,102`); cualquier otra serie no
+  registrada hoy → 404.
+- Reset antes de la demo (con el `DATABASE_URL` de producción del `.env`):
+  `python3 scripts/reset_demo.py --produccion` — solo toca esas 2 series.
+- Operadores por área: `python3 scripts/crear_operadores.py` (usuarios 3001–3006;
+  imprime contraseñas nuevas cada vez que se corre).
+- QR: `BASE_URL=https://ado-project.onrender.com demo/generar_qr.sh`
+- Render gratis se duerme a los 15 min: abre el panel (refresca cada 3 s y lo
+  mantiene despierto) unos minutos antes.
+
+## Local (plan B, sin internet en el lugar)
+
 Cada cochecito lleva un tag NFC (registro **URL**) y un QR con la misma URL:
 
     http://<IP>:8000/checkin?unidad=ADO-101&k=<CHECKIN_TOKEN>

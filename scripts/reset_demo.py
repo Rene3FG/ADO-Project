@@ -1,15 +1,16 @@
 """Deja la demo NFC lista para empezar (idempotente, se puede correr N veces).
 
-    python scripts/reset_demo.py
+    python scripts/reset_demo.py                # base local de la demo (Docker)
+    python scripts/reset_demo.py --produccion   # base de producción (Render/Supabase)
 
-- Catálogos (áreas, tipos, roles) con los mismos ids que producción.
-- Usuarios de demo: admin / operadores por área (contraseña en DEMO_PASSWORD).
-- Unidades ADO-101 y ADO-102 registradas HOY, ruta Desfogue → Diesel →
-  Ad-Blue → Salida, ambas paradas en Desfogue (estado inicial).
+Ambos modos: ADO-101 y ADO-102 registradas HOY, ruta Desfogue → Diesel →
+Ad-Blue → Salida, paradas en Desfogue (estado inicial). Solo se tocan filas de
+esas 2 unidades; en producción se aborta si alguna tiene datos que no sean de
+la demo (notes <> 'DEMO NFC').
 
-Solo corre contra una base local (localhost/127.0.0.1): borra los movimientos
-de las 2 unidades de demo. Para otra base, --permitir-remoto (no lo hagas
-contra la Supabase compartida).
+Solo local: además siembra catálogos y usuarios de prueba (admin, op_*) con
+contraseña DEMO_PASSWORD. Sin --produccion se niega a correr contra una base
+que no sea localhost.
 """
 import os
 import sys
@@ -20,8 +21,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import bcrypt  # noqa: E402
 from sqlalchemy import create_engine, text  # noqa: E402
 
+from checkin import registrar_unidad_demo  # noqa: E402
 from config import DATABASE_URL  # noqa: E402
-from tiempo import ahora, hoy  # noqa: E402
+from tiempo import hoy  # noqa: E402
 
 UNIDADES = [101, 102]
 DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD", "demo2026")
@@ -39,65 +41,61 @@ USUARIOS = [
 ]
 
 
+def _sembrar_local(c) -> None:
+    for i, n, cap in AREAS:
+        c.execute(text("INSERT INTO area (id, name, capacity) VALUES (:i,:n,:c)"
+                       " ON CONFLICT (id) DO NOTHING"), {"i": i, "n": n, "c": cap})
+    for i, n in TIPOS:
+        c.execute(text("INSERT INTO bus_types (id, name) VALUES (:i,:n) ON CONFLICT (id) DO NOTHING"),
+                  {"i": i, "n": n})
+    for i, n in ROLES:
+        c.execute(text("INSERT INTO roles (id, name) VALUES (:i,:n) ON CONFLICT (id) DO NOTHING"),
+                  {"i": i, "n": n})
+    for tabla in ("area", "bus_types", "roles"):
+        c.execute(text(f"SELECT setval(pg_get_serial_sequence('{tabla}','id'),"
+                       f" (SELECT MAX(id) FROM {tabla}))"))
+
+    pw = bcrypt.hashpw(DEMO_PASSWORD.encode(), bcrypt.gensalt()).decode()
+    for u, rol, nom, ape, area in USUARIOS:
+        c.execute(text("""
+            INSERT INTO users (username, role_id, password_hash, first_name, last_name, assigned_area_id)
+            VALUES (:u, :r, :p, :n, :a, :area)
+            ON CONFLICT (username) DO UPDATE SET role_id=EXCLUDED.role_id,
+                password_hash=EXCLUDED.password_hash, assigned_area_id=EXCLUDED.assigned_area_id,
+                is_active=true
+        """), {"u": u, "r": rol, "p": pw, "n": nom, "a": ape, "area": area})
+
+
 def main() -> None:
+    produccion = "--produccion" in sys.argv
     host = urlparse(DATABASE_URL).hostname or ""
-    if host not in ("localhost", "127.0.0.1") and "--permitir-remoto" not in sys.argv:
-        sys.exit(f"Abortado: DATABASE_URL apunta a '{host}', no a una base local.")
+    if host not in ("localhost", "127.0.0.1") and not produccion:
+        sys.exit(f"Abortado: DATABASE_URL apunta a '{host}'. Usa --produccion si es a propósito.")
 
     engine = create_engine(DATABASE_URL)
-    f, now = hoy(), ahora()
+    f = hoy()
     with engine.begin() as c:
-        for i, n, cap in AREAS:
-            c.execute(text("INSERT INTO area (id, name, capacity) VALUES (:i,:n,:c)"
-                           " ON CONFLICT (id) DO NOTHING"), {"i": i, "n": n, "c": cap})
-        for i, n in TIPOS:
-            c.execute(text("INSERT INTO bus_types (id, name) VALUES (:i,:n) ON CONFLICT (id) DO NOTHING"),
-                      {"i": i, "n": n})
-        for i, n in ROLES:
-            c.execute(text("INSERT INTO roles (id, name) VALUES (:i,:n) ON CONFLICT (id) DO NOTHING"),
-                      {"i": i, "n": n})
-        for tabla in ("area", "bus_types", "roles"):
-            c.execute(text(f"SELECT setval(pg_get_serial_sequence('{tabla}','id'),"
-                           f" (SELECT MAX(id) FROM {tabla}))"))
+        if produccion:
+            ajenos = c.execute(text(
+                "SELECT serial_number, date FROM trips WHERE serial_number = ANY(:u)"
+                " AND notes IS DISTINCT FROM 'DEMO NFC' LIMIT 5"), {"u": UNIDADES}).fetchall()
+            if ajenos:
+                sys.exit(f"Abortado: hay viajes reales con esas series: {ajenos}")
+        else:
+            _sembrar_local(c)
 
-        pw = bcrypt.hashpw(DEMO_PASSWORD.encode(), bcrypt.gensalt()).decode()
-        for u, rol, nom, ape, area in USUARIOS:
-            c.execute(text("""
-                INSERT INTO users (username, role_id, password_hash, first_name, last_name, assigned_area_id)
-                VALUES (:u, :r, :p, :n, :a, :area)
-                ON CONFLICT (username) DO UPDATE SET role_id=EXCLUDED.role_id,
-                    password_hash=EXCLUDED.password_hash, assigned_area_id=EXCLUDED.assigned_area_id,
-                    is_active=true
-            """), {"u": u, "r": rol, "p": pw, "n": nom, "a": ape, "area": area})
-
+        drenaje = c.execute(text("SELECT id FROM area WHERE name='DRAINAGE'")).scalar()
         for serie in UNIDADES:
             c.execute(text("DELETE FROM movements WHERE serial_number=:s"), {"s": serie})
             c.execute(text("DELETE FROM area_checklists WHERE record_id IN"
                            " (SELECT id FROM records WHERE serial_number=:s)"), {"s": serie})
             c.execute(text("DELETE FROM records WHERE serial_number=:s AND date<>:f"), {"s": serie, "f": f})
             c.execute(text("DELETE FROM trips WHERE serial_number=:s AND date<>:f"), {"s": serie, "f": f})
-            c.execute(text("""
-                INSERT INTO trips (date, serial_number, type_id, scheduled_time, departure_time,
-                    needs_drainage, needs_diesel, needs_adblue, driver_name,
-                    origin_terminal, destination_terminal, notes, last_modified_by)
-                VALUES (:f, :s, 5, '08:00', '09:00', 1, 1, 1, :cond, 'Oaxaca', 'CDMX', 'DEMO NFC', 'app')
-                ON CONFLICT (date, serial_number) DO UPDATE SET type_id=5,
-                    needs_reception=0, needs_drainage=1, needs_diesel=1, needs_adblue=1,
-                    needs_workshop=0, needs_int_wash=0, needs_ext_wash=0, notes='DEMO NFC'
-            """), {"f": f, "s": serie, "cond": f"Conductor {serie}"})
-            rid = c.execute(text("""
-                INSERT INTO records (date, serial_number, type_id, is_active, registration_time, last_modified_by)
-                VALUES (:f, :s, 5, true, :ts, 'app')
-                ON CONFLICT (date, serial_number) DO UPDATE SET is_active=true, location_text=NULL
-                RETURNING id
-            """), {"f": f, "s": serie, "ts": now}).scalar()
-            c.execute(text("""
-                INSERT INTO movements (record_id, area_id, serial_number, date, entry_time, last_modified_by)
-                VALUES (:rid, 4, :s, :d, :t, 'app')
-            """), {"rid": rid, "s": serie, "d": f, "t": now.time()})
+            registrar_unidad_demo(c, serie, drenaje)
 
-    print(f"Demo lista ({f}): ADO-101 y ADO-102 en Desfogue. "
-          f"Usuarios {', '.join(u[0] for u in USUARIOS)} / contraseña {DEMO_PASSWORD}")
+    print(f"Demo lista ({f}, {'PRODUCCIÓN' if produccion else 'local'}): ADO-101 y ADO-102 en Desfogue.")
+    if not produccion:
+        print(f"Usuarios {', '.join(u[0] for u in USUARIOS)} / contraseña {DEMO_PASSWORD}")
 
 
 if __name__ == "__main__":
