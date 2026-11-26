@@ -6,3 +6,4 @@ __pycache__/
 scaapi.ipynb
 demo/demo.env
 demo/*.log
+demo/qr/

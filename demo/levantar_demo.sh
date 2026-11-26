@@ -16,6 +16,11 @@ fi
 
 set -a; . demo/demo.env; set +a
 IP=$(ip -4 route get 1.1.1.1 | awk '{for(i=1;i<=NF;i++) if($i=="src") print $(i+1)}')
-echo "API:   http://$IP:$PORT   (panel: http://$IP:5173)"
+if [ "$IP" != "${DEMO_IP:-}" ]; then
+  echo "⚠️  La IP cambió: ahora es $IP y los NFC/QR apuntan a ${DEMO_IP:-?}."
+  echo "    Opciones: reservar ${DEMO_IP:-la IP} en el router, o regrabar NFC y correr"
+  echo "    DEMO_IP=$IP demo/generar_qr.sh (y actualizar DEMO_IP en demo/demo.env)."
+fi
+echo "API:   http://$IP:$PORT   (panel: cd ~/ADO-Project && VITE_API_URL=http://$IP:$PORT npx vite --host 0.0.0.0)"
 for u in 101 102; do echo "NFC/QR ADO-$u: http://$IP:$PORT/checkin?unidad=ADO-$u&k=$CHECKIN_TOKEN"; done
 exec python3 -m uvicorn api:app --host 0.0.0.0 --port "$PORT"
