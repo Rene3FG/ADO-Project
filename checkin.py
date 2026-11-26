@@ -161,8 +161,10 @@ def _respuesta(como_json: bool, ok: bool, titulo: str, detalle: str = "", status
                aviso: bool = False, **extra):
     """HTML para el celular que abre la URL; JSON para la app (fetch)."""
     if como_json:
-        return JSONResponse({"ok": ok, "aviso": aviso, "mensaje": titulo, "detalle": detalle, **extra},
-                            status_code=status)
+        cuerpo = {"ok": ok, "aviso": aviso, "mensaje": titulo, "detalle": detalle, **extra}
+        if not ok:
+            cuerpo["detail"] = detalle or titulo  # lo que muestra apiFetch del frontend
+        return JSONResponse(cuerpo, status_code=status)
     return _pagina(ok, titulo, detalle, status, aviso)
 
 
