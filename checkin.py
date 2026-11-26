@@ -106,35 +106,42 @@ def _pagina(ok: bool, titulo: str, detalle: str = "", status: int = 200,
     return HTMLResponse(cuerpo, status_code=status)
 
 
-def crear_router(db: Callable, avanzar: Callable[[int, Optional[str]], dict],
-                 area_display_to_db: dict) -> APIRouter:
-    router = APIRouter()
+def entrada_demo(db: Callable, serie: int, area_operador: Optional[str],
+                 area_display_to_db: dict) -> Optional[dict]:
+    """Entrada al patio de una unidad de la maqueta que no está en él: alta del
+    día (si no existe hoy) o reingreso tras Salida (ciclo). La recibe la
+    primera estación de su ruta: un operador de otra área recibe 403.
+    Devuelve None si no aplica (unidad no-demo, o ya activa en el patio) para
+    que el avance normal siga su curso."""
+    if serie not in unidades_demo():
+        return None
+    target = str(hoy())
+    with db() as conn:
+        conn.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": 7_000_000 + serie})
+        record = conn.execute(text(
+            "SELECT id, is_active FROM records WHERE serial_number=:s AND date=:f"
+        ), {"s": serie, "f": target}).fetchone()
+        if record and record.is_active:
+            return None
+        trip = conn.execute(text(
+            "SELECT needs_drainage, needs_diesel, needs_adblue,"
+            " needs_workshop, needs_int_wash, needs_ext_wash"
+            " FROM trips WHERE serial_number=:s AND date=:f"
+        ), {"s": serie, "f": target}).fetchone()
+        destino = calcular_ruta(trip)[0] if (record and trip) else "Desfogue"
+        if destino == "Salida":
+            raise HTTPException(409, f"La unidad {etiqueta(serie)} no tiene áreas en su ruta.")
+        if area_operador and area_operador != destino:
+            raise HTTPException(403, f"Este camión no está en tu área ({area_operador}). "
+                                     f"Su entrada la registra {destino}.")
+        area_id = conn.execute(text("SELECT id FROM area WHERE name=:n"),
+                               {"n": area_display_to_db.get(destino, destino)}).scalar()
+        if area_id is None:
+            raise HTTPException(404, f"Área '{destino}' no encontrada en la DB")
 
-    def _reiniciar_ciclo(serie: int) -> str:
-        """La unidad ya salió (record inactivo): vuelve a entrar al patio en la
-        primera área de su ruta. Devuelve el área nueva."""
-        target = str(hoy())
-        with db() as conn:
-            record = conn.execute(text(
-                "SELECT id FROM records WHERE serial_number=:s AND date=:f FOR UPDATE"
-            ), {"s": serie, "f": target}).fetchone()
-            trip = conn.execute(text(
-                "SELECT needs_drainage, needs_diesel, needs_adblue,"
-                " needs_workshop, needs_int_wash, needs_ext_wash"
-                " FROM trips WHERE serial_number=:s AND date=:f"
-            ), {"s": serie, "f": target}).fetchone()
-            if not record or not trip:
-                raise HTTPException(404, f"La unidad {etiqueta(serie)} no está registrada hoy.")
-
-            ruta = calcular_ruta(trip)
-            destino = ruta[0]
-            if destino == "Salida":
-                raise HTTPException(409, f"La unidad {etiqueta(serie)} no tiene áreas en su ruta.")
-            area_row = conn.execute(text("SELECT id FROM area WHERE name=:n"),
-                                    {"n": area_display_to_db.get(destino, destino)}).fetchone()
-            if not area_row:
-                raise HTTPException(404, f"Área '{destino}' no encontrada en la DB")
-
+        if not record:
+            registrar_unidad_demo(conn, serie, area_id)
+        else:
             now = ahora()
             conn.execute(text(
                 "UPDATE records SET is_active=true, is_dirty=true,"
@@ -144,29 +151,21 @@ def crear_router(db: Callable, avanzar: Callable[[int, Optional[str]], dict],
                 "INSERT INTO movements (record_id, area_id, serial_number, date, entry_time,"
                 " is_dirty, last_modified_by, last_modified_at)"
                 " VALUES (:rid, :aid, :s, :d, :t, true, 'app', :ts)"
-            ), {"rid": record.id, "aid": area_row.id, "s": serie,
+            ), {"rid": record.id, "aid": area_id, "s": serie,
                 "d": now.date(), "t": now.time(), "ts": now})
-        return destino
+    return {"ok": True, "serie": serie, "area_anterior": "Salida" if record else None,
+            "area_nueva": destino}
 
-    def _alta_hoy(serie: int) -> str:
-        destino = "Desfogue"
-        with db() as conn:
-            conn.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": 7_000_000 + serie})
-            ya = conn.execute(text("SELECT 1 FROM records WHERE serial_number=:s AND date=:f"),
-                              {"s": serie, "f": str(hoy())}).fetchone()
-            if ya:  # otra lectura la dio de alta mientras esperábamos
-                return destino
-            area_id = conn.execute(text("SELECT id FROM area WHERE name=:n"),
-                                   {"n": area_display_to_db[destino]}).scalar()
-            registrar_unidad_demo(conn, serie, area_id)
-        return destino
 
-    def _activa_hoy(serie: int) -> Optional[bool]:
+def crear_router(db: Callable, avanzar: Callable[[int, Optional[str]], dict]) -> APIRouter:
+    """avanzar = api.avanzar_camion, que ya incluye entrada_demo."""
+    router = APIRouter()
+
+    def _registrada_hoy(serie: int) -> bool:
         with db() as conn:
-            row = conn.execute(text(
-                "SELECT is_active FROM records WHERE serial_number=:s AND date=:f"
-            ), {"s": serie, "f": str(hoy())}).fetchone()
-        return None if row is None else bool(row.is_active)
+            return conn.execute(text(
+                "SELECT 1 FROM records WHERE serial_number=:s AND date=:f"
+            ), {"s": serie, "f": str(hoy())}).fetchone() is not None
 
     @router.get("/checkin", response_class=HTMLResponse,
                 summary="Check-in por NFC/QR (sin login, token en la URL)")
@@ -193,15 +192,9 @@ def crear_router(db: Callable, avanzar: Callable[[int, Optional[str]], dict],
             _ultima_lectura[serie] = t
 
         try:
-            activa = _activa_hoy(serie)
-            if activa is None:
-                if serie not in unidades_demo():
-                    raise HTTPException(404, f"La unidad {etiqueta(serie)} no está registrada hoy.")
-                nueva = _alta_hoy(serie)
-            elif activa:
-                nueva = avanzar(serie, None)["area_nueva"]
-            else:
-                nueva = _reiniciar_ciclo(serie)
+            if serie not in unidades_demo() and not _registrada_hoy(serie):
+                raise HTTPException(404, f"La unidad {etiqueta(serie)} no está registrada hoy.")
+            nueva = avanzar(serie, None)["area_nueva"]
         except HTTPException as e:
             with _lock:
                 _ultima_lectura.pop(serie, None)

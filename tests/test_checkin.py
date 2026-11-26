@@ -180,3 +180,31 @@ def test_alta_concurrente_no_duplica():
     with api.db() as c:
         n = c.execute(text("SELECT count(*) FROM movements WHERE serial_number=101")).scalar()
     assert n == 1
+
+
+def test_flujo_app_operador_por_estacion():
+    """Flujo real: cada operador escanea en la app (POST /camiones/{serie}/avanzar)
+    y la unidad pasa a la siguiente estación, donde la recibe otro operador."""
+    op = {u: login(u) for u in ("op_desfogue", "op_diesel", "op_adblue")}
+    avanzar = lambda u, s=101: client.post(f"/camiones/{s}/avanzar", headers=op[u])  # noqa: E731
+    assert avanzar("op_diesel").status_code == 403          # aún está en Desfogue
+    assert avanzar("op_desfogue").json()["area_nueva"] == "Diesel"
+    assert avanzar("op_desfogue").status_code == 403        # ya no es de su área
+    assert avanzar("op_diesel").json()["area_nueva"] == "Ad-Blue"
+    assert avanzar("op_adblue").json()["area_nueva"] == "Salida"
+    assert area_actual(101) == ("ADDBLUE", True, False)
+    assert avanzar("op_diesel").status_code == 403          # la entrada es de Desfogue
+    r = avanzar("op_desfogue").json()                        # nuevo ciclo
+    assert (r["area_anterior"], r["area_nueva"]) == ("Salida", "Desfogue")
+    assert area_actual(101) == ("DRAINAGE", False, True)
+
+
+def test_flujo_app_alta_del_dia_la_hace_desfogue():
+    with api.db() as c:
+        c.execute(text("DELETE FROM movements WHERE serial_number=102"))
+        c.execute(text("DELETE FROM records WHERE serial_number=102"))
+        c.execute(text("DELETE FROM trips WHERE serial_number=102"))
+    assert client.post("/camiones/102/avanzar", headers=login("op_diesel")).status_code == 403
+    r = client.post("/camiones/102/avanzar", headers=login("op_desfogue"))
+    assert r.json()["area_nueva"] == "Desfogue"
+    assert client.post("/camiones/999/avanzar", headers=login("op_desfogue")).status_code == 404

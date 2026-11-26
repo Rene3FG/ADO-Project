@@ -93,7 +93,7 @@ def main() -> None:
             c.execute(text("DELETE FROM trips WHERE serial_number=:s AND date<>:f"), {"s": serie, "f": f})
             registrar_unidad_demo(c, serie, drenaje)
 
-    print(f"Demo lista ({f}, {'PRODUCCIÓN' if produccion else 'local'}): ADO-101 y ADO-102 en Desfogue.")
+    print(f"Demo lista ({f}, base {host}): ADO-101 y ADO-102 en Desfogue.")
     if not produccion:
         print(f"Usuarios {', '.join(u[0] for u in USUARIOS)} / contraseña {DEMO_PASSWORD}")
 

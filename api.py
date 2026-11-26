@@ -22,6 +22,7 @@ from db_client import AREA_NOMBRE_DB
 from tiempo import ahora, hoy
 import analiticas
 from routing import calcular_ruta, siguiente_area
+import checkin
 
 JWT_SECRET = os.environ.get("JWT_SECRET", secrets.token_hex(32))
 JWT_ALGORITHM = "HS256"
@@ -781,6 +782,11 @@ def delete_camion(camion_id: int):
 
 @app.post("/camiones/{serie}/avanzar", summary="Avanza el camión al siguiente paso de su ruta (swipe/NFC)")
 def avanzar_camion(serie: int, area_operador: Optional[str] = Depends(get_operador_area)):
+    # Unidades de la maqueta (CHECKIN_UNIDADES) fuera del patio: la primera
+    # estación de su ruta les da entrada (alta del día o nuevo ciclo).
+    entrada = checkin.entrada_demo(db, serie, area_operador, AREA_DISPLAY_TO_DB)
+    if entrada:
+        return entrada
     target = str(hoy())
     with db() as conn:
         # FOR UPDATE serializa avances concurrentes del mismo camión (doble
@@ -879,8 +885,7 @@ def escanear_nfc_tag(body: NfcScan, area_operador: Optional[str] = Depends(get_o
 
 # ── Check-in sin login por NFC/QR (`/checkin`) — ver checkin.py ──
 
-import checkin
-app.include_router(checkin.crear_router(db, avanzar_camion, AREA_DISPLAY_TO_DB))
+app.include_router(checkin.crear_router(db, avanzar_camion))
 
 
 # ── Historial (`/historial`) ──────────────────────────────────────
