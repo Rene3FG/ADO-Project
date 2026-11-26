@@ -217,7 +217,10 @@ def _run_sync_loop():
 
 @asynccontextmanager
 async def lifespan(app):
-    if (os.path.exists("/etc/secrets/service_account.json") or
+    if os.environ.get("DISABLE_SYNC") == "1":
+        # demo local: no tocar el Google Sheet real con datos de prueba
+        print("[SYNC] Desactivado por DISABLE_SYNC=1")
+    elif (os.path.exists("/etc/secrets/service_account.json") or
             os.path.exists("credentials/service_account.json") or
             os.environ.get("GOOGLE_CREDS_FILE")):
         t = threading.Thread(target=_run_sync_loop, daemon=True)
@@ -874,6 +877,12 @@ def escanear_nfc_tag(body: NfcScan, area_operador: Optional[str] = Depends(get_o
     return avanzar_camion(tag.serial_number, area_operador)
 
 
+# ── Check-in sin login por NFC/QR (`/checkin`) — ver checkin.py ──
+
+import checkin
+app.include_router(checkin.crear_router(db, avanzar_camion, AREA_DISPLAY_TO_DB))
+
+
 # ── Historial (`/historial`) ──────────────────────────────────────
 
 @app.get("/historial", summary="Historial de movimientos del día")
@@ -1186,11 +1195,6 @@ def me(user: dict = Depends(get_current_user)):
     return user
 
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
-
-
 # ── Analíticas ─────────────────────────────────────────────
 
 @app.get("/analiticas")
@@ -1205,3 +1209,8 @@ def get_analiticas(
         raise HTTPException(400, "'desde' no puede ser posterior a 'hasta'")
     with db() as conn:
         return analiticas.calcular(conn, desde, hasta, lambda n: AREA_DB_TO_DISPLAY.get(n, n))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))

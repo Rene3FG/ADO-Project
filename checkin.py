@@ -1,0 +1,166 @@
+"""Check-in por NFC/QR desde un celular, sin login (demo de la maqueta).
+
+GET /checkin?unidad=ADO-101&k=<CHECKIN_TOKEN>
+
+El tag NFC (registro URL) o el QR del autobús abren esta URL en el navegador
+del celular. Cada lectura avanza la unidad al siguiente paso de SU ruta —la
+misma lógica de avanzar_camion (swipe/NFC del operador) y routing.py—. Al
+pasar por Salida el ciclo vuelve a empezar en la primera área de la ruta.
+
+Protección: token compartido CHECKIN_TOKEN (variable de entorno). Si no está
+definido el endpoint queda deshabilitado. Lecturas repetidas de la misma
+unidad en menos de DEBOUNCE_SEGUNDOS se ignoran (el NFC a veces lee doble).
+"""
+from __future__ import annotations
+
+import html
+import os
+import re
+import secrets
+import threading
+import time
+import traceback
+from typing import Callable, Optional
+
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import HTMLResponse
+from sqlalchemy import text
+
+from routing import calcular_ruta
+from tiempo import ahora, hoy
+
+DEBOUNCE_SEGUNDOS = 5.0
+
+_ultima_lectura: dict[int, float] = {}
+_lock = threading.Lock()
+
+
+def _reloj() -> float:
+    return time.monotonic()
+
+
+def etiqueta(serie: int) -> str:
+    return f"ADO-{serie}"
+
+
+def _parse_unidad(unidad: str) -> Optional[int]:
+    m = re.fullmatch(r"\s*(?:ADO[-_ ]?)?(\d{1,9})\s*", unidad or "", re.IGNORECASE)
+    return int(m.group(1)) if m else None
+
+
+def _pagina(ok: bool, titulo: str, detalle: str = "", status: int = 200,
+            aviso: bool = False) -> HTMLResponse:
+    color = "#b45309" if aviso else ("#15803d" if ok else "#b91c1c")
+    fondo = "#fffbeb" if aviso else ("#f0fdf4" if ok else "#fef2f2")
+    cuerpo = f"""<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCA · Check-in</title>
+<style>
+  body {{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         font-family:system-ui,-apple-system,sans-serif; background:{fondo}; color:#111; }}
+  main {{ text-align:center; padding:24px; }}
+  h1 {{ font-size:2rem; line-height:1.3; margin:0 0 12px; color:{color}; }}
+  p {{ font-size:1.15rem; margin:0; color:#333; }}
+  small {{ display:block; margin-top:24px; color:#666; }}
+</style></head>
+<body><main>
+  <h1>{html.escape(titulo)}</h1>
+  <p>{html.escape(detalle)}</p>
+  <small>SCA · ADO Oaxaca</small>
+</main></body></html>"""
+    return HTMLResponse(cuerpo, status_code=status)
+
+
+def crear_router(db: Callable, avanzar: Callable[[int, Optional[str]], dict],
+                 area_display_to_db: dict) -> APIRouter:
+    router = APIRouter()
+
+    def _reiniciar_ciclo(serie: int) -> str:
+        """La unidad ya salió (record inactivo): vuelve a entrar al patio en la
+        primera área de su ruta. Devuelve el área nueva."""
+        target = str(hoy())
+        with db() as conn:
+            record = conn.execute(text(
+                "SELECT id FROM records WHERE serial_number=:s AND date=:f FOR UPDATE"
+            ), {"s": serie, "f": target}).fetchone()
+            trip = conn.execute(text(
+                "SELECT needs_drainage, needs_diesel, needs_adblue,"
+                " needs_workshop, needs_int_wash, needs_ext_wash"
+                " FROM trips WHERE serial_number=:s AND date=:f"
+            ), {"s": serie, "f": target}).fetchone()
+            if not record or not trip:
+                raise HTTPException(404, f"La unidad {etiqueta(serie)} no está registrada hoy.")
+
+            ruta = calcular_ruta(trip)
+            destino = ruta[0]
+            if destino == "Salida":
+                raise HTTPException(409, f"La unidad {etiqueta(serie)} no tiene áreas en su ruta.")
+            area_row = conn.execute(text("SELECT id FROM area WHERE name=:n"),
+                                    {"n": area_display_to_db.get(destino, destino)}).fetchone()
+            if not area_row:
+                raise HTTPException(404, f"Área '{destino}' no encontrada en la DB")
+
+            now = ahora()
+            conn.execute(text(
+                "UPDATE records SET is_active=true, is_dirty=true,"
+                " last_modified_by='app', last_modified_at=:ts WHERE id=:id"
+            ), {"id": record.id, "ts": now})
+            conn.execute(text(
+                "INSERT INTO movements (record_id, area_id, serial_number, date, entry_time,"
+                " is_dirty, last_modified_by, last_modified_at)"
+                " VALUES (:rid, :aid, :s, :d, :t, true, 'app', :ts)"
+            ), {"rid": record.id, "aid": area_row.id, "s": serie,
+                "d": now.date(), "t": now.time(), "ts": now})
+        return destino
+
+    def _activa_hoy(serie: int) -> Optional[bool]:
+        with db() as conn:
+            row = conn.execute(text(
+                "SELECT is_active FROM records WHERE serial_number=:s AND date=:f"
+            ), {"s": serie, "f": str(hoy())}).fetchone()
+        return None if row is None else bool(row.is_active)
+
+    @router.get("/checkin", response_class=HTMLResponse,
+                summary="Check-in por NFC/QR (sin login, token en la URL)")
+    def checkin(unidad: str = Query(default=""), k: str = Query(default="")):
+        token = os.environ.get("CHECKIN_TOKEN", "")
+        if not token:
+            return _pagina(False, "❌ Check-in deshabilitado",
+                           "Falta CHECKIN_TOKEN en el servidor.", 503)
+        if not k or not secrets.compare_digest(k.encode(), token.encode()):
+            return _pagina(False, "❌ Acceso no autorizado",
+                           "El enlace no tiene un token válido.", 403)
+
+        serie = _parse_unidad(unidad)
+        if serie is None:
+            return _pagina(False, "❌ Unidad no válida",
+                           f"'{unidad}' no es un identificador de unidad.", 400)
+
+        with _lock:
+            t = _reloj()
+            previa = _ultima_lectura.get(serie)
+            if previa is not None and t - previa < DEBOUNCE_SEGUNDOS:
+                return _pagina(True, f"⏳ {etiqueta(serie)}: lectura repetida",
+                               "Ya se registró hace un momento; se ignoró.", 200, aviso=True)
+            _ultima_lectura[serie] = t
+
+        try:
+            activa = _activa_hoy(serie)
+            if activa is None:
+                raise HTTPException(404, f"La unidad {etiqueta(serie)} no está registrada hoy.")
+            nueva = avanzar(serie, None)["area_nueva"] if activa else _reiniciar_ciclo(serie)
+        except HTTPException as e:
+            with _lock:
+                _ultima_lectura.pop(serie, None)
+            return _pagina(False, "❌ No se pudo registrar", str(e.detail), e.status_code)
+        except Exception:
+            traceback.print_exc()
+            with _lock:
+                _ultima_lectura.pop(serie, None)
+            return _pagina(False, "❌ Error interno",
+                           "No se pudo registrar el paso. Intenta de nuevo.", 500)
+
+        return _pagina(True, f"✅ {etiqueta(serie)} → {nueva}", f"({ahora():%H:%M})")
+
+    return router
