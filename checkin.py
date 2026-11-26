@@ -22,8 +22,8 @@ import time
 import traceback
 from typing import Callable, Optional
 
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import text
 
 from routing import calcular_ruta
@@ -157,8 +157,20 @@ def entrada_demo(db: Callable, serie: int, area_operador: Optional[str],
             "area_nueva": destino}
 
 
-def crear_router(db: Callable, avanzar: Callable[[int, Optional[str]], dict]) -> APIRouter:
-    """avanzar = api.avanzar_camion, que ya incluye entrada_demo."""
+def _respuesta(como_json: bool, ok: bool, titulo: str, detalle: str = "", status: int = 200,
+               aviso: bool = False, **extra):
+    """HTML para el celular que abre la URL; JSON para la app (fetch)."""
+    if como_json:
+        return JSONResponse({"ok": ok, "aviso": aviso, "mensaje": titulo, "detalle": detalle, **extra},
+                            status_code=status)
+    return _pagina(ok, titulo, detalle, status, aviso)
+
+
+def crear_router(db: Callable, avanzar: Callable[[int, Optional[str]], dict],
+                 area_sesion: Callable) -> APIRouter:
+    """avanzar = api.avanzar_camion (incluye entrada_demo). area_sesion =
+    dependencia que devuelve el área del Operador si la petición trae su JWT
+    (None sin sesión o para Admin/Supervisor): desde la app se respeta el área."""
     router = APIRouter()
 
     def _registrada_hoy(serie: int) -> bool:
@@ -169,43 +181,50 @@ def crear_router(db: Callable, avanzar: Callable[[int, Optional[str]], dict]) ->
 
     @router.get("/checkin", response_class=HTMLResponse,
                 summary="Check-in por NFC/QR (sin login, token en la URL)")
-    def checkin(unidad: str = Query(default=""), k: str = Query(default="")):
+    def checkin(request: Request, unidad: str = Query(default=""), k: str = Query(default=""),
+                area_operador: Optional[str] = Depends(area_sesion)):
+        como_json = "application/json" in request.headers.get("accept", "")
+        responder = lambda *a, **kw: _respuesta(como_json, *a, **kw)  # noqa: E731
         token = os.environ.get("CHECKIN_TOKEN", "")
         if not token:
-            return _pagina(False, "❌ Check-in deshabilitado",
-                           "Falta CHECKIN_TOKEN en el servidor.", 503)
+            return responder(False, "❌ Check-in deshabilitado",
+                             "Falta CHECKIN_TOKEN en el servidor.", 503)
         if not k or not secrets.compare_digest(k.encode(), token.encode()):
-            return _pagina(False, "❌ Acceso no autorizado",
-                           "El enlace no tiene un token válido.", 403)
+            return responder(False, "❌ Acceso no autorizado",
+                             "El enlace no tiene un token válido.", 403)
 
         serie = _parse_unidad(unidad)
         if serie is None:
-            return _pagina(False, "❌ Unidad no válida",
-                           f"'{unidad}' no es un identificador de unidad.", 400)
+            return responder(False, "❌ Unidad no válida",
+                             f"'{unidad}' no es un identificador de unidad.", 400)
 
         with _lock:
             t = _reloj()
             previa = _ultima_lectura.get(serie)
             if previa is not None and t - previa < DEBOUNCE_SEGUNDOS:
-                return _pagina(True, f"⏳ {etiqueta(serie)}: lectura repetida",
-                               "Ya se registró hace un momento; se ignoró.", 200, aviso=True)
+                return responder(True, f"⏳ {etiqueta(serie)}: lectura repetida",
+                                 "Ya se registró hace un momento; se ignoró.", 200, aviso=True,
+                                 unidad=etiqueta(serie))
             _ultima_lectura[serie] = t
 
         try:
             if serie not in unidades_demo() and not _registrada_hoy(serie):
                 raise HTTPException(404, f"La unidad {etiqueta(serie)} no está registrada hoy.")
-            nueva = avanzar(serie, None)["area_nueva"]
+            nueva = avanzar(serie, area_operador)["area_nueva"]
         except HTTPException as e:
             with _lock:
                 _ultima_lectura.pop(serie, None)
-            return _pagina(False, "❌ No se pudo registrar", str(e.detail), e.status_code)
+            return responder(False, "❌ No se pudo registrar", str(e.detail), e.status_code,
+                             unidad=etiqueta(serie))
         except Exception:
             traceback.print_exc()
             with _lock:
                 _ultima_lectura.pop(serie, None)
-            return _pagina(False, "❌ Error interno",
-                           "No se pudo registrar el paso. Intenta de nuevo.", 500)
+            return responder(False, "❌ Error interno",
+                             "No se pudo registrar el paso. Intenta de nuevo.", 500)
 
-        return _pagina(True, f"✅ {etiqueta(serie)} → {nueva}", f"({ahora():%H:%M})")
+        hora = f"{ahora():%H:%M}"
+        return responder(True, f"✅ {etiqueta(serie)} → {nueva}", f"({hora})",
+                         unidad=etiqueta(serie), area_nueva=nueva, hora=hora)
 
     return router

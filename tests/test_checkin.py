@@ -208,3 +208,64 @@ def test_flujo_app_alta_del_dia_la_hace_desfogue():
     r = client.post("/camiones/102/avanzar", headers=login("op_desfogue"))
     assert r.json()["area_nueva"] == "Desfogue"
     assert client.post("/camiones/999/avanzar", headers=login("op_desfogue")).status_code == 404
+
+
+def cola_operador(username):
+    """Lo mismo que calcula la vista móvil del operador (PatioPage):
+    /registros activos + movimiento abierto de su área en /movimientos."""
+    h = login(username)
+    activos = {r["serie"] for r in client.get("/registros", headers=h).json()}
+    movs = client.get("/movimientos", headers=h).json()
+    return sorted(m["serie"] for m in movs if not m["completado"] and m["serie"] in activos)
+
+
+def test_cola_del_operador_sigue_al_checkin(demo_limpia):
+    pasos = [("op_diesel", "Diesel"), ("op_adblue", "Ad-Blue"), (None, "Salida"), ("op_desfogue", "Desfogue")]
+    anterior = "op_desfogue"
+    assert cola_operador("op_desfogue") == [101, 102]
+    for dueno, area in pasos:
+        demo_limpia.t += 6
+        assert f"→ {area}" in leer("ADO-102").text
+        assert 102 not in cola_operador(anterior)
+        if dueno:
+            assert 102 in cola_operador(dueno)
+            anterior = dueno
+
+
+def test_checkin_json_desde_la_app(demo_limpia):
+    r = client.get("/checkin", params={"unidad": "ADO-101", "k": TOKEN},
+                   headers={"Accept": "application/json"})
+    assert r.status_code == 200
+    j = r.json()
+    assert j["ok"] and j["unidad"] == "ADO-101" and j["area_nueva"] == "Diesel" and j["hora"]
+    demo_limpia.t += 1
+    j = client.get("/checkin", params={"unidad": "ADO-101", "k": TOKEN},
+                   headers={"Accept": "application/json"}).json()
+    assert j["ok"] and j["aviso"]
+    r = client.get("/checkin", params={"unidad": "ADO-101", "k": "mal"}, headers={"Accept": "application/json"})
+    assert r.status_code == 403 and r.json()["ok"] is False
+
+
+def test_checkin_con_sesion_respeta_el_area(demo_limpia):
+    h = {"Accept": "application/json"}
+    q = {"unidad": "ADO-101", "k": TOKEN}
+    r = client.get("/checkin", params=q, headers={**h, **login("op_diesel")})
+    assert r.status_code == 403 and "no está en tu área" in r.json()["detalle"]
+    assert area_actual(101) == ("DRAINAGE", False, True)
+    r = client.get("/checkin", params=q, headers={**h, **login("op_desfogue")})
+    assert r.json()["area_nueva"] == "Diesel"
+    demo_limpia.t += 6
+    r = client.get("/checkin", params=q, headers={**h, **login("admin")})  # admin: todas
+    assert r.json()["area_nueva"] == "Ad-Blue"
+    r = client.get("/checkin", params=q, headers={**h, "Authorization": "Bearer basura"})
+    assert r.status_code == 401
+
+
+def test_cors_preflight_desde_vercel():
+    r = client.options("/checkin", headers={
+        "Origin": "https://adopt-2.vercel.app",
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "authorization,accept",
+    })
+    assert r.status_code == 200
+    assert r.headers["access-control-allow-origin"] in ("*", "https://adopt-2.vercel.app")

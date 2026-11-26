@@ -885,7 +885,14 @@ def escanear_nfc_tag(body: NfcScan, area_operador: Optional[str] = Depends(get_o
 
 # ── Check-in sin login por NFC/QR (`/checkin`) — ver checkin.py ──
 
-app.include_router(checkin.crear_router(db, avanzar_camion))
+def _area_sesion_opcional(creds: HTTPAuthorizationCredentials = Depends(_bearer)) -> Optional[str]:
+    """Sin JWT → None (celular sin app). Con JWT válido → misma regla de área
+    que el resto de la API. JWT inválido/vencido → 401."""
+    if not creds:
+        return None
+    return get_operador_area(get_current_user(creds))
+
+app.include_router(checkin.crear_router(db, avanzar_camion, _area_sesion_opcional))
 
 
 # ── Historial (`/historial`) ──────────────────────────────────────
