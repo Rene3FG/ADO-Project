@@ -118,6 +118,7 @@ def test_error_no_bloquea_la_siguiente_lectura(demo_limpia):
 
 
 def test_ciclo_completo_vuelve_al_inicio(demo_limpia):
+    """ADO-102: ruta corta."""
     esperado = [("Diesel", ("DIESEL", False, True)),
                 ("Ad-Blue", ("ADDBLUE", False, True)),
                 ("Salida", ("ADDBLUE", True, False)),
@@ -125,10 +126,10 @@ def test_ciclo_completo_vuelve_al_inicio(demo_limpia):
                 ("Diesel", ("DIESEL", False, True))]
     for nombre, estado in esperado:
         demo_limpia.t += 6
-        r = leer("ADO-101")
-        assert f"✅ ADO-101 → {nombre}" in r.text, r.text
-        assert area_actual(101) == estado
-    hist = client.get("/historial", params={"unidad": "101"}).json()
+        r = leer("ADO-102")
+        assert f"✅ ADO-102 → {nombre}" in r.text, r.text
+        assert area_actual(102) == estado
+    hist = client.get("/historial", params={"unidad": "102"}).json()
     assert [h["mensaje"].split(" entró a ")[1] for h in hist][:5] == \
         ["Diesel", "Desfogue", "Ad-Blue", "Diesel", "Desfogue"]
 
@@ -186,17 +187,17 @@ def test_flujo_app_operador_por_estacion():
     """Flujo real: cada operador escanea en la app (POST /camiones/{serie}/avanzar)
     y la unidad pasa a la siguiente estación, donde la recibe otro operador."""
     op = {u: login(u) for u in ("op_desfogue", "op_diesel", "op_adblue")}
-    avanzar = lambda u, s=101: client.post(f"/camiones/{s}/avanzar", headers=op[u])  # noqa: E731
+    avanzar = lambda u, s=102: client.post(f"/camiones/{s}/avanzar", headers=op[u])  # noqa: E731
     assert avanzar("op_diesel").status_code == 403          # aún está en Desfogue
     assert avanzar("op_desfogue").json()["area_nueva"] == "Diesel"
     assert avanzar("op_desfogue").status_code == 403        # ya no es de su área
     assert avanzar("op_diesel").json()["area_nueva"] == "Ad-Blue"
     assert avanzar("op_adblue").json()["area_nueva"] == "Salida"
-    assert area_actual(101) == ("ADDBLUE", True, False)
+    assert area_actual(102) == ("ADDBLUE", True, False)
     assert avanzar("op_diesel").status_code == 403          # la entrada es de Desfogue
     r = avanzar("op_desfogue").json()                        # nuevo ciclo
     assert (r["area_anterior"], r["area_nueva"]) == ("Salida", "Desfogue")
-    assert area_actual(101) == ("DRAINAGE", False, True)
+    assert area_actual(102) == ("DRAINAGE", False, True)
 
 
 def test_flujo_app_alta_del_dia_la_hace_desfogue():
@@ -259,6 +260,53 @@ def test_checkin_con_sesion_respeta_el_area(demo_limpia):
     assert r.json()["area_nueva"] == "Ad-Blue"
     r = client.get("/checkin", params=q, headers={**h, "Authorization": "Bearer basura"})
     assert r.status_code == 401
+
+
+RUTA_LARGA = [("op_desfogue", "Diesel", "DIESEL"), ("op_diesel", "Ad-Blue", "ADDBLUE"),
+              ("op_adblue", "Taller", "WORKSHOP"), ("op_taller", "Lavado Interior", "INTERIOR WASH"),
+              ("op_lav_int", "Lavado Exterior", "EXTERIOR WASH"), ("op_lav_ext", "Salida", None)]
+
+
+def test_ado101_recorre_las_seis_estaciones(demo_limpia):
+    """ADO-101: cada operador manda la unidad a la siguiente estación de SU ruta;
+    sale de la cola anterior y entra a la siguiente; el admin la ve siempre."""
+    ops = [p[0] for p in RUTA_LARGA]
+    for i, (op, destino, area_db) in enumerate(RUTA_LARGA):
+        for otro in ops:  # escaneo en estación equivocada → 403
+            if otro != op:
+                r = client.post("/camiones/101/avanzar", headers=login(otro))
+                assert r.status_code == 403 and "no está en tu área" in r.json()["detail"]
+        assert 101 in cola_operador(op)
+        r = client.post("/camiones/101/avanzar", headers=login(op)).json()
+        assert r["area_nueva"] == destino
+        assert 101 not in cola_operador(op)
+        admin = {c["codigo"]: c["area"] for c in client.get("/camiones", headers=login("admin")).json()}
+        if area_db:
+            assert area_actual(101) == (area_db, False, True)
+            assert 101 in cola_operador(RUTA_LARGA[i + 1][0])
+            assert admin.get("101") == destino
+        else:
+            assert area_actual(101) == ("EXTERIOR WASH", True, False)
+            assert "101" not in admin
+    # nuevo ciclo desde Salida: solo Desfogue lo recibe
+    assert client.post("/camiones/101/avanzar", headers=login("op_diesel")).status_code == 403
+    r = client.post("/camiones/101/avanzar", headers=login("op_desfogue")).json()
+    assert (r["area_anterior"], r["area_nueva"]) == ("Salida", "Desfogue")
+    assert area_actual(102) == ("DRAINAGE", False, True)  # la otra no se movió
+
+
+def test_ado101_por_checkin_sin_sesion(demo_limpia):
+    for _, destino, _ in RUTA_LARGA + [("op_desfogue", "Desfogue", None)]:
+        demo_limpia.t += 6
+        assert f"✅ ADO-101 → {destino}" in leer("ADO-101").text
+
+
+def test_rutas_definidas_en_un_solo_lugar():
+    with api.db() as c:
+        for serie in (101, 102):
+            trip = c.execute(text("SELECT * FROM trips WHERE serial_number=:s AND date=:f"),
+                             {"s": serie, "f": hoy()}).fetchone()
+            assert tuple(checkin.calcular_ruta(trip)[:-1]) == checkin.RUTAS_DEMO[serie]
 
 
 def test_cors_preflight_desde_vercel():

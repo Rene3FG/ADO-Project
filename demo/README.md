@@ -23,8 +23,10 @@ Cada cochecito lleva un tag NFC (registro **URL**) y un QR con la misma URL:
     http://<IP>:8000/checkin?unidad=ADO-101&k=<CHECKIN_TOKEN>
 
 Al abrirla, la unidad avanza al siguiente paso de su ruta (la misma lógica que
-el swipe/NFC del operador, `routing.py`): **Desfogue → Diesel → Ad-Blue →
-Salida → Desfogue…** El celular ve `✅ ADO-101 → Diesel (14:05)`; si algo
+el swipe/NFC del operador, `routing.py`). Rutas en `checkin.RUTAS_DEMO`:
+**ADO-101** Desfogue → Diesel → Ad-Blue → Taller → Lavado Interior → Lavado
+Exterior → Salida; **ADO-102** Desfogue → Diesel → Ad-Blue → Salida. Desde
+Salida, Desfogue la vuelve a recibir (nuevo ciclo). El celular ve `✅ ADO-101 → Diesel (14:05)`; si algo
 falla, un mensaje en rojo. Lecturas de la misma unidad a menos de 5 s se
 ignoran. El movimiento queda en `movements` (sale en Historial/Reportes).
 

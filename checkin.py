@@ -26,16 +26,34 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import text
 
-from routing import calcular_ruta
+from routing import NEED_FIELD_TO_AREA, calcular_ruta
 from tiempo import ahora, hoy
 
 DEBOUNCE_SEGUNDOS = 5.0
 
 # Unidades de la maqueta: si no están registradas hoy, la primera lectura las
-# da de alta (ruta Desfogue → Diesel → Ad-Blue → Salida). Cualquier otra unidad
-# no registrada hoy responde 404.
+# da de alta. Cualquier otra unidad no registrada hoy responde 404.
 def unidades_demo() -> set[int]:
     return {int(x) for x in os.environ.get("CHECKIN_UNIDADES", "101,102").split(",") if x.strip().isdigit()}
+
+
+# Ruta de cada unidad de la maqueta = áreas que necesita su viaje (needs_* de
+# trips). El ORDEN lo pone routing.WORKFLOW_ORDER y al final siempre va Salida.
+# Único lugar donde se define; lo usan /checkin, la app y scripts/reset_demo.py.
+RUTA_CORTA = ("Desfogue", "Diesel", "Ad-Blue")
+RUTAS_DEMO: dict[int, tuple[str, ...]] = {
+    101: ("Desfogue", "Diesel", "Ad-Blue", "Taller", "Lavado Interior", "Lavado Exterior"),
+    102: RUTA_CORTA,
+}
+
+
+def needs_demo(serie: int) -> dict[str, int]:
+    """Banderas needs_* del viaje de una unidad de la maqueta según RUTAS_DEMO."""
+    ruta = RUTAS_DEMO.get(serie, RUTA_CORTA)
+    return {campo: int(area in ruta) for campo, area in NEED_FIELD_TO_AREA.items()}
+
+
+_SET_NEEDS = ", ".join(f"{c}=:{c}" for c in NEED_FIELD_TO_AREA)
 
 
 def registrar_unidad_demo(conn, serie: int, area_inicial_id: int) -> None:
@@ -44,15 +62,17 @@ def registrar_unidad_demo(conn, serie: int, area_inicial_id: int) -> None:
     f, now = hoy(), ahora()
     conn.execute(text("""
         INSERT INTO trips (date, serial_number, type_id, scheduled_time, departure_time,
-            needs_drainage, needs_diesel, needs_adblue, driver_name,
+            needs_drainage, needs_diesel, needs_adblue,
+            needs_workshop, needs_int_wash, needs_ext_wash, driver_name,
             origin_terminal, destination_terminal, notes,
             is_dirty, last_modified_by, last_modified_at)
-        VALUES (:f, :s, (SELECT id FROM bus_types WHERE name='ADO'), '08:00', '09:00', 1, 1, 1,
+        VALUES (:f, :s, (SELECT id FROM bus_types WHERE name='ADO'), '08:00', '09:00',
+            :needs_drainage, :needs_diesel, :needs_adblue,
+            :needs_workshop, :needs_int_wash, :needs_ext_wash,
             :cond, 'Oaxaca', 'CDMX', 'DEMO NFC', false, 'app', :ts)
         ON CONFLICT (date, serial_number) DO UPDATE SET
-            needs_reception=0, needs_drainage=1, needs_diesel=1, needs_adblue=1,
-            needs_workshop=0, needs_int_wash=0, needs_ext_wash=0, notes='DEMO NFC'
-    """), {"f": f, "s": serie, "cond": f"Conductor {serie}", "ts": now})
+            needs_reception=0, """ + _SET_NEEDS + """, notes='DEMO NFC'
+    """), {"f": f, "s": serie, "cond": f"Conductor {serie}", "ts": now, **needs_demo(serie)})
     rid = conn.execute(text("""
         INSERT INTO records (date, serial_number, type_id, is_active, registration_time,
             is_dirty, last_modified_by, last_modified_at)
@@ -123,6 +143,11 @@ def entrada_demo(db: Callable, serie: int, area_operador: Optional[str],
         ), {"s": serie, "f": target}).fetchone()
         if record and record.is_active:
             return None
+        # Cada ciclo toma la ruta vigente de RUTAS_DEMO (sin esperar a un reset).
+        conn.execute(text(
+            "UPDATE trips SET " + _SET_NEEDS +
+            " WHERE serial_number=:s AND date=:f AND notes='DEMO NFC'"
+        ), {"s": serie, "f": target, **needs_demo(serie)})
         trip = conn.execute(text(
             "SELECT needs_drainage, needs_diesel, needs_adblue,"
             " needs_workshop, needs_int_wash, needs_ext_wash"

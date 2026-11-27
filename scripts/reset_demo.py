@@ -3,8 +3,8 @@
     python scripts/reset_demo.py                # base local de la demo (Docker)
     python scripts/reset_demo.py --produccion   # base de producción (Render/Supabase)
 
-Ambos modos: ADO-101 y ADO-102 registradas HOY, ruta Desfogue → Diesel →
-Ad-Blue → Salida, paradas en Desfogue (estado inicial). Solo se tocan filas de
+Ambos modos: ADO-101 y ADO-102 registradas HOY, cada una con su ruta de
+checkin.RUTAS_DEMO, paradas en Desfogue (estado inicial). Solo se tocan filas de
 esas 2 unidades; en producción se aborta si alguna tiene datos que no sean de
 la demo (notes <> 'DEMO NFC').
 
@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import bcrypt  # noqa: E402
 from sqlalchemy import create_engine, text  # noqa: E402
 
-from checkin import registrar_unidad_demo  # noqa: E402
+from checkin import RUTA_CORTA, RUTAS_DEMO, registrar_unidad_demo  # noqa: E402
 from config import DATABASE_URL  # noqa: E402
 from tiempo import hoy  # noqa: E402
 
@@ -38,6 +38,9 @@ USUARIOS = [
     ("op_desfogue", 3, "Operador", "Desfogue", 4),
     ("op_diesel", 3, "Operador", "Diesel", 1),
     ("op_adblue", 3, "Operador", "AdBlue", 2),
+    ("op_taller", 3, "Operador", "Taller", 3),
+    ("op_lav_int", 3, "Operador", "LavInt", 6),
+    ("op_lav_ext", 3, "Operador", "LavExt", 5),
 ]
 
 
@@ -94,6 +97,8 @@ def main() -> None:
             registrar_unidad_demo(c, serie, drenaje)
 
     print(f"Demo lista ({f}, base {host}): ADO-101 y ADO-102 en Desfogue.")
+    for serie in UNIDADES:
+        print(f"  ADO-{serie}: {' → '.join(RUTAS_DEMO.get(serie, RUTA_CORTA))} → Salida")
     if not produccion:
         print(f"Usuarios {', '.join(u[0] for u in USUARIOS)} / contraseña {DEMO_PASSWORD}")
 
